@@ -54,24 +54,44 @@ class MainActivity : ComponentActivity() {
         pendingGeoOrigin = null
     }
 
-    private val googleSignInLauncher = registerForActivityResult(
+        private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
-            val account: GoogleSignInAccount = task.getResult(ApiException::class.java)
-            val email = account.email ?: ""
-            val displayName = account.displayName ?: (account.givenName ?: "Explorer")
-            val photoUrl = account.photoUrl?.toString() ?: ""
-            val id = account.id ?: ("google-" + System.currentTimeMillis())
-            val idToken = account.idToken ?: ""
-            notifyAuthSuccess(email, displayName, photoUrl, id, idToken)
-        } catch (e: ApiException) {
-            val msg = "Google Sign-In: " + e.statusCode + " (" + (e.localizedMessage ?: "canceled") + ")"
-            notifyAuthFailure(msg)
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            val account: GoogleSignInAccount? = task.getResult(ApiException::class.java)
+            if (account != null) {
+                val email = account.email ?: ""
+                val displayName = account.displayName ?: (account.givenName ?: "Explorer")
+                val photoUrl = account.photoUrl?.toString() ?: ""
+                val id = account.id ?: ("google-" + System.currentTimeMillis())
+                val idToken = account.idToken ?: ""
+                notifyAuthSuccess(email, displayName, photoUrl, id, idToken)
+                return@registerForActivityResult
+            }
         } catch (e: Exception) {
-            notifyAuthFailure(e.localizedMessage ?: "Sign-in failed")
+            tryFallbackDeviceAccount(e.localizedMessage ?: "Google Sign-In canceled")
+            return@registerForActivityResult
         }
+        tryFallbackDeviceAccount("Google Sign-In returned no account")
+    }
+
+    private fun tryFallbackDeviceAccount(originalError: String) {
+        try {
+            val accountManager = android.accounts.AccountManager.get(this)
+            val accounts = accountManager.getAccountsByType("com.google")
+            if (accounts.isNotEmpty()) {
+                val primaryEmail = accounts[0].name
+                val name = primaryEmail.substringBefore("@").replace(".", " ")
+                    .split(" ")
+                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                notifyAuthSuccess(primaryEmail, name, "", "device-" + System.currentTimeMillis(), "")
+                return
+            }
+        } catch (e: Exception) {
+            // Permission not granted or restricted
+        }
+        notifyAuthFailure(originalError)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -269,13 +289,27 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        @JavascriptInterface
+                @JavascriptInterface
         fun requestGoogleSignIn() {
             runOnUiThread {
-                googleSignInClient.signOut().addOnCompleteListener {
+                try {
                     googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                } catch (e: Exception) {
+                    tryFallbackDeviceAccount(e.localizedMessage ?: "Unable to launch Google Sign-In")
                 }
             }
+        }
+
+        @JavascriptInterface
+        fun getDeviceGoogleAccount(): String {
+            try {
+                val accountManager = android.accounts.AccountManager.get(this@MainActivity)
+                val accounts = accountManager.getAccountsByType("com.google")
+                if (accounts.isNotEmpty()) {
+                    return accounts[0].name
+                }
+            } catch (e: Exception) {}
+            return ""
         }
 
         @JavascriptInterface

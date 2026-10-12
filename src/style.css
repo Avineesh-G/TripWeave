@@ -3109,3 +3109,35 @@ button, input, textarea, select {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
+
+
+/* Student Instant Access Button */
+.btn-continue-student {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-container-low);
+  border: 1.5px solid var(--outline-variant);
+  color: var(--on-surface);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+  transition: all 180ms ease;
+}
+
+.btn-continue-student:hover {
+  background: var(--surface-container-high);
+  border-color: #1A73E8;
+  color: #1A73E8;
+  transform: translateY(-1px);
+}
+
+.btn-continue-student:active {
+  transform: translateY(0);
+}

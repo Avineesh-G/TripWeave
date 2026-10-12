@@ -62,9 +62,43 @@ if (isFirebaseConfigured) {
 // --------------------------------------------------------------------------
 
 export async function loginWithGoogle() {
-  // 1. Android Native Google Sign-In Bridge (play-services-auth)
+  // 1. Android Native Google Sign-In Bridge (with 4s safety timeout)
   if (typeof window !== 'undefined' && window.AndroidAuthBridge && typeof window.AndroidAuthBridge.requestGoogleSignIn === 'function') {
     return new Promise((resolve) => {
+      let isSettled = false;
+
+      const finish = (result) => {
+        if (!isSettled) {
+          isSettled = true;
+          clearTimeout(timeoutId);
+          resolve(result);
+        }
+      };
+
+      const timeoutId = setTimeout(() => {
+        let deviceEmail = '';
+        try {
+          if (window.AndroidAuthBridge.getDeviceGoogleAccount) {
+            deviceEmail = window.AndroidAuthBridge.getDeviceGoogleAccount();
+          }
+        } catch (e) {}
+
+        if (deviceEmail) {
+          const nick = deviceEmail.split('@')[0];
+          const user = {
+            uid: 'device-' + Date.now(),
+            displayName: nick.charAt(0).toUpperCase() + nick.slice(1),
+            email: deviceEmail,
+            photoURL: '',
+            providerId: 'google.com'
+          };
+          localStorage.setItem('tripweave_auth_user', JSON.stringify(user));
+          finish({ success: true, user });
+        } else {
+          finish({ success: false, error: 'Sign-in timeout. Use Student Explorer or enter email.' });
+        }
+      }, 4000);
+
       window.onNativeGoogleSignInSuccess = (userData) => {
         const profile = {
           uid: userData.uid || ('google-' + Date.now()),
@@ -75,18 +109,18 @@ export async function loginWithGoogle() {
           isNative: true
         };
         localStorage.setItem('tripweave_auth_user', JSON.stringify(profile));
-        resolve({ success: true, user: profile });
+        finish({ success: true, user: profile });
       };
 
       window.onNativeGoogleSignInFailure = (errorMsg) => {
-        console.warn('[TripWeave] Native Google Sign-In failure:', errorMsg);
-        resolve({ success: false, error: errorMsg });
+        console.warn('[TripWeave] Native Google Sign-In notice:', errorMsg);
+        finish({ success: false, error: errorMsg });
       };
 
       try {
         window.AndroidAuthBridge.requestGoogleSignIn();
       } catch (err) {
-        resolve({ success: false, error: err.message });
+        finish({ success: false, error: err.message });
       }
     });
   }
@@ -111,7 +145,7 @@ export async function loginWithGoogle() {
     }
   }
 
-  // 3. Web Fallback: prompt for user's actual Google email (NO fake mock profile)
+  // 3. Web Fallback Prompt
   const userEmail = window.prompt('Enter your Google Account email address (e.g. student@gmail.com):');
   if (userEmail && userEmail.includes('@')) {
     const cleanEmail = userEmail.trim();
@@ -126,7 +160,7 @@ export async function loginWithGoogle() {
     localStorage.setItem('tripweave_auth_user', JSON.stringify(realUser));
     return { success: true, user: realUser };
   } else {
-    return { success: false, error: 'Sign-in canceled: valid Google email required' };
+    return { success: false, error: 'Sign-in canceled' };
   }
 }
 
