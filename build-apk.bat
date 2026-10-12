@@ -1,28 +1,40 @@
-@echo off
-echo [TripWeave] Building production web assets...
+﻿@echo off
+setlocal
+echo ============================================================
+echo [TripWeave] Production Release APK Build Pipeline
+echo ============================================================
+
+echo [1/3] Building web assets with Vite...
 call npm.cmd run build
 if %errorlevel% neq 0 (
-    echo Error during npm run build.
+    echo [ERROR] npm run build failed.
     exit /b %errorlevel%
 )
 
-echo [TripWeave] Syncing assets to Android container...
-python scratch/sync_assets_to_android.py
+echo [2/3] Synchronizing assets to Android container...
+python scripts/sync_assets.py
 if %errorlevel% neq 0 (
-    echo Error during asset sync.
+    echo [ERROR] Asset sync failed.
     exit /b %errorlevel%
 )
 
-echo [TripWeave] Compiling Android APK...
-call gradlew.bat assembleDebug
+echo [3/3] Compiling signed Android Release APK...
+call gradlew.bat assembleRelease
 if %errorlevel% neq 0 (
-    echo Error during Gradle build.
+    echo [ERROR] Gradle assembleRelease failed.
     exit /b %errorlevel%
 )
 
-copy /y app\build\outputs\apk\debug\app-debug.apk TripWeave-v1.0.0.apk
+if not exist releases mkdir releases
+copy /y app\build\outputs\apk\release\app-release.apk TripWeave-v1.2.0.apk
+copy /y app\build\outputs\apk\release\app-release.apk TripWeave.apk
+copy /y app\build\outputs\apk\release\app-release.apk releases\TripWeave-v1.2.0.apk
+copy /y app\build\outputs\apk\release\app-release.apk releases\TripWeave.apk
+
 echo.
 echo ============================================================
-echo [TripWeave] APK build successful!
-echo Output: TripWeave-v1.0.0.apk
+echo [TripWeave] Release Build Successful!
+echo Primary APK : TripWeave-v1.2.0.apk (and TripWeave.apk)
+echo Archive Copy: releases\TripWeave-v1.2.0.apk
 echo ============================================================
+endlocal
