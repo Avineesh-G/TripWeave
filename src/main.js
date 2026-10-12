@@ -17,9 +17,11 @@ export function resizeMap() {
   if (!mapInstance) return;
   try {
     if (typeof mapInstance.invalidateSize === 'function') {
-      resizeMap();
+      mapInstance.invalidateSize(true);
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Map resize error:', e);
+  }
 }
 
 const GOOGLE_TILE_PROVIDERS = {
@@ -819,10 +821,19 @@ function initMap() {
     setTimeout(resizeMap, 200);
   });
 
+  if (typeof ResizeObserver !== 'undefined' && mapEl) {
+    const ro = new ResizeObserver(() => {
+      resizeMap();
+    });
+    ro.observe(mapEl);
+  }
+
   setTimeout(() => {
     resizeMap();
     renderPlacesAroundSearchArea('all');
-  }, 100);
+  }, 50);
+  setTimeout(() => resizeMap(), 200);
+  setTimeout(() => resizeMap(), 500);
 }
 
 function renderPlacesAroundSearchArea(catFilter = 'all') {
@@ -1012,7 +1023,7 @@ function switchTab(tabName) {
   if (targetTab) targetTab.classList.add('active');
 
   if (tabName === 'map' && mapInstance) {
-    setTimeout(() => { if (mapInstance && typeof google !== 'undefined' && google.maps) google.maps.event.trigger(mapInstance, 'resize'); }, 150);
+    setTimeout(() => resizeMap(), 50); setTimeout(() => resizeMap(), 250);
   }
 }
 
