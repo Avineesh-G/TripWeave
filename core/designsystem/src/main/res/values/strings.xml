@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TripWeave</string>
+    <string name="app_tagline">Plan the journey, not just the route</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_map">Map</string>
+    <string name="nav_itinerary">Itinerary</string>
+    <string name="nav_budget">Budget</string>
+    <string name="nav_trips">Trips</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Feasibility Status -->
+    <string name="feasibility_feasible">Feasible</string>
+    <string name="feasibility_tight">Tight</string>
+    <string name="feasibility_infeasible">Not Feasible</string>
+    <string name="confidence_score">Confidence: %1$d%%</string>
+
+    <!-- Map & Actions -->
+    <string name="action_add_stop">Add Stop</string>
+    <string name="search_places_hint">Search attractions, food, stays...</string>
+    <string name="filter_attractions">Attractions</string>
+    <string name="filter_food">Food</string>
+    <string name="filter_fuel">Fuel</string>
+    <string name="filter_stays">Stays</string>
+    <string name="active_trip_chip">Active: %1$s</string>
+    <string name="demo_mode_badge">Demo Mode</string>
+
+    <!-- Trip Setup Stepper -->
+    <string name="create_trip_title">Create New Trip</string>
+    <string name="step_route">1. Route</string>
+    <string name="step_schedule">2. Schedule</string>
+    <string name="step_group">3. Group &amp; Travel</string>
+    <string name="step_budget">4. Budget</string>
+    <string name="step_preferences">5. Preferences</string>
+    <string name="action_next">Next</string>
+    <string name="action_back">Back</string>
+    <string name="action_create">Create Trip</string>
+
+    <!-- Input Labels -->
+    <string name="trip_title_label">Trip Title</string>
+    <string name="destination_label">Primary Destination</string>
+    <string name="departure_time_label">Departure Time</string>
+    <string name="group_size_label">Travelers (Group Size)</string>
+    <string name="vehicle_mileage_label">Vehicle Mileage (km/L)</string>
+    <string name="fuel_price_label">Fuel Price (₹/L)</string>
+    <string name="total_budget_label">Total Budget (₹)</string>
+
+    <!-- Itinerary Timeline -->
+    <string name="timeline_arrival">Arr: %1$s</string>
+    <string name="timeline_departure">Dep: %1$s</string>
+    <string name="timeline_duration">Visit: %1$d min</string>
+    <string name="timeline_buffer">Buffer: %1$d min</string>
+    <string name="overnight_stay">Overnight Stay</string>
+    <string name="status_closed_warning">Closed on arrival!</string>
+    <string name="status_tight_warning">Closing soon during visit</string>
+    <string name="status_open">Open</string>
+
+    <!-- Budget Screen -->
+    <string name="budget_total_cost">Total Estimated Cost</string>
+    <string name="budget_per_person">Per Person: %1$s</string>
+    <string name="budget_remaining">Remaining: %1$s</string>
+    <string name="budget_overrun">Overrun: %1$s</string>
+    <string name="scenario_low">Low</string>
+    <string name="scenario_typical">Typical</string>
+    <string name="scenario_high">High</string>
+    <string name="category_fuel">Fuel</string>
+    <string name="category_toll">Tolls</string>
+    <string name="category_stay">Accommodation</string>
+    <string name="category_food">Food &amp; Dining</string>
+    <string name="category_ticket">Tickets &amp; Entry</string>
+    <string name="category_activity">Activities</string>
+    <string name="category_contingency">Contingency (5%)</string>
+    <string name="category_other">Other</string>
+
+    <!-- Provenance & Sources -->
+    <string name="source_official">Official</string>
+    <string name="source_calculated">Calculated</string>
+    <string name="source_user_entered">User Added</string>
+    <string name="source_community">Community</string>
+    <string name="source_demo">Demo Data</string>
+    <string name="source_method">Method: %1$s</string>
+
+    <!-- Settings & Languages -->
+    <string name="settings_title">Settings &amp; Assumptions</string>
+    <string name="setting_language">App Language</string>
+    <string name="lang_english">English</string>
+    <string name="lang_telugu">తెలుగు (Telugu)</string>
+    <string name="lang_hindi">हिन्दी (Hindi)</string>
+    <string name="lang_tamil">தமிழ் (Tamil)</string>
+    <string name="sync_status_title">Cloud Sync</string>
+    <string name="sync_status_synced">Synced with Cloud</string>
+    <string name="sync_status_offline">Offline (Local Room DB active)</string>
+    <string name="sample_trip_loaded">Loaded realistic road trip data for India</string>
+</resources>

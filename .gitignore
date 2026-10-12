@@ -1,0 +1,30 @@
+# Environment & local credentials
+local.properties
+.env
+.env.*
+*.key
+*.keystore
+*.jks
+
+# Gradle and build outputs
+.gradle/
+build/
+*/build/
+app/build/
+core/*/build/
+
+# Android Studio & IDE
+.idea/
+*.iml
+.DS_Store
+
+# Kotlin
+.kotlin/
+
+# Node / Web testbed
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

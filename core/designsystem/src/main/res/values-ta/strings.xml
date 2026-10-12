@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ட்ரிப்வீவ்</string>
+    <string name="app_tagline">வெறும் பாதையை மட்டுமல்ல, பயணத்தையே திட்டமிடுங்கள்</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_map">வரைபடம்</string>
+    <string name="nav_itinerary">கால அட்டவணை</string>
+    <string name="nav_budget">பட்ஜெட்</string>
+    <string name="nav_trips">பயணங்கள்</string>
+    <string name="nav_settings">அமைப்புகள்</string>
+
+    <!-- Feasibility Status -->
+    <string name="feasibility_feasible">சாத்தியமானது</string>
+    <string name="feasibility_tight">குறைந்த நேரம்</string>
+    <string name="feasibility_infeasible">சாத்தியமற்றது</string>
+    <string name="confidence_score">நம்பகத்தன்மை: %1$d%%</string>
+
+    <!-- Map & Actions -->
+    <string name="action_add_stop">நிறுத்தம் சேர்க்கவும்</string>
+    <string name="search_places_hint">சுற்றுலா தலங்கள், உணவு, தங்குமிடம் தேடவும்...</string>
+    <string name="filter_attractions">சுற்றுலா தலங்கள்</string>
+    <string name="filter_food">உணவு</string>
+    <string name="filter_fuel">எரிபொருள்</string>
+    <string name="filter_stays">தங்குமிடம்</string>
+    <string name="active_trip_chip">தற்போதைய பயணம்: %1$s</string>
+    <string name="demo_mode_badge">டெமோ நிலை</string>
+
+    <!-- Trip Setup Stepper -->
+    <string name="create_trip_title">புதிய பயணத்தை உருவாக்கவும்</string>
+    <string name="step_route">1. பாதை</string>
+    <string name="step_schedule">2. நேரம்</string>
+    <string name="step_group">3. குழு மற்றும் வாகனம்</string>
+    <string name="step_budget">4. பட்ஜெட்</string>
+    <string name="step_preferences">5. முன்னுரிமைகள்</string>
+    <string name="action_next">அடுத்து</string>
+    <string name="action_back">பின்செல்</string>
+    <string name="action_create">பயணம் உருவாக்கு</string>
+
+    <!-- Input Labels -->
+    <string name="trip_title_label">பயணத்தின் பெயர்</string>
+    <string name="destination_label">முக்கிய இலக்கு</string>
+    <string name="departure_time_label">புறப்படும் நேரம்</string>
+    <string name="group_size_label">பயணிகள் எண்ணிக்கை</string>
+    <string name="vehicle_mileage_label">வாகன மைலேஜ் (கி.மீ/லிட்டர்)</string>
+    <string name="fuel_price_label">எரிபொருள் விலை (₹/லிட்டர்)</string>
+    <string name="total_budget_label">மொத்த பட்ஜெட் (₹)</string>
+
+    <!-- Itinerary Timeline -->
+    <string name="timeline_arrival">வருகை: %1$s</string>
+    <string name="timeline_departure">புறப்பாடு: %1$s</string>
+    <string name="timeline_duration">பார்வை நேரம்: %1$d நிமிடம்</string>
+    <string name="timeline_buffer">கூடுதல் இடைவெளி: %1$d நிமிடம்</string>
+    <string name="overnight_stay">இரவு தங்குமிடம்</string>
+    <string name="status_closed_warning">வருகையின் போது மூடப்பட்டிருக்கும்!</string>
+    <string name="status_tight_warning">விரைவில் மூடப்படும்</string>
+    <string name="status_open">திறந்துள்ளது</string>
+
+    <!-- Budget Screen -->
+    <string name="budget_total_cost">மதிப்பிடப்பட்ட மொத்த செலவு</string>
+    <string name="budget_per_person">ஒரு நபருக்கு: %1$s</string>
+    <string name="budget_remaining">மீதமுள்ள பட்ஜெட்: %1$s</string>
+    <string name="budget_overrun">பட்ஜெட்டை தாண்டியது: %1$s</string>
+    <string name="scenario_low">குறைந்தபட்ச</string>
+    <string name="scenario_typical">வழக்கமான</string>
+    <string name="scenario_high">அதிகபட்ச</string>
+    <string name="category_fuel">எரிபொருள்</string>
+    <string name="category_toll">டோல்கேட் கட்டணம்</string>
+    <string name="category_stay">தங்குமிடம்</string>
+    <string name="category_food">உணவு</string>
+    <string name="category_ticket">நுழைவுச் சீட்டு</string>
+    <string name="category_activity">செயல்பாடுகள்</string>
+    <string name="category_contingency">அவசர நிதி (5%)</string>
+    <string name="category_other">மற்றவை</string>
+
+    <!-- Provenance & Sources -->
+    <string name="source_official">அதிகாரப்பூர்வ தகவல்</string>
+    <string name="source_calculated">கணக்கிடப்பட்டது</string>
+    <string name="source_user_entered">பயனர் உள்ளிட்டவை</string>
+    <string name="source_community">சமூகத் தகவல்</string>
+    <string name="source_demo">டெமோ தகவல்</string>
+    <string name="source_method">முறை: %1$s</string>
+
+    <!-- Settings & Languages -->
+    <string name="settings_title">அமைப்புகள் &amp; கணிப்புகள்</string>
+    <string name="setting_language">பயன்பாட்டு மொழி</string>
+    <string name="lang_english">English</string>
+    <string name="lang_telugu">తెలుగు (Telugu)</string>
+    <string name="lang_hindi">हिन्दी (Hindi)</string>
+    <string name="lang_tamil">தமிழ் (Tamil)</string>
+    <string name="sync_status_title">கிளவுட் ஒத்திசைவு</string>
+    <string name="sync_status_synced">கிளவுடுடன் ஒத்திசைக்கப்பட்டது</string>
+    <string name="sync_status_offline">ஆஃப்லைன் (உள்ளூர் ரூம் தரவுத்தளம் இயங்குகிறது)</string>
+    <string name="sample_trip_loaded">இந்தியாவிற்கான உண்மையான சாலைப் பயணத் தகவல்கள் ஏற்றப்பட்டன</string>
+</resources>

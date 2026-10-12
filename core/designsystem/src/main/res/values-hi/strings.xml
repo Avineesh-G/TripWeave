@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ट्रिपवीव</string>
+    <string name="app_tagline">सिर्फ रास्ता नहीं, पूरे सफर की योजना बनाएं</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_map">नक्शा</string>
+    <string name="nav_itinerary">समय सारणी</string>
+    <string name="nav_budget">बजट</string>
+    <string name="nav_trips">ट्रिप्स</string>
+    <string name="nav_settings">सेटिंग्स</string>
+
+    <!-- Feasibility Status -->
+    <string name="feasibility_feasible">संभव है</string>
+    <string name="feasibility_tight">तंग समय</string>
+    <string name="feasibility_infeasible">संभव नहीं</string>
+    <string name="confidence_score">सटीकता: %1$d%%</string>
+
+    <!-- Map & Actions -->
+    <string name="action_add_stop">स्टॉप जोड़ें</string>
+    <string name="search_places_hint">आकर्षण, भोजन, होटल खोजें...</string>
+    <string name="filter_attractions">आकर्षण</string>
+    <string name="filter_food">भोजन</string>
+    <string name="filter_fuel">ईंधन</string>
+    <string name="filter_stays">होटल/ठहराव</string>
+    <string name="active_trip_chip">सक्रिय ट्रिप: %1$s</string>
+    <string name="demo_mode_badge">डेमो मोड</string>
+
+    <!-- Trip Setup Stepper -->
+    <string name="create_trip_title">नई ट्रिप बनाएं</string>
+    <string name="step_route">1. रूट</string>
+    <string name="step_schedule">2. समय</string>
+    <string name="step_group">3. समूह और वाहन</string>
+    <string name="step_budget">4. बजट</string>
+    <string name="step_preferences">5. प्राथमिकताएं</string>
+    <string name="action_next">आगे</string>
+    <string name="action_back">पीछे</string>
+    <string name="action_create">ट्रिप बनाएं</string>
+
+    <!-- Input Labels -->
+    <string name="trip_title_label">ट्रिप का नाम</string>
+    <string name="destination_label">मुख्य गंतव्य</string>
+    <string name="departure_time_label">रवानगी का समय</string>
+    <string name="group_size_label">यात्रियों की संख्या</string>
+    <string name="vehicle_mileage_label">वाहन माइलेज (किमी/लीटर)</string>
+    <string name="fuel_price_label">ईंधन मूल्य (₹/लीटर)</string>
+    <string name="total_budget_label">कुल बजट (₹)</string>
+
+    <!-- Itinerary Timeline -->
+    <string name="timeline_arrival">आगमन: %1$s</string>
+    <string name="timeline_departure">प्रस्थान: %1$s</string>
+    <string name="timeline_duration">अवधि: %1$d मिनट</string>
+    <string name="timeline_buffer">बफर: %1$d मिनट</string>
+    <string name="overnight_stay">रात का ठहराव</string>
+    <string name="status_closed_warning">पहुंचने पर बंद रहेगा!</string>
+    <string name="status_tight_warning">दौरे के समय जल्द बंद हो जाएगा</string>
+    <string name="status_open">खुला है</string>
+
+    <!-- Budget Screen -->
+    <string name="budget_total_cost">अनुमानित कुल लागत</string>
+    <string name="budget_per_person">प्रति व्यक्ति: %1$s</string>
+    <string name="budget_remaining">शेष बजट: %1$s</string>
+    <string name="budget_overrun">बजट से अधिक: %1$s</string>
+    <string name="scenario_low">न्यूनतम</string>
+    <string name="scenario_typical">सामान्य</string>
+    <string name="scenario_high">अधिकतम</string>
+    <string name="category_fuel">ईंधन</string>
+    <string name="category_toll">टोल टैक्स</string>
+    <string name="category_stay">होटल एवं आवास</string>
+    <string name="category_food">खान-पान</string>
+    <string name="category_ticket">प्रवेश टिकट</string>
+    <string name="category_activity">गतिविधियां</string>
+    <string name="category_contingency">आकस्मिक निधि (5%)</string>
+    <string name="category_other">अन्य</string>
+
+    <!-- Provenance & Sources -->
+    <string name="source_official">आधिकारिक स्रोत</string>
+    <string name="source_calculated">गणना किया गया</string>
+    <string name="source_user_entered">उपयोगकर्ता द्वारा दर्ज</string>
+    <string name="source_community">समुदाय</string>
+    <string name="source_demo">डेमो डेटा</string>
+    <string name="source_method">तरीका: %1$s</string>
+
+    <!-- Settings & Languages -->
+    <string name="settings_title">सेटिंग्स और अनुमान</string>
+    <string name="setting_language">ऐप की भाषा</string>
+    <string name="lang_english">English</string>
+    <string name="lang_telugu">తెలుగు (Telugu)</string>
+    <string name="lang_hindi">हिन्दी (Hindi)</string>
+    <string name="lang_tamil">தமிழ் (Tamil)</string>
+    <string name="sync_status_title">क्लाउड सिंक</string>
+    <string name="sync_status_synced">क्लाउड से सिंक किया गया</string>
+    <string name="sync_status_offline">ऑफ़लाइन (स्थानीय रूम डेटाबेस चालू)</string>
+    <string name="sample_trip_loaded">भारत के लिए वास्तविक रोड ट्रिप डेटा लोड हुआ</string>
+</resources>

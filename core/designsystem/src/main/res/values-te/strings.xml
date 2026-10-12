@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ట్రిప్‌వీవ్</string>
+    <string name="app_tagline">కేవలం మార్గం మాత్రమే కాదు, ప్రయాణాన్ని ప్రణాళిక చేయండి</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_map">మ్యాప్</string>
+    <string name="nav_itinerary">షెడ్యూల్</string>
+    <string name="nav_budget">బడ్జెట్</string>
+    <string name="nav_trips">ట్రిప్‌లు</string>
+    <string name="nav_settings">సెట్టింగ్‌లు</string>
+
+    <!-- Feasibility Status -->
+    <string name="feasibility_feasible">సాధ్యమే</string>
+    <string name="feasibility_tight">సమయం తక్కువ</string>
+    <string name="feasibility_infeasible">సాధ్యం కాదు</string>
+    <string name="confidence_score">ఖచ్చితత్వం: %1$d%%</string>
+
+    <!-- Map & Actions -->
+    <string name="action_add_stop">స్టాప్ జోడించండి</string>
+    <string name="search_places_hint">ఆకర్షణలు, ఆహారం, వసతి శోధించండి...</string>
+    <string name="filter_attractions">ఆకర్షణలు</string>
+    <string name="filter_food">ఆహారం</string>
+    <string name="filter_fuel">ఇంధనం</string>
+    <string name="filter_stays">వసతి</string>
+    <string name="active_trip_chip">ప్రస్తుత ట్రిప్: %1$s</string>
+    <string name="demo_mode_badge">డెమో మోడ్</string>
+
+    <!-- Trip Setup Stepper -->
+    <string name="create_trip_title">కొత్త ట్రిప్ రూపొందించండి</string>
+    <string name="step_route">1. మార్గం</string>
+    <string name="step_schedule">2. సమయం</string>
+    <string name="step_group">3. సమూహం &amp; వాహనం</string>
+    <string name="step_budget">4. బడ్జెట్</string>
+    <string name="step_preferences">5. ప్రాధాన్యతలు</string>
+    <string name="action_next">తరువాత</string>
+    <string name="action_back">వెనుకకు</string>
+    <string name="action_create">ట్రిప్ సృష్టించండి</string>
+
+    <!-- Input Labels -->
+    <string name="trip_title_label">ట్రిప్ పేరు</string>
+    <string name="destination_label">గమ్యస్థానం</string>
+    <string name="departure_time_label">బయలుదేరే సమయం</string>
+    <string name="group_size_label">ప్రయాణికుల సంఖ్య</string>
+    <string name="vehicle_mileage_label">వాహన మైలేజ్ (కి.మీ/లీటర్)</string>
+    <string name="fuel_price_label">ఇంధన ధర (₹/లీటర్)</string>
+    <string name="total_budget_label">మొత్తం బడ్జెట్ (₹)</string>
+
+    <!-- Itinerary Timeline -->
+    <string name="timeline_arrival">చేరుకునే సమయం: %1$s</string>
+    <string name="timeline_departure">బయలుదేరే సమయం: %1$s</string>
+    <string name="timeline_duration">సందర్శన: %1$d నిమిషాలు</string>
+    <string name="timeline_buffer">బఫర్: %1$d నిమిషాలు</string>
+    <string name="overnight_stay">రాత్రి బస</string>
+    <string name="status_closed_warning">చేరుకునే సమయానికి మూసివేయబడుతుంది!</string>
+    <string name="status_tight_warning">సందర్శన సమయంలో త్వరలోనే ముగుస్తుంది</string>
+    <string name="status_open">తెరిచి ఉంది</string>
+
+    <!-- Budget Screen -->
+    <string name="budget_total_cost">అంచనా వేసిన మొత్తం ఖర్చు</string>
+    <string name="budget_per_person">ఒక్కొక్కరికి: %1$s</string>
+    <string name="budget_remaining">మిగిలినది: %1$s</string>
+    <string name="budget_overrun">బడ్జెట్ దాటినది: %1$s</string>
+    <string name="scenario_low">కనిష్ట</string>
+    <string name="scenario_typical">సాధారణ</string>
+    <string name="scenario_high">గరిష్ట</string>
+    <string name="category_fuel">ఇంధనం</string>
+    <string name="category_toll">టోల్ గేట్లు</string>
+    <string name="category_stay">వసతి &amp; హోటల్</string>
+    <string name="category_food">ఆహారం</string>
+    <string name="category_ticket">ప్రవేశ టిక్కెట్లు</string>
+    <string name="category_activity">కార్యకలాపాలు</string>
+    <string name="category_contingency">అత్యవసర నిధి (5%)</string>
+    <string name="category_other">ఇతరములు</string>
+
+    <!-- Provenance & Sources -->
+    <string name="source_official">అధికారిక మూలం</string>
+    <string name="source_calculated">లెక్కించబడినది</string>
+    <string name="source_user_entered">యూజర్ నమోదు చేసినది</string>
+    <string name="source_community">కమ్యూనిటీ</string>
+    <string name="source_demo">డెమో సమాచారం</string>
+    <string name="source_method">విధానం: %1$s</string>
+
+    <!-- Settings & Languages -->
+    <string name="settings_title">సెట్టింగ్‌లు &amp; అంచనాలు</string>
+    <string name="setting_language">యాప్ భాష</string>
+    <string name="lang_english">English</string>
+    <string name="lang_telugu">తెలుగు (Telugu)</string>
+    <string name="lang_hindi">हिन्दी (Hindi)</string>
+    <string name="lang_tamil">தமிழ் (Tamil)</string>
+    <string name="sync_status_title">క్లౌడ్ సింక్</string>
+    <string name="sync_status_synced">క్లౌడ్‌తో సింక్ చేయబడింది</string>
+    <string name="sync_status_offline">ఆఫ్‌లైన్ (స్థానిక రూమ్ డేటాబేస్ క్రియాశీలం)</string>
+    <string name="sample_trip_loaded">భారతదేశానికి వాస్తవిక రోడ్ ట్రిప్ సమాచారం లోడ్ చేయబడింది</string>
+</resources>
