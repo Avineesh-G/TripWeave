@@ -3096,10 +3096,11 @@ button, input, textarea, select {
   border: none !important;
   margin: 0 !important;
   padding: 0 !important;
-  image-rendering: -webkit-optimize-contrast !important;
-  image-rendering: crisp-edges !important;
+  image-rendering: auto !important;
+  image-rendering: smooth !important;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 

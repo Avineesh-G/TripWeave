@@ -29,24 +29,24 @@ const GOOGLE_TILE_PROVIDERS = {
     url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&scale=2',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 20,
-    tileSize: 512,
-    zoomOffset: -1,
+    tileSize: 256,
+    zoomOffset: 0,
     attribution: 'Google Maps'
   },
   satellite: {
     url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&scale=2',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 20,
-    tileSize: 512,
-    zoomOffset: -1,
+    tileSize: 256,
+    zoomOffset: 0,
     attribution: 'Google Satellite'
   },
   terrain: {
     url: 'https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&scale=2',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 20,
-    tileSize: 512,
-    zoomOffset: -1,
+    tileSize: 256,
+    zoomOffset: 0,
     attribution: 'Google Terrain'
   }
 };
@@ -58,14 +58,14 @@ function createCleanTileLayer(layerKey = 'roadmap') {
   const layer = L.tileLayer(conf.url, {
     subdomains: conf.subdomains,
     maxZoom: conf.maxZoom,
-    tileSize: conf.tileSize || 512,
-    zoomOffset: conf.zoomOffset !== undefined ? conf.zoomOffset : -1,
-    detectRetina: true,
+    tileSize: conf.tileSize || 256,
+    zoomOffset: conf.zoomOffset !== undefined ? conf.zoomOffset : 0,
+    detectRetina: false,
     attribution: conf.attribution,
     crossOrigin: true,
-    keepBuffer: 6,
-    updateWhenIdle: true,
-    updateWhenZooming: false
+    keepBuffer: 8,
+    updateWhenIdle: false,
+    updateWhenZooming: true
   });
 
   layer.on('tileerror', function(error, tile) {
@@ -2475,11 +2475,12 @@ function finalizeTripCreation() {
 // Google Maps Layer Switcher (Roadmap, Satellite Hybrid, Terrain)
 window.switchGoogleMapLayer = function(type) {
   if (!mapInstance) return;
-  const mapType = type === 'satellite'
-    ? google.maps.MapTypeId.HYBRID
-    : (type === 'terrain' ? google.maps.MapTypeId.TERRAIN : google.maps.MapTypeId.ROADMAP);
-  mapInstance.setMapTypeId(mapType);
-  showToast(`Switched to Google Maps ${type.charAt(0).toUpperCase() + type.slice(1)}`);
+  if (currentTileLayer) {
+    try { mapInstance.removeLayer(currentTileLayer); } catch (e) {}
+  }
+  currentTileLayer = createCleanTileLayer(type);
+  currentTileLayer.addTo(mapInstance);
+  showToast('Switched to Google Maps ' + type.charAt(0).toUpperCase() + type.slice(1));
 };
 
 // ==========================================================================
