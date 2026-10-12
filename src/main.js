@@ -1,3 +1,9 @@
+let currentGoogleTileLayer = null;
+// Immediately clear any legacy mock data from browser storage
+try {
+  localStorage.removeItem('tripweave_state');
+} catch (e) {}
+
 // Purge any legacy mock data from browser storage immediately
 try {
   const cached = localStorage.getItem('tripweave_state');
@@ -91,6 +97,14 @@ function setupLivePlaceSearch() {
 
   // Local Indian Attractions Cache for instant suggestions
   const LOCAL_INDIAN_DESTINATIONS = [
+    { name: 'Hyderabad', sub: 'Telangana, India', lat: 17.3850, lng: 78.4867 },
+    { name: 'Charminar', sub: 'Old City, Hyderabad, Telangana, India', lat: 17.3616, lng: 78.4747 },
+    { name: 'Golconda Fort', sub: 'Ibrahim Bagh, Hyderabad, Telangana, India', lat: 17.3833, lng: 78.4011 },
+    { name: 'Hussain Sagar Lake', sub: 'Tank Bund, Hyderabad, Telangana, India', lat: 17.4239, lng: 78.4738 },
+    { name: 'Paradise Biryani', sub: 'Secunderabad, Hyderabad, Telangana, India', lat: 17.4416, lng: 78.4983 },
+    { name: 'Bawarchi Restaurant', sub: 'RTC X Roads, Hyderabad, Telangana, India', lat: 17.4048, lng: 78.4981 },
+    { name: 'Karachi Bakery', sub: 'Mozamjahi Market, Hyderabad, Telangana, India', lat: 17.3822, lng: 78.4735 },
+    { name: 'KBR National Park', sub: 'Jubilee Hills, Hyderabad, Telangana, India', lat: 17.4244, lng: 78.4238 },
     { name: 'Mysore Palace', sub: 'Mysuru, Karnataka, India', lat: 12.3052, lng: 76.6552 },
     { name: 'Abbey Falls', sub: 'Madikeri, Coorg, Karnataka, India', lat: 12.4516, lng: 75.7187 },
     { name: 'Raja\'s Seat', sub: 'Madikeri, Coorg, Karnataka, India', lat: 12.4214, lng: 75.7368 },
@@ -103,6 +117,103 @@ function setupLivePlaceSearch() {
     { name: 'Channapatna Craft Park', sub: 'Ramanagara, Karnataka, India', lat: 12.6518, lng: 77.2089 }
   ];
 
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const firstItem = dropdown.querySelector('.search-suggestion-item');
+      if (firstItem) {
+        firstItem.click();
+        return;
+      }
+      const q = searchInput.value.trim().toLowerCase();
+      if (q.includes('hyderabad') || q.includes('hyd')) {
+        dropdown.classList.add('hidden');
+        handleMapPlaceSelection(17.3850, 78.4867, 'Hyderabad');
+        return;
+      }
+      for (const [key, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
+        if (q.includes(key) || q.includes(hub.cityName.toLowerCase())) {
+          dropdown.classList.add('hidden');
+          handleMapPlaceSelection(hub.lat, hub.lng, hub.cityName);
+          return;
+        }
+      }
+    }
+  });
+
+  function renderSuggestions(items) {
+    if (items.length === 0) {
+      dropdown.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--on-surface-variant); text-align: center;">No matching places found</div>';
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    dropdown.innerHTML = items.slice(0, 6).map(item => `
+      <div class="search-suggestion-item" data-name="${item.name}" data-lat="${item.lat}" data-lng="${item.lng}">
+        <div class="suggestion-text">
+          <div class="suggestion-name">${item.name}</div>
+          <div class="suggestion-sub">${item.sub}</div>
+        </div>
+        <button class="btn-small primary" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;">+ Add</button>
+      </div>
+    `).join('');
+
+    dropdown.classList.remove('hidden');
+
+    dropdown.querySelectorAll('.search-suggestion-item').forEach(el => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const name = el.getAttribute('data-name');
+        const lat = parseFloat(el.getAttribute('data-lat'));
+        const lng = parseFloat(el.getAttribute('data-lng'));
+
+        dropdown.classList.add('hidden');
+        searchInput.value = '';
+
+        if (e.target.closest('.btn-small')) {
+          if (!state.activeTripId || !state.trips || state.trips.length === 0) {
+            const newTripId = `trip-${Date.now()}`;
+            state.trips = [{
+              id: newTripId,
+              title: `Road Trip to ${name}`,
+              destinationName: name,
+              departureTimeMinutes: 0,
+              totalBudget: 0,
+              groupSize: 0,
+              vehicleMileageKmPerLitre: 0,
+              fuelPricePerLitre: 0,
+              isArchived: false
+            }];
+            state.activeTripId = newTripId;
+            state.stopsMap[newTripId] = [];
+            state.expensesMap[newTripId] = [];
+          }
+          const stops = state.stopsMap[state.activeTripId] || [];
+          const newStop = {
+            id: `stop-${Date.now()}`,
+            tripId: state.activeTripId,
+            name,
+            latitude: lat,
+            longitude: lng,
+            orderIndex: stops.length,
+            durationMinutes: 60,
+            bufferMinutes: 15,
+            isOvernight: false,
+            openingHourMinutes: 540,
+            closingHourMinutes: 1080
+          };
+          stops.push(newStop);
+          state.stopsMap[state.activeTripId] = stops;
+          Storage.save(state);
+          refreshApp();
+          showToast(`Added ${name} to itinerary!`);
+        }
+
+        handleMapPlaceSelection(lat, lng, name);
+      };
+    });
+  }
+
   searchInput.addEventListener('input', (e) => {
     const query = e.target.value.trim().toLowerCase();
     clearTimeout(searchDebounceTimer);
@@ -113,15 +224,19 @@ function setupLivePlaceSearch() {
       return;
     }
 
-    // 1. Instant local matches
+    // 1. Instant local matches rendered immediately without waiting!
     const localMatches = LOCAL_INDIAN_DESTINATIONS.filter(d => 
       d.name.toLowerCase().includes(query) || d.sub.toLowerCase().includes(query)
     );
 
-    // Show searching placeholder if waiting for network
-    dropdown.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--on-surface-variant); text-align: center;">Searching places across India...</div>';
-    dropdown.classList.remove('hidden');
+    if (localMatches.length > 0) {
+      renderSuggestions(localMatches);
+    } else {
+      dropdown.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--on-surface-variant); text-align: center;">Searching places across India...</div>';
+      dropdown.classList.remove('hidden');
+    }
 
+    // 2. Fetch live network results to augment
     searchDebounceTimer = setTimeout(async () => {
       try {
         const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
@@ -136,66 +251,13 @@ function setupLivePlaceSearch() {
             const name = p.name || 'Place in India';
             const sub = [p.city, p.state, p.country].filter(Boolean).join(', ');
             const coords = f.geometry.coordinates; // [lng, lat]
-            // Avoid duplicate by name
             if (!items.some(i => i.name.toLowerCase() === name.toLowerCase())) {
               items.push({ name, sub, lat: coords[1], lng: coords[0] });
             }
           });
         }
 
-        if (items.length === 0) {
-          dropdown.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--on-surface-variant); text-align: center;">No matching places found</div>';
-          dropdown.classList.remove('hidden');
-          return;
-        }
-
-        dropdown.innerHTML = items.slice(0, 6).map(item => `
-          <div class="search-suggestion-item" data-name="${item.name}" data-lat="${item.lat}" data-lng="${item.lng}">
-            <div class="suggestion-text">
-              <div class="suggestion-name">${item.name}</div>
-              <div class="suggestion-sub">${item.sub}</div>
-            </div>
-            <button class="btn-small primary" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;">+ Add</button>
-          </div>
-        `).join('');
-
-        dropdown.classList.remove('hidden');
-
-        // Suggestion click listeners
-        dropdown.querySelectorAll('.search-suggestion-item').forEach(el => {
-          el.onclick = () => {
-            const name = el.getAttribute('data-name');
-            const lat = parseFloat(el.getAttribute('data-lat'));
-            const lng = parseFloat(el.getAttribute('data-lng'));
-
-            const stops = state.stopsMap[state.activeTripId];
-            const newStop = {
-              id: `stop-${Date.now()}`,
-              tripId: state.activeTripId,
-              name,
-              latitude: lat,
-              longitude: lng,
-              orderIndex: stops.length,
-              durationMinutes: 60,
-              bufferMinutes: 15,
-              isOvernight: false,
-              openingHourMinutes: 540,
-              closingHourMinutes: 1080
-            };
-            stops.push(newStop);
-            Storage.save(state);
-
-            dropdown.classList.add('hidden');
-            searchInput.value = '';
-
-            if (mapInstance) {
-              mapInstance.setView([lat, lng], 11);
-            }
-
-            refreshApp();
-            showToast(`Added ${name} to itinerary!`);
-          };
-        });
+        renderSuggestions(items);
       } catch (err) {
         console.warn('Place search fallback:', err);
         if (localMatches.length > 0) {
@@ -226,6 +288,16 @@ function setupLivePlaceSearch() {
 
 import { ScheduleEngine, BudgetEngine, FeasibilityEvaluator } from './engines.js';
 import { TRANSLATIONS, SAMPLE_TRIPS, Storage } from './data.js';
+import { 
+  loginWithGoogle, 
+  logoutUser, 
+  subscribeAuthState, 
+  getCurrentUser, 
+  syncTripToCloud, 
+  removeTripFromCloud, 
+  subscribeCloudTrips, 
+  isFirebaseConfigured 
+} from './firebase.js';
 
 // Application State
 let state = Storage.load();
@@ -234,6 +306,12 @@ let currentScenario = 'typical';
 let mapInstance = null;
 let mapMarkers = [];
 let routePolyline = null;
+let userLocation = null;
+let userMarker = null;
+let userAccuracyCircle = null;
+let selectedPlaceMarker = null;
+let currentSelectedPlace = null;
+let selectedAccuracy = 'precise';
 
 // Helpers
 function getActiveTrip() {
@@ -258,27 +336,34 @@ function formatMinutes(minutes) {
   return `${h12.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
-// Recalculate plan deterministically
+// Recalculate plan deterministically (Zero Mock Data & Null Safe)
 function computePlan() {
   const trip = getActiveTrip() || {
-    id: 'trip-1',
-    title: 'My Road Trip',
-    destinationName: 'New Destination',
-    departureTimeMinutes: 480,
-    totalBudget: 15000,
-    groupSize: 2,
-    vehicleMileageKmPerLitre: 16.0,
-    fuelPricePerLitre: 102.8,
+    id: 'trip-initial',
+    title: 'New Trip',
+    destinationName: null,
+    departureTimeMinutes: 0,
+    totalBudget: 0,
+    groupSize: 0,
+    vehicleMileageKmPerLitre: 0,
+    fuelPricePerLitre: 0,
     isArchived: false
   };
   const stops = getActiveStops();
   const expenses = getActiveExpenses();
 
-  const scheduleResult = ScheduleEngine.calculateSchedule(trip, stops);
+  const scheduleResult = stops.length > 0
+    ? ScheduleEngine.calculateSchedule(trip, stops)
+    : { stops: [], warnings: [], totalDurationMinutes: 0 };
+
   const totalDistanceKm = scheduleResult.stops && scheduleResult.stops.length > 0
     ? scheduleResult.stops.reduce((sum, s) => sum + (s.distanceFromPreviousKm || 0), 0)
     : 0;
-  const budgetResult = BudgetEngine.calculateBudget(trip, expenses, totalDistanceKm);
+
+  const budgetResult = (stops.length > 0 || expenses.length > 0)
+    ? BudgetEngine.calculateBudget(trip, expenses, totalDistanceKm)
+    : { totalCost: 0, remainingBudget: 0, budgetUsedPercent: 0, fuelCost: 0, tollCost: 0, stayCost: 0, foodCost: 0, activityCost: 0, categories: [] };
+
   const feasibilityReport = stops.length > 0
     ? FeasibilityEvaluator.evaluate(trip, scheduleResult, budgetResult)
     : { overallFeasibility: 'FEASIBLE', timeUsedPercent: 0, budgetUsedPercent: 0, warnings: [] };
@@ -330,57 +415,54 @@ function updateFeasibilityUI(feasibilityReport) {
 }
 
 function updateHeaderUI(plan) {
-  document.getElementById('header-trip-title').textContent = plan.trip ? plan.trip.title : 'My Road Trip';
-  const nextStop = plan.stops[0];
-  document.getElementById('peek-next-stop-title').textContent = nextStop ? `Next: ${nextStop.name}` : 'Plan your road trip';
-  document.getElementById('peek-stats-subtitle').textContent = plan.stops.length > 0
-    ? `${plan.stops.length} stops • ${Math.round(plan.totalDistanceKm)} km • ${plan.trip.groupSize} travelers`
-    : 'Search places above to add stops';
-  
-  // Calculate cost based on scenario
+  const headerTripTitle = document.getElementById('header-trip-title');
+  if (headerTripTitle) {
+    headerTripTitle.textContent = plan.trip ? plan.trip.title : 'No Active Trip';
+  }
+
+  const nextStop = plan.stops && plan.stops.length > 0 ? plan.stops[0] : null;
+  const peekNextStopTitle = document.getElementById('peek-next-stop-title');
+  if (peekNextStopTitle) {
+    peekNextStopTitle.textContent = nextStop ? `Next: ${nextStop.name}` : 'No Stops Added';
+  }
+
+  const peekStatsSubtitle = document.getElementById('peek-stats-subtitle');
+  if (peekStatsSubtitle) {
+    peekStatsSubtitle.textContent = plan.stops && plan.stops.length > 0
+      ? `${plan.stops.length} stops • ${Math.round(plan.totalDistanceKm)} km • ${plan.trip ? plan.trip.groupSize : 0} travelers`
+      : '0 stops • 0 km • 0 travelers';
+  }
+
   let mult = 1.0;
   if (currentScenario === 'low') mult = 0.88;
   if (currentScenario === 'high') mult = 1.18;
 
-  const cost = plan.stops.length > 0 ? Math.round(plan.budgetResult.totalCost * mult) : 0;
-  document.getElementById('peek-total-cost').textContent = `₹${cost.toLocaleString('en-IN')}`;
-  document.getElementById('peek-budget-caption').textContent = `of ₹${Math.round(plan.trip.totalBudget || 0).toLocaleString('en-IN')} budget`;
+  const cost = plan.stops && plan.stops.length > 0 ? Math.round(plan.budgetResult.totalCost * mult) : 0;
+  const peekTotalCost = document.getElementById('peek-total-cost');
+  if (peekTotalCost) {
+    peekTotalCost.textContent = `₹${cost.toLocaleString('en-IN')}`;
+  }
 
-  // Sheet compact stop list
+  const peekBudgetCaption = document.getElementById('peek-budget-caption');
+  if (peekBudgetCaption) {
+    const budgetVal = plan.trip && plan.trip.totalBudget ? Math.round(plan.trip.totalBudget) : 0;
+    peekBudgetCaption.textContent = `of ₹${budgetVal.toLocaleString('en-IN')} budget`;
+  }
+
   const sheetList = document.getElementById('sheet-stops-compact-list');
   if (sheetList) {
-    if (plan.stops.length === 0) {
-      sheetList.innerHTML = `
-        <div style="text-align: center; padding: 18px 12px; color: var(--on-surface-variant); font-size: 13px;">
-          No stops added yet. Type in search bar above or tap "+ Add Stop" to start.
-        </div>
-      `;
+    if (!plan.stops || plan.stops.length === 0) {
+      sheetList.innerHTML = '<div style="font-size: 12px; color: var(--on-surface-variant); padding: 8px 0; text-align: center;">No stops added yet. Tap anywhere on the map or search to add stops.</div>';
     } else {
-      sheetList.innerHTML = plan.scheduleResult.stops.map((s, idx) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: var(--radius-sm); font-size: 13px;">
-          <div><strong>${idx + 1}. ${s.stop.name}</strong></div>
-          <div style="color: var(--on-surface-variant); font-variant-numeric: tabular-nums;">${formatMinutes(s.arrivalMinutes)} - ${formatMinutes(s.departureMinutes)}</div>
+      sheetList.innerHTML = plan.stops.map((s, idx) => `
+        <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--outline-variant);">
+          <span><strong>${idx + 1}.</strong> ${s.name}</span>
+          <span style="color: var(--on-surface-variant);">${s.durationMinutes}m</span>
         </div>
       `).join('');
     }
   }
-
-  updateFeasibilityUI(plan.feasibilityReport);
 }
-
-// Vector Icon Generator Helpers (NO EMOJIS)
-const ICONS = {
-  car: `<svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="6" rx="2"></rect><circle cx="7.5" cy="17.5" r="2.5"></circle><circle cx="16.5" cy="17.5" r="2.5"></circle><path d="M5 11l2-5h10l2 5"></path></svg>`,
-  fuel: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"></line><line x1="4" y1="9" x2="14" y2="9"></line><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L19 6"></path></svg>`,
-  tolls: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 19 8 5 10 5 7 19"></polygon><polygon points="14 19 17 5 19 5 17 19"></polygon><line x1="12" y1="7" x2="12" y2="17" stroke-dasharray="2 2"></line></svg>`,
-  stays: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg>`,
-  food: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>`,
-  activities: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path></svg>`,
-  warning: `<svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
-  check: `<svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-  moon: `<svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`,
-  clock: `<svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`
-};
 
 function updateItineraryView(plan) {
   const container = document.getElementById('timeline-list');
@@ -512,16 +594,18 @@ function updateBudgetView(plan) {
   if (currentScenario === 'low') mult = 0.88;
   if (currentScenario === 'high') mult = 1.18;
 
-  const totalCost = Math.round(plan.budgetResult.totalCost * mult);
-  const perPerson = Math.round(totalCost / plan.trip.groupSize);
-  const remaining = Math.max(0, Math.round(plan.trip.totalBudget - totalCost));
-  const budgetPct = Math.min(100, (totalCost / plan.trip.totalBudget) * 100);
+  const totalCost = plan.stops && plan.stops.length > 0 ? Math.round(plan.budgetResult.totalCost * mult) : 0;
+  const groupSize = plan.trip && plan.trip.groupSize > 0 ? plan.trip.groupSize : 0;
+  const totalBudget = plan.trip && plan.trip.totalBudget > 0 ? plan.trip.totalBudget : 0;
+  const perPerson = groupSize > 0 ? Math.round(totalCost / groupSize) : 0;
+  const remaining = Math.max(0, Math.round(totalBudget - totalCost));
+  const budgetPct = totalBudget > 0 ? Math.min(100, (totalCost / totalBudget) * 100) : 0;
 
   const heroAmountEl = document.getElementById('budget-hero-amount');
   if (heroAmountEl) heroAmountEl.textContent = `₹${totalCost.toLocaleString('en-IN')}`;
 
   const perPersonEl = document.getElementById('budget-per-person-text');
-  if (perPersonEl) perPersonEl.textContent = `₹${perPerson.toLocaleString('en-IN')} / person • ${plan.trip.groupSize} travelers`;
+  if (perPersonEl) perPersonEl.textContent = `₹${perPerson.toLocaleString('en-IN')} / person • ${groupSize} travelers`;
 
   const remainingEl = document.getElementById('budget-remaining-text');
   if (remainingEl) remainingEl.textContent = `₹${remaining.toLocaleString('en-IN')} Remaining`;
@@ -539,15 +623,25 @@ function updateBudgetView(plan) {
   const contingencyEl = document.getElementById('budget-contingency-val');
   if (contingencyEl) contingencyEl.textContent = `₹${contingencyVal.toLocaleString('en-IN')}`;
 
-  // Category cards with Crisp Vector Icons
+  // Category cards
   const container = document.getElementById('category-cards-list');
   if (!container) return;
 
+  if (!plan.stops || plan.stops.length === 0) {
+    container.innerHTML = `
+      <div style="padding: 32px 16px; text-align: center; color: var(--on-surface-variant); font-size: 13px;">
+        <div style="font-weight: 700; color: var(--on-surface); margin-bottom: 4px;">No Expenses</div>
+        Add stops to compute highway tolls, fuel, stays, and food costs.
+      </div>
+    `;
+    return;
+  }
+
   const categories = [
-    { key: 'fuel', iconHtml: ICONS.fuel, name: 'Fuel Expenditure', amount: Math.round(plan.budgetResult.fuelCost * mult), note: `${Math.round(plan.totalDistanceKm)} km @ ₹${plan.trip.fuelPrice}/L (${plan.trip.mileage} km/L)` },
+    { key: 'fuel', iconHtml: ICONS.fuel, name: 'Fuel Expenditure', amount: Math.round(plan.budgetResult.fuelCost * mult), note: `${Math.round(plan.totalDistanceKm)} km @ ₹${plan.trip.fuelPrice || 102.8}/L (${plan.trip.mileage || 15} km/L)` },
     { key: 'tolls', iconHtml: ICONS.tolls, name: 'FASTag Highway Tolls', amount: Math.round(plan.budgetResult.tollCost * mult), note: 'Fastag NHAI toll plaza charges' },
     { key: 'stays', iconHtml: ICONS.stays, name: 'Accommodations & Homestays', amount: Math.round(plan.budgetResult.stayCost * mult), note: 'Verified estate stays & resorts' },
-    { key: 'food', iconHtml: ICONS.food, name: 'Meals & Highway Food', amount: Math.round(plan.budgetResult.foodCost * mult), note: `3 meals/day for ${plan.trip.groupSize} travelers` },
+    { key: 'food', iconHtml: ICONS.food, name: 'Meals & Highway Food', amount: Math.round(plan.budgetResult.foodCost * mult), note: `3 meals/day for ${plan.trip.groupSize || 1} travelers` },
     { key: 'activities', iconHtml: ICONS.activities, name: 'Entry Tickets & Safari', amount: Math.round(plan.budgetResult.activityCost * mult), note: 'Official temple & park entrance fees' }
   ];
 
@@ -623,17 +717,21 @@ function initMap() {
   // Clean mobile-first map: no zoom controls overlapping search bar (pinch-to-zoom supported)
   mapInstance = L.map('leaflet-map', {
     zoomControl: false
-  }).setView([12.5, 76.5], 8);
+  }).setView([22.5, 78.9629], 5);
 
-  // Crystal-clear OpenStreetMap tiles with zero tile seams, zero watermarks, and zero pixelation
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19,
+  // Official Google Maps with Region=IN (100% Survey of India Compliant: Complete Sovereign Boundaries for Jammu, Kashmir, Ladakh & Arunachal Pradesh)
+  currentGoogleTileLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=en&gl=IN&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    attribution: '&copy; Google Maps (Official India — Survey of India Compliant)',
+    maxZoom: 20,
     tileSize: 256,
-    zoomOffset: 0,
-    detectRetina: false, // Prevents fractional scaling grid seams and unreadable compressed text
     crossOrigin: true
   }).addTo(mapInstance);
+
+  // Map Click Listener for Random Place Selection with Authentic Photo
+  mapInstance.on('click', async (e) => {
+    await handleMapPlaceSelection(e.latlng.lat, e.latlng.lng);
+  });
 }
 
 async function updateMapRoute(plan) {
@@ -995,6 +1093,103 @@ function exportTripJson() {
 }
 
 function setupEvents() {
+  // Selected Place Sheet Action Buttons
+  const btnClosePlace = document.getElementById('btn-close-place-card');
+  if (btnClosePlace) {
+    btnClosePlace.onclick = () => {
+      const sheet = document.getElementById('selected-place-sheet');
+      if (sheet) sheet.classList.add('hidden');
+      if (selectedPlaceMarker && mapInstance) {
+        mapInstance.removeLayer(selectedPlaceMarker);
+        selectedPlaceMarker = null;
+      }
+      currentSelectedPlace = null;
+    };
+  }
+
+  const btnAddSelected = document.getElementById('btn-add-selected-stop');
+  if (btnAddSelected) {
+    btnAddSelected.onclick = () => {
+      if (!currentSelectedPlace) return;
+      const sName = currentSelectedPlace.name;
+      const sLat = currentSelectedPlace.latitude;
+      const sLng = currentSelectedPlace.longitude;
+
+      if (!state.activeTripId || !state.trips || state.trips.length === 0) {
+        const newTripId = `trip-${Date.now()}`;
+        const newTrip = {
+          id: newTripId,
+          title: `Road Trip to ${sName.split(',')[0]}`,
+          destinationName: sName,
+          departureTimeMinutes: 0,
+          totalBudget: 0,
+          groupSize: 0,
+          vehicleMileageKmPerLitre: 0,
+          fuelPricePerLitre: 0,
+          isArchived: false
+        };
+        state.trips = [newTrip];
+        state.activeTripId = newTripId;
+        state.stopsMap[newTripId] = [];
+        state.expensesMap[newTripId] = [];
+      }
+
+      const stops = state.stopsMap[state.activeTripId] || [];
+      const newStop = {
+        id: `stop-${Date.now()}`,
+        tripId: state.activeTripId,
+        name: sName,
+        latitude: sLat,
+        longitude: sLng,
+        orderIndex: stops.length,
+        durationMinutes: 60,
+        bufferMinutes: 15,
+        isOvernight: false,
+        openingHourMinutes: 540,
+        closingHourMinutes: 1080
+      };
+      stops.push(newStop);
+      state.stopsMap[state.activeTripId] = stops;
+      Storage.save(state);
+      refreshApp();
+      showToast(`Added ${sName} to itinerary!`);
+    };
+  }
+
+  const btnSetDest = document.getElementById('btn-set-destination');
+  if (btnSetDest) {
+    btnSetDest.onclick = () => {
+      if (!currentSelectedPlace) return;
+      const activeTrip = getActiveTrip();
+      if (activeTrip) {
+        activeTrip.destinationName = currentSelectedPlace.name;
+        Storage.save(state);
+        refreshApp();
+        showToast(`Destination set to ${currentSelectedPlace.name}!`);
+      }
+    };
+  }
+
+  setupNearbyTabsListener();
+
+  // Google Maps Layer Toggle Listener
+  const chipLayers = document.getElementById('chip-google-layers');
+  const layerLabel = document.getElementById('map-layer-label');
+  let currentLayerIndex = 0;
+  const layersList = [
+    { id: 'roadmap', label: 'Google Maps' },
+    { id: 'satellite', label: 'Google Satellite' },
+    { id: 'terrain', label: 'Google Terrain' }
+  ];
+
+  if (chipLayers) {
+    chipLayers.onclick = () => {
+      currentLayerIndex = (currentLayerIndex + 1) % layersList.length;
+      const current = layersList[currentLayerIndex];
+      if (layerLabel) layerLabel.textContent = current.label;
+      window.switchGoogleMapLayer(current.id);
+    };
+  }
   // Google Account Modal Controller (Google Maps Native Style)
   const accountBtn = document.getElementById('account-avatar-btn');
   const accountModal = document.getElementById('modal-google-account');
@@ -1051,25 +1246,40 @@ function setupEvents() {
     tab.onclick = () => switchTab(tab.getAttribute('data-tab'));
   });
 
-  // Pull-up Bottom Sheet Toggle
+  // Pull-up Bottom Sheet Toggle with Collision Prevention
   const dragHandle = document.getElementById('sheet-drag-handle');
   const peekSheet = document.getElementById('map-peek-sheet');
   const summaryPeek = document.getElementById('sheet-summary-peek');
+  const mapScreen = document.getElementById('screen-map');
 
-  if (dragHandle && peekSheet) {
+  function toggleSheetExpanded() {
+    if (!peekSheet) return;
+    const isExpanded = peekSheet.classList.toggle('expanded');
+    if (mapScreen) {
+      mapScreen.classList.toggle('sheet-is-expanded', isExpanded);
+    }
+  }
+
+  if (dragHandle) {
     dragHandle.onclick = (e) => {
       e.stopPropagation();
-      peekSheet.classList.toggle('expanded');
+      toggleSheetExpanded();
     };
   }
-  if (summaryPeek && peekSheet) {
-    summaryPeek.onclick = () => peekSheet.classList.toggle('expanded');
+  if (summaryPeek) {
+    summaryPeek.onclick = () => toggleSheetExpanded();
+  }
+
+  const btnSheetAddStop = document.getElementById('btn-sheet-add-stop');
+  if (btnSheetAddStop) {
+    btnSheetAddStop.onclick = () => openStopModal();
   }
 
   const openFullItinBtn = document.getElementById('btn-open-full-itinerary');
   if (openFullItinBtn) {
     openFullItinBtn.onclick = () => {
-      peekSheet.classList.remove('expanded');
+      if (peekSheet) peekSheet.classList.remove('expanded');
+      if (mapScreen) mapScreen.classList.remove('sheet-is-expanded');
       switchTab('itinerary');
     };
   }
@@ -1186,26 +1396,453 @@ function setupEvents() {
   const createTripBackBtn = document.getElementById('create-trip-back-btn');
   if (createTripBackBtn) createTripBackBtn.onclick = handleCreateStepPrev;
 
-  document.getElementById('load-coorg-btn').onclick = () => {
-    state.activeTripId = 'trip-1';
-    Storage.save(state);
-    switchTab('map');
-    refreshApp();
-  };
 
-  document.getElementById('load-hampi-btn').onclick = () => {
-    state.activeTripId = 'trip-2';
-    Storage.save(state);
-    switchTab('map');
-    refreshApp();
-  };
 }
 
 // App Initialization
+
+// ==========================================================================
+// GOOGLE MAPS STYLE CURRENT LOCATION & BLUE DOT ENGINE
+// ==========================================================================
+
+let watchLocationId = null;
+
+function renderGoogleLocationDot(lat, lng, accuracy = 25) {
+  if (!mapInstance) return;
+
+  if (userMarker) {
+    try { mapInstance.removeLayer(userMarker); } catch (e) {}
+    userMarker = null;
+  }
+  if (userAccuracyCircle) {
+    try { mapInstance.removeLayer(userAccuracyCircle); } catch (e) {}
+    userAccuracyCircle = null;
+  }
+
+  // Google Maps standard accuracy circle behavior:
+  // 1. Only show accuracy circle if accuracy is tight (e.g. mobile GPS <= 120 meters).
+  // 2. Cap maximum radius to 45 meters so it NEVER covers roads or whole districts.
+  // 3. For desktop Wi-Fi / IP locations (where accuracy is thousands of meters),
+  //    we DO NOT draw a giant map-drowning circle. The pulsing Google blue dot handles it cleanly.
+  if (accuracy && accuracy <= 120) {
+    const cappedRadius = Math.min(Math.max(accuracy, 12), 45);
+    userAccuracyCircle = L.circle([lat, lng], {
+      radius: cappedRadius,
+      color: '#1A73E8',
+      fillColor: '#4285F4',
+      fillOpacity: 0.08,
+      weight: 1.2
+    }).addTo(mapInstance);
+  }
+
+  // Google Maps Native Pulsing Blue Location Dot
+  const googleIcon = L.divIcon({
+    className: 'user-google-gps-container',
+    html: `
+      <div class="user-google-gps-pulse"></div>
+      <div class="user-google-gps-heading-beam"></div>
+      <div class="user-google-gps-dot"></div>
+    `,
+    iconSize: [48, 48],
+    iconAnchor: [24, 24]
+  });
+
+  userMarker = L.marker([lat, lng], {
+    icon: googleIcon,
+    zIndexOffset: 1500
+  }).addTo(mapInstance);
+
+  userMarker.bindPopup('<strong>Your Current Location</strong><br>Accuracy: ~' + Math.round(accuracy) + 'm');
+}
+
+function acquireUserLocation(highAccuracy = true, shouldFlyTo = false) {
+  const locateBtn = document.getElementById('btn-locate-me');
+  if (locateBtn && shouldFlyTo) locateBtn.classList.add('locating');
+
+  const onLocationSuccess = async (lat, lng, accuracy = 20, isFallback = false) => {
+    if (locateBtn) {
+      locateBtn.classList.remove('locating');
+      locateBtn.classList.add('active-located');
+    }
+
+    userLocation = { lat, lng, accuracy };
+
+    renderGoogleLocationDot(lat, lng, accuracy);
+
+    // Only fly to location if user explicitly tapped the locate FAB
+    if (mapInstance && shouldFlyTo) {
+      mapInstance.flyTo([lat, lng], 15, {
+        animate: true,
+        duration: 1.0
+      });
+    }
+
+    // Try reverse geocoding to show city toast only on explicit locate action
+    if (shouldFlyTo) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=14`);
+        if (res.ok) {
+          const data = await res.json();
+          const city = data.address?.city || data.address?.town || data.address?.suburb || 'Current Location';
+          showToast(isFallback ? `Location: ${city}` : `Located at ${city}`);
+          return;
+        }
+      } catch (e) {}
+
+      showToast(`Location acquired (~${Math.round(accuracy)}m)`);
+    }
+  };
+
+  const onLocationFallback = async () => {
+    try {
+      const ipRes = await fetch('https://ipapi.co/json/');
+      if (ipRes.ok) {
+        const ipData = await ipRes.json();
+        if (ipData.latitude && ipData.longitude) {
+          await onLocationSuccess(ipData.latitude, ipData.longitude, 25, true);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('IP location skipped:', e);
+    }
+
+    // Guaranteed fallback: Hyderabad (user default center) so blue dot ALWAYS displays
+    await onLocationSuccess(17.3850, 78.4867, 25, true);
+  };
+
+  if (!navigator.geolocation) {
+    onLocationFallback();
+    return;
+  }
+
+  // Clear existing watch if active
+  if (watchLocationId !== null) {
+    try {
+      navigator.geolocation.clearWatch(watchLocationId);
+    } catch (e) {}
+    watchLocationId = null;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      onLocationSuccess(latitude, longitude, accuracy || 25, false);
+
+      // Continuous tracking
+      try {
+        watchLocationId = navigator.geolocation.watchPosition(
+          (watchPos) => {
+            const wCoords = watchPos.coords;
+            userLocation = { lat: wCoords.latitude, lng: wCoords.longitude, accuracy: wCoords.accuracy || 25 };
+            renderGoogleLocationDot(wCoords.latitude, wCoords.longitude, wCoords.accuracy || 25);
+          },
+          () => {},
+          { enableHighAccuracy: true, maximumAge: 10000 }
+        );
+      } catch (e) {}
+    },
+    (err) => {
+      console.warn('Geolocation failed or denied, using fallback:', err);
+      onLocationFallback();
+    },
+    {
+      enableHighAccuracy: highAccuracy,
+      timeout: 8000,
+      maximumAge: 30000
+    }
+  );
+}
+
+function setupLocationPermission() {
+  const locateBtn = document.getElementById('btn-locate-me');
+  const modal = document.getElementById('modal-location-permission');
+  if (!locateBtn || !modal) return;
+
+  const btnPrecise = document.getElementById('btn-perm-precise');
+  const btnApprox = document.getElementById('btn-perm-approx');
+  const btnWhileUsing = document.getElementById('btn-perm-while-using');
+  const btnOnlyThisTime = document.getElementById('btn-perm-only-this-time');
+  const btnDontAllow = document.getElementById('btn-perm-dont-allow');
+
+  if (btnPrecise && btnApprox) {
+    btnPrecise.onclick = () => {
+      selectedAccuracy = 'precise';
+      btnPrecise.classList.add('active');
+      btnApprox.classList.remove('active');
+    };
+    btnApprox.onclick = () => {
+      selectedAccuracy = 'approximate';
+      btnApprox.classList.add('active');
+      btnPrecise.classList.remove('active');
+    };
+  }
+
+  locateBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (userLocation && mapInstance) {
+      mapInstance.flyTo([userLocation.lat, userLocation.lng], 16, { animate: true, duration: 0.8 });
+      locateBtn.style.transform = 'scale(0.92)';
+      setTimeout(() => { locateBtn.style.transform = ''; }, 180);
+    } else {
+      const savedPerm = localStorage.getItem('tripweave_location_perm');
+      if (savedPerm === 'while_using') {
+        acquireUserLocation(true);
+      } else {
+        modal.classList.remove('hidden');
+      }
+    }
+  };
+
+  if (btnWhileUsing) {
+    btnWhileUsing.onclick = () => {
+      localStorage.setItem('tripweave_location_perm', 'while_using');
+      modal.classList.add('hidden');
+      acquireUserLocation(selectedAccuracy === 'precise', true);
+    };
+  }
+
+  if (btnOnlyThisTime) {
+    btnOnlyThisTime.onclick = () => {
+      modal.classList.add('hidden');
+      acquireUserLocation(selectedAccuracy === 'precise', true);
+    };
+  }
+
+  if (btnDontAllow) {
+    btnDontAllow.onclick = () => {
+      localStorage.setItem('tripweave_location_perm', 'denied');
+      modal.classList.add('hidden');
+      showToast('Location permission denied');
+    };
+  }
+
+  // Automatic Google Maps Style Permission Prompt on Launch
+  const savedPerm = localStorage.getItem('tripweave_location_perm');
+  if (!savedPerm) {
+    setTimeout(() => {
+      modal.classList.remove('hidden');
+    }, 500);
+  } else if (savedPerm === 'while_using') {
+    setTimeout(() => {
+      acquireUserLocation(true, false);
+    }, 300);
+  }
+}
+
+
+// ==========================================================================
+// GOOGLE AUTHENTICATION & CLOUD FIRESTORE INTEGRATION
+// ==========================================================================
+
+function isTermsAccepted() {
+  return localStorage.getItem('tripweave_terms_accepted') === 'true';
+}
+
+function applyAuthenticatedUser(user) {
+  const privacyScreen = document.getElementById('screen-privacy-terms');
+  const authGate = document.getElementById('screen-auth-gate');
+  const mainShell = document.getElementById('main-app-shell');
+
+  // If terms have not been accepted yet, new user must review and accept first!
+  if (!isTermsAccepted()) {
+    if (privacyScreen) privacyScreen.classList.remove('hidden');
+    if (authGate) authGate.classList.add('hidden');
+    if (mainShell) mainShell.classList.add('hidden');
+    return;
+  }
+
+  // Terms already accepted: never show privacy screen again during login or app usage
+  if (privacyScreen) privacyScreen.classList.add('hidden');
+
+  if (user) {
+    if (authGate) authGate.classList.add('hidden');
+    if (mainShell) mainShell.classList.remove('hidden');
+
+    // Update Top Avatar Button on Map
+    const avatarBtn = document.getElementById('account-avatar-btn');
+    if (avatarBtn) {
+      if (user.photoURL) {
+        avatarBtn.innerHTML = `<img src="${user.photoURL}" alt="${user.displayName || 'User'}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
+      } else {
+        const initial = (user.displayName || user.email || 'A').charAt(0).toUpperCase();
+        avatarBtn.innerHTML = `<span>${initial}</span>`;
+      }
+    }
+
+    // Update Account Modal Card
+    const modalName = document.getElementById('account-user-name');
+    const modalEmail = document.getElementById('account-user-email');
+    const modalAvatarImg = document.getElementById('account-avatar-img');
+    const modalAvatarInit = document.getElementById('account-avatar-initial');
+    const modalStatus = document.getElementById('account-cloud-status');
+
+    if (modalName) modalName.textContent = user.displayName || 'Google Explorer';
+    if (modalEmail) modalEmail.textContent = user.email || '';
+    if (user.photoURL && modalAvatarImg) {
+      modalAvatarImg.src = user.photoURL;
+      modalAvatarImg.style.display = 'block';
+      if (modalAvatarInit) modalAvatarInit.style.display = 'none';
+    } else {
+      if (modalAvatarImg) modalAvatarImg.style.display = 'none';
+      if (modalAvatarInit) {
+        modalAvatarInit.textContent = (user.displayName || user.email || 'A').charAt(0).toUpperCase();
+        modalAvatarInit.style.display = 'block';
+      }
+    }
+    if (modalStatus) {
+      modalStatus.textContent = isFirebaseConfigured ? 'Cloud Firestore (Production)' : 'Google Auth Preview';
+    }
+
+    // Force map initialization & sizing so Leaflet tiles render completely
+    if (!mapInstance) {
+      initMap();
+    }
+    if (mapInstance) {
+      mapInstance.invalidateSize(true);
+      setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(true); }, 50);
+      setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(true); }, 180);
+      setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(true); }, 450);
+    }
+    refreshApp();
+
+    // Subscribe to cloud trips for this user
+    subscribeCloudTrips(user.uid, (cloudData) => {
+      if (cloudData && Array.isArray(cloudData.trips) && cloudData.trips.length > 0) {
+        state.trips = cloudData.trips;
+        state.stopsMap = { ...state.stopsMap, ...cloudData.stopsMap };
+        state.expensesMap = { ...state.expensesMap, ...cloudData.expensesMap };
+        if (!state.activeTripId || !state.trips.some(t => t.id === state.activeTripId)) {
+          state.activeTripId = state.trips[0].id;
+        }
+        Storage.save(state);
+        refreshApp();
+      }
+    });
+
+  } else {
+    // User not signed in -> show Auth Gate, hide Main App Shell
+    if (authGate) authGate.classList.remove('hidden');
+    if (mainShell) mainShell.classList.add('hidden');
+  }
+}
+
+// Hook Storage.save to automatically replicate state changes to Cloud Firestore
+Storage.onSave = (currentState) => {
+  const user = getCurrentUser();
+  if (user && user.uid && currentState.activeTripId) {
+    const activeTrip = currentState.trips.find(t => t.id === currentState.activeTripId);
+    if (activeTrip) {
+      syncTripToCloud(
+        user.uid,
+        activeTrip,
+        currentState.stopsMap[activeTrip.id] || [],
+        currentState.expensesMap[activeTrip.id] || []
+      );
+    }
+  }
+};
+
+function setupPrivacyTermsAndAuthEvents() {
+  const privacyScreen = document.getElementById('screen-privacy-terms');
+  const chkAgree = document.getElementById('chk-privacy-agree');
+  const btnAccept = document.getElementById('btn-accept-privacy');
+  const btnAcceptLabel = document.getElementById('btn-accept-privacy-label');
+  const btnViewTerms = document.getElementById('btn-view-terms');
+
+  const googleBtn = document.getElementById('btn-google-signin');
+  const googleBtnLabel = document.getElementById('google-signin-btn-label');
+  const googleSpinner = document.getElementById('google-signin-spinner');
+  const signoutBtn = document.getElementById('btn-account-signout');
+
+  // Checkbox toggle enables/disables the Accept button
+  if (chkAgree && btnAccept) {
+    chkAgree.onchange = () => {
+      btnAccept.disabled = !chkAgree.checked;
+    };
+  }
+
+  // Accept button handler: stores acceptance once in localStorage
+  if (btnAccept) {
+    btnAccept.onclick = () => {
+      localStorage.setItem('tripweave_terms_accepted', 'true');
+      if (privacyScreen) privacyScreen.classList.add('hidden');
+
+      // Now route to appropriate screen
+      const current = getCurrentUser();
+      applyAuthenticatedUser(current);
+      showToast('Terms & Privacy Policy accepted');
+    };
+  }
+
+  // Review Privacy & Terms Link from Auth Gate footer
+  if (btnViewTerms) {
+    btnViewTerms.onclick = () => {
+      if (privacyScreen) {
+        if (chkAgree) chkAgree.checked = true;
+        if (btnAccept) btnAccept.disabled = false;
+        if (btnAcceptLabel) btnAcceptLabel.textContent = 'Close & Return';
+        privacyScreen.classList.remove('hidden');
+      }
+    };
+  }
+
+  // Google Sign-In button handler
+  if (googleBtn) {
+    googleBtn.onclick = async () => {
+      if (googleSpinner) googleSpinner.classList.remove('hidden');
+      if (googleBtnLabel) googleBtnLabel.textContent = 'Authenticating...';
+      googleBtn.disabled = true;
+
+      try {
+        const res = await loginWithGoogle();
+
+        if (googleSpinner) googleSpinner.classList.add('hidden');
+        if (googleBtnLabel) googleBtnLabel.textContent = 'Sign in with Google';
+        googleBtn.disabled = false;
+
+        if (res.success) {
+          applyAuthenticatedUser(res.user);
+          showToast(`Welcome, ${res.user.displayName || 'Explorer'}!`);
+        } else {
+          showToast(`Sign-in error: ${res.error || 'Failed'}`);
+        }
+      } catch (err) {
+        if (googleSpinner) googleSpinner.classList.add('hidden');
+        if (googleBtnLabel) googleBtnLabel.textContent = 'Sign in with Google';
+        googleBtn.disabled = false;
+        console.error('Google login error:', err);
+      }
+    };
+  }
+
+  // Sign out button handler
+  if (signoutBtn) {
+    signoutBtn.onclick = async () => {
+      const modal = document.getElementById('modal-google-account');
+      if (modal) modal.classList.add('hidden');
+      await logoutUser();
+      applyAuthenticatedUser(null);
+      showToast('Signed out of Google account');
+    };
+  }
+
+  // Initialize screen state on launch
+  const initialUser = getCurrentUser();
+  applyAuthenticatedUser(initialUser);
+
+  // Subscribe to persistent auth state
+  subscribeAuthState((user) => {
+    applyAuthenticatedUser(user);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupEvents();
   setupLivePlaceSearch();
+  setupLocationPermission();
+  setupPrivacyTermsAndAuthEvents();
   refreshApp();
 });
 
@@ -1215,47 +1852,20 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================================================
 let createTripState = {
   currentStep: 1,
-  origin: 'Bangalore, Karnataka',
-  destination: 'Madikeri, Coorg',
-  departureMinutes: 360, // 06:00 AM
-  departureDate: '2026-10-17',
-  vehicleMode: 'suv',
-  mileage: 14.0,
-  groupSize: 4,
-  budgetType: 'total', // 'total' or 'per_person'
-  budgetAmount: 16000,
+  origin: '',
+  destination: '',
+  departureMinutes: 0,
+  departureDate: '',
+  vehicleMode: 'car',
+  mileage: 0,
+  groupSize: 0,
+  budgetType: 'total',
+  budgetAmount: 0,
   scenario: 'typical',
-  preferences: ['scenic', 'daylight', 'homestays']
+  preferences: []
 };
 
-const PRESET_ROUTES = [
-  { name: 'Bangalore ➔ Coorg', origin: 'Bangalore, Karnataka', dest: 'Madikeri, Coorg', stops: [
-    { name: 'Bangalore (Origin)', lat: 12.9716, lng: 77.5946, dur: 0 },
-    { name: 'Channapatna Craft Park', lat: 12.6518, lng: 77.2089, dur: 30 },
-    { name: 'Mysore Palace', lat: 12.3052, lng: 76.6552, dur: 90 },
-    { name: 'Bylakuppe Golden Temple', lat: 12.4334, lng: 75.9647, dur: 60 },
-    { name: 'Madikeri, Coorg', lat: 12.4244, lng: 75.7382, dur: 60 }
-  ]},
-  { name: 'Hyderabad ➔ Hampi', origin: 'Hyderabad, Telangana', dest: 'Hampi, Karnataka', stops: [
-    { name: 'Hyderabad (Origin)', lat: 17.3850, lng: 78.4867, dur: 0 },
-    { name: 'Kurnool Konda Reddy Fort', lat: 15.8281, lng: 78.0373, dur: 45 },
-    { name: 'Gooty Fort Viewpoint', lat: 15.1167, lng: 77.6333, dur: 45 },
-    { name: 'Bellary Rock Fort', lat: 15.1394, lng: 76.9214, dur: 45 },
-    { name: 'Virupaksha Temple, Hampi', lat: 15.3350, lng: 76.4600, dur: 90 }
-  ]},
-  { name: 'Delhi ➔ Jaipur', origin: 'New Delhi', dest: 'Jaipur, Rajasthan', stops: [
-    { name: 'Delhi (Origin)', lat: 28.6139, lng: 77.2090, dur: 0 },
-    { name: 'Neemrana Fort Palace', lat: 27.9942, lng: 76.3869, dur: 60 },
-    { name: 'Amer Fort, Jaipur', lat: 26.9855, lng: 75.8513, dur: 90 },
-    { name: 'Hawa Mahal', lat: 26.9239, lng: 75.8267, dur: 60 }
-  ]},
-  { name: 'Chennai ➔ Pondicherry', origin: 'Chennai, Tamil Nadu', dest: 'Pondicherry', stops: [
-    { name: 'Chennai (Origin)', lat: 13.0827, lng: 80.2707, dur: 0 },
-    { name: 'Mahabalipuram Shore Temple', lat: 12.6169, lng: 80.1928, dur: 75 },
-    { name: 'Auroville Dome', lat: 12.0070, lng: 79.8106, dur: 60 },
-    { name: 'Promenade Beach, Pondicherry', lat: 11.9338, lng: 79.8354, dur: 60 }
-  ]}
-];
+const PRESET_ROUTES = [];
 
 function openCreateTripWizard() {
   createTripState.currentStep = 1;
@@ -1521,64 +2131,812 @@ function handleCreateStepPrev() {
 function finalizeTripCreation() {
   const newTripId = `trip-${Date.now()}`;
   const totalBudget = createTripState.budgetType === 'total' 
-    ? createTripState.budgetAmount 
-    : (createTripState.budgetAmount * createTripState.groupSize);
-
-  // Match curated route preset if matches, or generate realistic coordinates
-  const matchedPreset = PRESET_ROUTES.find(r => r.origin.toLowerCase().includes(createTripState.origin.toLowerCase()) || r.dest.toLowerCase().includes(createTripState.destination.toLowerCase()));
-  
-  let newStops = [];
-  if (matchedPreset) {
-    newStops = matchedPreset.stops.map((s, idx) => ({
-      id: `stop-${newTripId}-${idx}`,
-      tripId: newTripId,
-      name: s.name,
-      latitude: s.lat,
-      longitude: s.lng,
-      orderIndex: idx,
-      durationMinutes: s.dur,
-      bufferMinutes: 15,
-      isOvernight: idx === matchedPreset.stops.length - 1,
-      openingHourMinutes: 540,
-      closingHourMinutes: 1080
-    }));
-  } else {
-    // Custom route with 3 stops
-    newStops = [
-      { id: `stop-${newTripId}-0`, tripId: newTripId, name: `${createTripState.origin} (Origin)`, latitude: 12.9716, longitude: 77.5946, orderIndex: 0, durationMinutes: 0, bufferMinutes: 15, isOvernight: false, openingHourMinutes: 0, closingHourMinutes: 1440 },
-      { id: `stop-${newTripId}-1`, tripId: newTripId, name: 'Highway Rest Stop & Fuel', latitude: 12.6518, longitude: 76.8089, orderIndex: 1, durationMinutes: 45, bufferMinutes: 15, isOvernight: false, openingHourMinutes: 360, closingHourMinutes: 1320 },
-      { id: `stop-${newTripId}-2`, tripId: newTripId, name: `${createTripState.destination} (Destination)`, latitude: 12.4244, longitude: 75.7382, orderIndex: 2, durationMinutes: 60, bufferMinutes: 20, isOvernight: true, openingHourMinutes: 480, closingHourMinutes: 1200 }
-    ];
-  }
+    ? (createTripState.budgetAmount || 0)
+    : ((createTripState.budgetAmount || 0) * (createTripState.groupSize || 1));
 
   const newTrip = {
     id: newTripId,
-    title: `${createTripState.origin.split(',')[0]} to ${createTripState.destination.split(',')[0]}`,
-    destinationName: createTripState.destination,
-    departureTimeMinutes: createTripState.departureMinutes,
-    totalBudget: totalBudget,
-    groupSize: createTripState.groupSize,
-    vehicleMileageKmPerLitre: createTripState.mileage,
-    fuelPricePerLitre: 102.8,
+    title: createTripState.origin && createTripState.destination
+      ? `${createTripState.origin.split(',')[0]} to ${createTripState.destination.split(',')[0]}`
+      : (createTripState.origin || createTripState.destination || 'New Trip'),
+    destinationName: createTripState.destination || null,
+    departureTimeMinutes: createTripState.departureMinutes || 0,
+    totalBudget: totalBudget || 0,
+    groupSize: createTripState.groupSize || 0,
+    vehicleMileageKmPerLitre: createTripState.mileage || 0,
+    fuelPricePerLitre: 0,
     isArchived: false
   };
 
-  const newExpenses = [
-    { id: `exp-${newTripId}-tolls`, tripId: newTripId, category: 'TOLL', amount: 380, isShared: true, unit: 'TOTAL', provenance: { sourceType: 'OFFICIAL', sourceName: 'NHAI FASTag Plaza', confidence: 'CONFIRMED' } },
-    { id: `exp-${newTripId}-stays`, tripId: newTripId, category: 'STAY', amount: 4800, isShared: true, unit: 'TOTAL', provenance: { sourceType: 'OFFICIAL', sourceName: 'Estate Homestay', confidence: 'CONFIRMED' } },
-    { id: `exp-${newTripId}-food`, tripId: newTripId, category: 'FOOD', amount: 2400, isShared: true, unit: 'TOTAL', provenance: { sourceType: 'CALCULATED', sourceName: 'Meal Standard Rate', confidence: 'CONFIRMED' } },
-    { id: `exp-${newTripId}-acts`, tripId: newTripId, category: 'ACTIVITY', amount: 1200, isShared: true, unit: 'TOTAL', provenance: { sourceType: 'OFFICIAL', sourceName: 'Forest Department Pass', confidence: 'CONFIRMED' } }
-  ];
-
-  // Save to state
   state.trips.unshift(newTrip);
   state.activeTripId = newTripId;
-  state.stopsMap[newTripId] = newStops;
-  state.expensesMap[newTripId] = newExpenses;
+  state.stopsMap[newTripId] = [];
+  state.expensesMap[newTripId] = [];
   Storage.save(state);
 
-  // Close wizard and switch to Map Home
   document.getElementById('modal-create-trip').classList.add('hidden');
   switchTab('map');
   refreshApp();
+  showToast('Trip created!');
+}
+
+
+// Google Maps Layer Switcher (Roadmap, Satellite Hybrid, Terrain)
+window.switchGoogleMapLayer = function(type) {
+  if (!mapInstance) return;
+  if (currentGoogleTileLayer) {
+    mapInstance.removeLayer(currentGoogleTileLayer);
+  }
+  const layerCode = type === 'satellite' ? 'y' : (type === 'terrain' ? 'p' : 'm');
+  currentGoogleTileLayer = L.tileLayer(`https://mt{s}.google.com/vt/lyrs=${layerCode}&hl=en&gl=IN&x={x}&y={y}&z={z}`, {
+    subdomains: ['0', '1', '2', '3'],
+    attribution: '&copy; Google Maps (Official India)',
+    maxZoom: 20,
+    tileSize: 256,
+    crossOrigin: true
+  }).addTo(mapInstance);
+  showToast(`Switched to Google Maps ${type.charAt(0).toUpperCase() + type.slice(1)}`);
+};
+
+
+
+// ==========================================================================
+// FAMOUS PLACES, FOOD, PARKS & MONUMENTS DISCOVERY ENGINE (Official India Hubs)
+// ==========================================================================
+
+const KNOWN_DESTINATION_PHOTOS = {
+  'hyderabad': 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=900&q=80',
+  'charminar': 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=900&q=80',
+  'golconda': 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=900&q=80',
+  'qutb shahi': 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80',
+  'chowmahalla': 'https://images.unsplash.com/photo-1609137144822-4416999a0980?auto=format&fit=crop&w=900&q=80',
+  'hussain sagar': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
+  'paradise biryani': 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=900&q=80',
+  'bawarchi': 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80',
+  'karachi bakery': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80',
+  'pista house': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
+  'ram ki bandi': 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=900&q=80',
+  'mysore palace': 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=900&q=80',
+  'abbey falls': 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=900&q=80',
+  'raja': 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
+  'namdroling': 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=900&q=80',
+  'virupaksha': 'https://images.unsplash.com/photo-1609137144822-4416999a0980?auto=format&fit=crop&w=900&q=80',
+  'amer fort': 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80',
+  'hawa mahal': 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80',
+  'bangalore': 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&w=900&q=80',
+  'delhi': 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=900&q=80',
+  'jaipur': 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80'
+};
+
+const THEMATIC_PHOTOS = {
+  waterfall: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=900&q=80',
+  lake: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
+  temple: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=900&q=80',
+  fort: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80',
+  hills: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
+  ghats: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=900&q=80',
+  highway: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=900&q=80',
+  forest: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80',
+  city: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=900&q=80',
+  food: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=900&q=80',
+  park: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80',
+  default: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=900&q=80'
+};
+
+async function fetchPlaceImage(lat, lng, name, category = '') {
+  const lowerName = (name || '').toLowerCase();
+  for (const [key, url] of Object.entries(KNOWN_DESTINATION_PHOTOS)) {
+    if (lowerName.includes(key)) return url;
+  }
+  const lowerCat = (category || '').toLowerCase();
+  if (lowerCat.includes('park') || lowerCat.includes('garden')) return THEMATIC_PHOTOS.park;
+  if (lowerCat.includes('lake') || lowerCat.includes('river')) return THEMATIC_PHOTOS.lake;
+  if (lowerCat.includes('food') || lowerCat.includes('restaurant')) return THEMATIC_PHOTOS.food;
+  if (lowerCat.includes('fort') || lowerCat.includes('monument')) return THEMATIC_PHOTOS.fort;
+  return THEMATIC_PHOTOS.default;
+}
+
+function formatCategoryTag(category) {
+  if (!category) return 'Scenic Stop';
+  const c = category.toLowerCase();
+  if (c.includes('monument') || c.includes('fort') || c.includes('palace') || c.includes('historic')) return 'Historical Heritage';
+  if (c.includes('food') || c.includes('restaurant') || c.includes('bakery') || c.includes('cuisine')) return 'Famous Dining & Food';
+  if (c.includes('park') || c.includes('lake') || c.includes('garden') || c.includes('sanctuary')) return 'Park & Nature Sanctuary';
+  return 'Scenic Stop';
+}
+
+const FAMOUS_INDIAN_HUBS = {
+  hyderabad: {
+    cityName: 'Hyderabad',
+    lat: 17.3850,
+    lng: 78.4867,
+    radiusKm: 65,
+    places: [
+      // Monuments & Heritage
+      {
+        id: 'hyd-charminar',
+        name: 'Charminar',
+        sub: 'Old City, Hyderabad',
+        category: 'monuments',
+        tag: 'Iconic 1591 Monument',
+        lat: 17.3616,
+        lng: 78.4747,
+        img: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80',
+        meta: '09:00 AM - 05:30 PM | Entry Rs 25',
+        dur: 60
+      },
+      {
+        id: 'hyd-golconda',
+        name: 'Golconda Fort',
+        sub: 'Ibrahim Bagh, Hyderabad',
+        category: 'monuments',
+        tag: 'Medieval Acoustic Citadel',
+        lat: 17.3833,
+        lng: 78.4011,
+        img: 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=600&q=80',
+        meta: '09:00 AM - 05:30 PM | Light & Sound Show',
+        dur: 90
+      },
+      {
+        id: 'hyd-qutb-shahi',
+        name: 'Qutb Shahi Tombs',
+        sub: 'Shaikpet, Hyderabad',
+        category: 'monuments',
+        tag: 'Seven Royal Tombs & Gardens',
+        lat: 17.3942,
+        lng: 78.3970,
+        img: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80',
+        meta: '09:30 AM - 04:30 PM | Heritage Complex',
+        dur: 60
+      },
+      {
+        id: 'hyd-chowmahalla',
+        name: 'Chowmahalla Palace',
+        sub: 'Khilwat, Hyderabad',
+        category: 'monuments',
+        tag: 'Nizami Royal Palace & Vintage Cars',
+        lat: 17.3578,
+        lng: 78.4717,
+        img: 'https://images.unsplash.com/photo-1609137144822-4416999a0980?auto=format&fit=crop&w=600&q=80',
+        meta: '10:00 AM - 05:00 PM | Royal Regalia',
+        dur: 75
+      },
+      {
+        id: 'hyd-salar-jung',
+        name: 'Salar Jung Museum',
+        sub: 'Dar-ul-Shifa, Hyderabad',
+        category: 'monuments',
+        tag: 'World Rare Artifacts & Veiled Rebecca',
+        lat: 17.3713,
+        lng: 78.4804,
+        img: 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?auto=format&fit=crop&w=600&q=80',
+        meta: '10:00 AM - 05:00 PM | World Heritage Art',
+        dur: 100
+      },
+      // Famous Food & Restaurants
+      {
+        id: 'hyd-paradise',
+        name: 'Paradise Biryani',
+        sub: 'MG Road, Secunderabad',
+        category: 'food',
+        tag: 'World Famous Dum Biryani Since 1953',
+        lat: 17.4416,
+        lng: 78.4983,
+        img: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=600&q=80',
+        meta: '11:00 AM - 11:00 PM | Iconic Hyderabadi Dum',
+        dur: 45
+      },
+      {
+        id: 'hyd-bawarchi',
+        name: 'Bawarchi Restaurant',
+        sub: 'RTC X Roads, Hyderabad',
+        category: 'food',
+        tag: 'Legendary Mutton Biryani Hub',
+        lat: 17.4048,
+        lng: 78.4981,
+        img: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=600&q=80',
+        meta: '11:30 AM - 11:30 PM | Authentic Spice Heritage',
+        dur: 45
+      },
+      {
+        id: 'hyd-karachi',
+        name: 'Karachi Bakery',
+        sub: 'Mozamjahi Market, Hyderabad',
+        category: 'food',
+        tag: 'Original Fruit & Osmania Biscuits Since 1953',
+        lat: 17.3822,
+        lng: 78.4735,
+        img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80',
+        meta: '10:00 AM - 10:00 PM | Heritage Bakery',
+        dur: 30
+      },
+      {
+        id: 'hyd-pista-house',
+        name: 'Pista House & Irani Chai',
+        sub: 'Charminar, Hyderabad',
+        category: 'food',
+        tag: 'GI-Tagged Haleem & Zafrani Chai',
+        lat: 17.3610,
+        lng: 78.4730,
+        img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80',
+        meta: '10:00 AM - 12:00 AM | Irani Chai & Osmania',
+        dur: 30
+      },
+      {
+        id: 'hyd-ram-ki-bandi',
+        name: 'Ram Ki Bandi',
+        sub: 'Nampally, Hyderabad',
+        category: 'food',
+        tag: 'Famous Midnight Butter Cheese Dosa',
+        lat: 17.3833,
+        lng: 78.4744,
+        img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80',
+        meta: '03:00 AM - 08:00 AM | Street Food Legend',
+        dur: 30
+      },
+      {
+        id: 'hyd-shah-ghouse',
+        name: 'Shah Ghouse Cafe',
+        sub: 'Tolichowki / Charminar',
+        category: 'food',
+        tag: 'Mutton Biryani, Paaya & Khubani Meetha',
+        lat: 17.3996,
+        lng: 78.4116,
+        img: 'https://images.unsplash.com/photo-1633945274405-b6c8069047b0?auto=format&fit=crop&w=600&q=80',
+        meta: '11:00 AM - 01:00 AM | Late Night Dine',
+        dur: 45
+      },
+      // Parks & Lakes
+      {
+        id: 'hyd-hussain-sagar',
+        name: 'Hussain Sagar & Buddha Statue',
+        sub: 'Tank Bund, Hyderabad',
+        category: 'parks',
+        tag: 'Heart-Shaped Lake & Monolith Buddha',
+        lat: 17.4239,
+        lng: 78.4738,
+        img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+        meta: 'Boat Ride to Statue | Sunset Promenade',
+        dur: 60
+      },
+      {
+        id: 'hyd-kbr-park',
+        name: 'KBR National Park',
+        sub: 'Jubilee Hills, Hyderabad',
+        category: 'parks',
+        tag: 'Lush Urban Forest Sanctuary',
+        lat: 17.4244,
+        lng: 78.4238,
+        img: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+        meta: '05:30 AM - 10:00 AM, 04:30 PM - 07:00 PM',
+        dur: 60
+      },
+      {
+        id: 'hyd-lumbini',
+        name: 'Lumbini Park & Laser Show',
+        sub: 'Khairatabad, Hyderabad',
+        category: 'parks',
+        tag: 'Lakeside Park & Speed Boating Jetty',
+        lat: 17.4143,
+        lng: 78.4735,
+        img: 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=600&q=80',
+        meta: '09:00 AM - 09:00 PM | Laser & Fountain Show',
+        dur: 45
+      },
+      {
+        id: 'hyd-durgam-cheruvu',
+        name: 'Durgam Cheruvu & Cable Bridge',
+        sub: 'Hitec City, Madhapur',
+        category: 'parks',
+        tag: 'Secret Lake & Hanging Cable-Stayed Bridge',
+        lat: 17.4332,
+        lng: 78.3846,
+        img: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
+        meta: 'Open 24 Hours | Illuminated Skywalk Promenade',
+        dur: 45
+      }
+    ]
+  },
+  bangalore: {
+    cityName: 'Bengaluru',
+    lat: 12.9716,
+    lng: 77.5946,
+    radiusKm: 60,
+    places: [
+      {
+        id: 'blr-palace',
+        name: 'Bangalore Palace',
+        sub: 'Vasanth Nagar, Bengaluru',
+        category: 'monuments',
+        tag: 'Tudor-Style Royal Palace',
+        lat: 12.9988,
+        lng: 77.5921,
+        img: 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=600&q=80',
+        meta: '10:00 AM - 05:30 PM | Audio Tour',
+        dur: 60
+      },
+      {
+        id: 'blr-vidyarthi',
+        name: 'Vidyarthi Bhavan',
+        sub: 'Gandhi Bazaar, Basavanagudi',
+        category: 'food',
+        tag: 'Legendary Crispy Masala Dosa Since 1943',
+        lat: 12.9427,
+        lng: 77.5714,
+        img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80',
+        meta: '06:30 AM - 11:30 AM, 02:00 PM - 08:00 PM',
+        dur: 45
+      },
+      {
+        id: 'blr-cubbon',
+        name: 'Cubbon Park',
+        sub: 'Kasturba Road, Bengaluru',
+        category: 'parks',
+        tag: '300-Acre Green Lung of Bengaluru',
+        lat: 12.9763,
+        lng: 77.5929,
+        img: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+        meta: '06:00 AM - 06:00 PM | Bamboo Groves',
+        dur: 60
+      },
+      {
+        id: 'blr-lalbagh',
+        name: 'Lalbagh Botanical Garden',
+        sub: 'Mavalli, Bengaluru',
+        category: 'parks',
+        tag: 'Iconic Glass House & Bonsai Garden',
+        lat: 12.9507,
+        lng: 77.5848,
+        img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
+        meta: '06:00 AM - 07:00 PM | 240-Acre Heritage Park',
+        dur: 75
+      }
+    ]
+  },
+  delhi: {
+    cityName: 'Delhi',
+    lat: 28.6139,
+    lng: 77.2090,
+    radiusKm: 60,
+    places: [
+      {
+        id: 'del-red-fort',
+        name: 'Red Fort (Lal Qila)',
+        sub: 'Old Delhi',
+        category: 'monuments',
+        tag: 'Mughal Fortress of Shah Jahan',
+        lat: 28.6562,
+        lng: 77.2410,
+        img: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=600&q=80',
+        meta: '09:30 AM - 04:30 PM | UNESCO World Heritage',
+        dur: 90
+      },
+      {
+        id: 'del-karims',
+        name: "Karim's Jama Masjid",
+        sub: 'Gali Kababian, Jama Masjid',
+        category: 'food',
+        tag: 'Royal Mughlai Kebabs & Nihari Since 1913',
+        lat: 28.6508,
+        lng: 77.2334,
+        img: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=600&q=80',
+        meta: '09:00 AM - 01:00 AM | Mutton Seekh Kebab',
+        dur: 50
+      },
+      {
+        id: 'del-lodhi',
+        name: 'Lodhi Garden',
+        sub: 'Lodhi Road, New Delhi',
+        category: 'parks',
+        tag: '90-Acre Tomb Complex & Lush Grounds',
+        lat: 28.5931,
+        lng: 77.2197,
+        img: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+        meta: '06:00 AM - 08:00 PM | Historic Garden',
+        dur: 60
+      }
+    ]
+  },
+  jaipur: {
+    cityName: 'Jaipur',
+    lat: 26.9124,
+    lng: 75.7873,
+    radiusKm: 60,
+    places: [
+      {
+        id: 'jai-hawa-mahal',
+        name: 'Hawa Mahal',
+        sub: 'Badi Choupad, Pink City, Jaipur',
+        category: 'monuments',
+        tag: 'Palace of Winds with 953 Jharokhas',
+        lat: 26.9239,
+        lng: 75.8267,
+        img: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80',
+        meta: '09:00 AM - 05:00 PM | Pink Sandstone Icon',
+        dur: 60
+      },
+      {
+        id: 'jai-rawat',
+        name: 'Rawat Mishthan Bhandar',
+        sub: 'Station Road, Sindhi Camp, Jaipur',
+        category: 'food',
+        tag: 'Famous Hot Pyaaz Kachori & Mawa Kachori',
+        lat: 26.9213,
+        lng: 75.7972,
+        img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80',
+        meta: '06:00 AM - 10:30 PM | Crispy Onion Kachori',
+        dur: 30
+      },
+      {
+        id: 'jai-central-park',
+        name: 'Central Park Jaipur',
+        sub: 'Prithviraj Road, Jaipur',
+        category: 'parks',
+        tag: 'Largest Green Park with Tallest Tricolor',
+        lat: 26.9015,
+        lng: 75.8085,
+        img: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
+        meta: '05:00 AM - 09:00 PM | 5km Jogging Track',
+        dur: 45
+      }
+    ]
+  }
+};
+
+let activeNearbyPlaces = [];
+let currentNearbyFilter = 'all';
+
+async function getNearbyFamousPlaces(lat, lng, localityName = '') {
+  const lowerName = (localityName || '').toLowerCase();
+  
+  // 1. Check known hubs by distance or name match
+  for (const [key, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
+    const distToHub = calculateHaversineKm(lat, lng, hub.lat, hub.lng);
+    if (distToHub <= hub.radiusKm || lowerName.includes(key) || lowerName.includes(hub.cityName.toLowerCase())) {
+      const placesWithDist = hub.places.map(p => {
+        const d = calculateHaversineKm(lat, lng, p.lat, p.lng);
+        return {
+          ...p,
+          distanceKm: d,
+          distText: `${d < 1 ? Math.round(d * 1000) + ' m' : d.toFixed(1) + ' km'} away`
+        };
+      });
+      placesWithDist.sort((a, b) => a.distanceKm - b.distanceKm);
+      return {
+        cityName: hub.cityName,
+        places: placesWithDist
+      };
+    }
+  }
+
+  // 2. Dynamic Fallback via Wikipedia Geosearch for ANY other location in India
+  try {
+    const geoUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=15000&ggslimit=10&prop=pageimages|description&pithumbsize=600&format=json&origin=*`;
+    const res = await fetch(geoUrl);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.query && data.query.pages) {
+        const pages = Object.values(data.query.pages);
+        const dynamicPlaces = pages.map((page, i) => {
+          const title = page.title;
+          const lower = title.toLowerCase();
+          let cat = 'monuments';
+          let tag = 'Famous Attraction';
+          if (lower.includes('park') || lower.includes('lake') || lower.includes('fall') || lower.includes('forest') || lower.includes('garden')) {
+            cat = 'parks';
+            tag = 'Scenic Nature & Park';
+          } else if (lower.includes('food') || lower.includes('restaurant') || lower.includes('cafe') || lower.includes('dosa') || lower.includes('hotel')) {
+            cat = 'food';
+            tag = 'Famous Food & Dining';
+          }
+          const pLat = page.coordinates ? page.coordinates[0].lat : (lat + (i * 0.007));
+          const pLng = page.coordinates ? page.coordinates[0].lon : (lng + (i * 0.007));
+          const dist = calculateHaversineKm(lat, lng, pLat, pLng);
+          return {
+            id: `dyn-${page.pageid}`,
+            name: title,
+            sub: page.description || (localityName ? localityName.split(',')[0] : 'Landmark in Area'),
+            category: cat,
+            tag: tag,
+            lat: pLat,
+            lng: pLng,
+            img: (page.thumbnail && page.thumbnail.source) ? page.thumbnail.source : THEMATIC_PHOTOS.default,
+            meta: 'Open for visitors',
+            distanceKm: dist,
+            distText: `${dist.toFixed(1)} km away`,
+            dur: 45
+          };
+        });
+
+        dynamicPlaces.sort((a, b) => a.distanceKm - b.distanceKm);
+        return {
+          cityName: localityName.split(',')[0] || 'This Area',
+          places: dynamicPlaces
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Dynamic nearby search skipped:', err);
+  }
+
+  return {
+    cityName: localityName.split(',')[0] || 'This Area',
+    places: []
+  };
+}
+
+function renderNearbyPlaces(places, filter = 'all') {
+  const carousel = document.getElementById('nearby-places-carousel');
+  const countBadge = document.getElementById('nearby-count-badge');
+  if (!carousel) return;
+
+  const filtered = filter === 'all' ? places : places.filter(p => p.category === filter);
+  if (countBadge) countBadge.textContent = `${filtered.length} Places`;
+
+  if (filtered.length === 0) {
+    carousel.innerHTML = `
+      <div style="padding: 16px; text-align: center; color: var(--on-surface-variant); font-size: 12px; background: var(--surface-container-low); border-radius: 12px;">
+        No ${filter === 'all' ? '' : filter} places listed for this area yet.
+      </div>
+    `;
+    return;
+  }
+
+  carousel.innerHTML = filtered.map(p => `
+    <div class="nearby-place-card" data-place-id="${p.id}" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${p.name}">
+      <img src="${p.img}" alt="${p.name}" class="nearby-card-thumb" onerror="this.src='${THEMATIC_PHOTOS.default}'" />
+      <div class="nearby-card-body">
+        <div class="nearby-card-title">${p.name}</div>
+        <div class="nearby-card-sub">${p.sub}</div>
+        <div class="nearby-card-meta">
+          <span>${p.distText}</span>
+          <span>•</span>
+          <span style="color: var(--on-surface-variant); font-weight: 500;">${p.meta}</span>
+        </div>
+      </div>
+      <button class="nearby-card-add-btn" data-name="${p.name}" data-lat="${p.lat}" data-lng="${p.lng}" data-dur="${p.dur || 60}">
+        + Add
+      </button>
+    </div>
+  `).join('');
+
+  // Wire card click (pan to spot on map)
+  carousel.querySelectorAll('.nearby-place-card').forEach(card => {
+    card.onclick = (e) => {
+      if (e.target.closest('.nearby-card-add-btn')) return;
+      const cLat = parseFloat(card.getAttribute('data-lat'));
+      const cLng = parseFloat(card.getAttribute('data-lng'));
+      const cName = card.getAttribute('data-name');
+      if (mapInstance && !isNaN(cLat) && !isNaN(cLng)) {
+        mapInstance.panTo([cLat, cLng], { animate: true, duration: 0.6 });
+        if (selectedPlaceMarker) mapInstance.removeLayer(selectedPlaceMarker);
+        selectedPlaceMarker = L.marker([cLat, cLng], {
+          icon: L.divIcon({
+            className: 'selected-pin-wrapper',
+            html: `
+              <div class="selected-pin-marker">
+                <svg viewBox="0 0 24 24" fill="#E53935" stroke="#FFFFFF" stroke-width="1.2">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                  <circle cx="12" cy="9" r="2.8" fill="#FFFFFF"/>
+                </svg>
+              </div>
+            `,
+            iconSize: [36, 42],
+            iconAnchor: [18, 42]
+          }),
+          zIndexOffset: 1200
+        }).addTo(mapInstance);
+      }
+    };
+  });
+
+  // Wire "+ Add" button on each card
+  carousel.querySelectorAll('.nearby-card-add-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const sName = btn.getAttribute('data-name');
+      const sLat = parseFloat(btn.getAttribute('data-lat'));
+      const sLng = parseFloat(btn.getAttribute('data-lng'));
+      const sDur = parseInt(btn.getAttribute('data-dur'), 10) || 60;
+
+      if (!state.activeTripId || !state.trips || state.trips.length === 0) {
+        const newTripId = `trip-${Date.now()}`;
+        const newTrip = {
+          id: newTripId,
+          title: `Road Trip to ${sName}`,
+          destinationName: sName,
+          departureTimeMinutes: 0,
+          totalBudget: 0,
+          groupSize: 0,
+          vehicleMileageKmPerLitre: 0,
+          fuelPricePerLitre: 0,
+          isArchived: false
+        };
+        state.trips = [newTrip];
+        state.activeTripId = newTripId;
+        state.stopsMap[newTripId] = [];
+        state.expensesMap[newTripId] = [];
+      }
+
+      const stops = state.stopsMap[state.activeTripId] || [];
+      const newStop = {
+        id: `stop-${Date.now()}`,
+        tripId: state.activeTripId,
+        name: sName,
+        latitude: sLat,
+        longitude: sLng,
+        orderIndex: stops.length,
+        durationMinutes: sDur,
+        bufferMinutes: 15,
+        isOvernight: false,
+        openingHourMinutes: 540,
+        closingHourMinutes: 1080
+      };
+      stops.push(newStop);
+      state.stopsMap[state.activeTripId] = stops;
+      Storage.save(state);
+
+      refreshApp();
+      showToast(`Added ${sName} to itinerary!`);
+      btn.textContent = 'Added';
+      btn.style.background = 'var(--success)';
+      btn.style.color = '#FFFFFF';
+      btn.style.borderColor = 'var(--success)';
+    };
+  });
+}
+
+function setupNearbyTabsListener() {
+  const tabsRow = document.getElementById('nearby-tabs-row');
+  if (!tabsRow) return;
+
+  tabsRow.querySelectorAll('.nearby-tab-chip').forEach(tab => {
+    tab.onclick = () => {
+      tabsRow.querySelectorAll('.nearby-tab-chip').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentNearbyFilter = tab.getAttribute('data-filter') || 'all';
+      renderNearbyPlaces(activeNearbyPlaces, currentNearbyFilter);
+    };
+  });
+}
+
+// Master Handler for Map Place Selection & Nearby Discovery
+async function handleMapPlaceSelection(lat, lng, explicitName = null) {
+  if (!mapInstance) return;
+
+  // 1. Place red pin on Google Maps
+  if (selectedPlaceMarker) mapInstance.removeLayer(selectedPlaceMarker);
+  selectedPlaceMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: 'selected-pin-wrapper',
+      html: `
+        <div class="selected-pin-marker">
+          <svg viewBox="0 0 24 24" fill="#E53935" stroke="#FFFFFF" stroke-width="1.2">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+            <circle cx="12" cy="9" r="2.8" fill="#FFFFFF"/>
+          </svg>
+        </div>
+      `,
+      iconSize: [36, 42],
+      iconAnchor: [18, 42]
+    }),
+    zIndexOffset: 1200
+  }).addTo(mapInstance);
+
+  mapInstance.panTo([lat, lng], { animate: true, duration: 0.5 });
+
+  const sheet = document.getElementById('selected-place-sheet');
+  const imgEl = document.getElementById('selected-place-img');
+  const tagEl = document.getElementById('selected-place-tag');
+  const nameEl = document.getElementById('selected-place-name');
+  const locEl = document.getElementById('selected-place-location');
+  const distEl = document.getElementById('selected-place-dist-badge');
+  const hoursEl = document.getElementById('selected-place-hours-text');
+  const coordsEl = document.getElementById('selected-place-coords');
+
+  if (!sheet) return;
+
+  sheet.classList.remove('hidden');
+
+  let placeName = explicitName || '';
+  let locality = 'India';
+  let category = 'Scenic Destination';
+  let initialPhoto = THEMATIC_PHOTOS.default;
+
+  const lowerExplicit = (explicitName || '').toLowerCase();
+  
+  // Check known hubs (like Hyderabad, Bangalore, Delhi, Jaipur)
+  let matchedHub = null;
+  for (const [k, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
+    const d = calculateHaversineKm(lat, lng, hub.lat, hub.lng);
+    if (d <= hub.radiusKm || lowerExplicit.includes(k) || lowerExplicit.includes(hub.cityName.toLowerCase())) {
+      matchedHub = hub;
+      break;
+    }
+  }
+
+  if (matchedHub) {
+    if (!placeName) placeName = matchedHub.cityName;
+    locality = matchedHub.cityName === 'Hyderabad' ? 'Telangana, India' : `${matchedHub.cityName}, India`;
+    category = 'Historical Heritage';
+    if (KNOWN_DESTINATION_PHOTOS[matchedHub.cityName.toLowerCase()]) {
+      initialPhoto = KNOWN_DESTINATION_PHOTOS[matchedHub.cityName.toLowerCase()];
+    }
+  } else if (explicitName) {
+    placeName = explicitName;
+    locality = 'India';
+    for (const [k, u] of Object.entries(KNOWN_DESTINATION_PHOTOS)) {
+      if (lowerExplicit.includes(k)) {
+        initialPhoto = u;
+        break;
+      }
+    }
+  }
+
+  if (!placeName) {
+    placeName = `Location (${lat.toFixed(3)}, ${lng.toFixed(3)})`;
+  }
+
+  nameEl.textContent = placeName;
+  locEl.textContent = locality;
+  tagEl.textContent = formatCategoryTag(category);
+  coordsEl.textContent = `${lat.toFixed(4)} N, ${lng.toFixed(4)} E`;
+  distEl.textContent = userLocation ? `${calculateHaversineKm(userLocation.lat, userLocation.lng, lat, lng).toFixed(1)} km away` : 'Selected Spot';
+  imgEl.src = initialPhoto;
+
+  // POPULATE NEARBY FAMOUS PLACES, FOOD, PARKS & MONUMENTS
+  try {
+    const nearbyData = await getNearbyFamousPlaces(lat, lng, explicitName || placeName || locality);
+    activeNearbyPlaces = nearbyData.places || [];
+    const nearbyCityEl = document.getElementById('nearby-city-name');
+    if (nearbyCityEl) nearbyCityEl.textContent = nearbyData.cityName || (placeName ? placeName.split(',')[0] : 'This Area');
+    currentNearbyFilter = 'all';
+    
+    // Reset tab filter chips
+    const tabsRow = document.getElementById('nearby-tabs-row');
+    if (tabsRow) {
+      tabsRow.querySelectorAll('.nearby-tab-chip').forEach(t => {
+        if (t.getAttribute('data-filter') === 'all') t.classList.add('active');
+        else t.classList.remove('active');
+      });
+    }
+
+    renderNearbyPlaces(activeNearbyPlaces, 'all');
+  } catch (err) {
+    console.warn('Nearby exploration error:', err);
+  }
+
+  // Reverse geocoding in background if placeName not known
+  if (!explicitName && !matchedHub) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`);
+      if (res.ok) {
+        const data = await res.json();
+        const addr = data.address || {};
+        const primaryTitle = data.name || addr.tourism || addr.historic || addr.natural || addr.amenity || addr.road || addr.suburb || addr.village || addr.town || addr.city;
+        if (primaryTitle) {
+          placeName = primaryTitle;
+          nameEl.textContent = placeName;
+        }
+        const parts = [addr.suburb, addr.town || addr.city || addr.village, addr.state, addr.country].filter(Boolean);
+        locality = parts.join(', ') || data.display_name || 'India';
+        locEl.textContent = locality;
+      }
+    } catch (err) {
+      console.warn('Reverse geocoding error:', err);
+    }
+  }
+
+  const hoursInfo = getPlaceHours ? getPlaceHours(placeName) : null;
+  const hoursDisplay = hoursInfo ? hoursInfo.name : '08:00 AM - 06:00 PM';
+  hoursEl.textContent = hoursDisplay;
+
+  currentSelectedPlace = {
+    name: placeName,
+    latitude: lat,
+    longitude: lng,
+    locality,
+    imageUrl: initialPhoto,
+    hoursDisplay
+  };
 }

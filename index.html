@@ -16,11 +16,214 @@
 <body class="theme-light">
   <!-- Mobile Aspect Ratio Container -->
   <div id="app" class="app-container">
+    <!-- 0. PRE-LOGIN GOOGLE AUTH GATE SCREEN (Strict: Google Login Only - No Guest Access) -->
+        <!-- SCREEN: PRIVACY POLICY & TERMS ONBOARDING (Shown Once Before Login to New Users) -->
+    <div id="screen-privacy-terms" class="privacy-screen hidden">
+      <div class="privacy-card">
+        
+        <!-- Privacy Header -->
+        <div class="privacy-header">
+          <div class="privacy-badge">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>Privacy & Terms</span>
+          </div>
+          <h2 class="privacy-title">Welcome to TripWeave</h2>
+          <p class="privacy-subtitle">Please review our transparency commitments, data protections, and terms before continuing.</p>
+        </div>
+
+        <!-- Privacy Content Scroll Area -->
+        <div class="privacy-content-scroll">
+          
+          <!-- Section 1: What TripWeave Is Made For -->
+          <div class="privacy-section">
+            <div class="privacy-section-head">
+              <div class="privacy-section-icon">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                  <line x1="8" y1="2" x2="8" y2="18"></line>
+                  <line x1="16" y1="6" x2="16" y2="22"></line>
+                </svg>
+              </div>
+              <h3 class="privacy-section-title">1. Purpose of TripWeave</h3>
+            </div>
+            <p class="privacy-text">
+              TripWeave is an autonomous road trip itinerary planner and route optimizer engineered for traveling across India. It helps you design multi-stop journeys, verifies operating hours for heritage monuments, checks daylight buffer times, and models accurate per-person fuel, toll, and homestay budgets.
+            </p>
+          </div>
+
+          <!-- Section 2: Permissions Requested & Why -->
+          <div class="privacy-section">
+            <div class="privacy-section-head">
+              <div class="privacy-section-icon">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                </svg>
+              </div>
+              <h3 class="privacy-section-title">2. Device Permissions Requested & Why</h3>
+            </div>
+            <div class="privacy-perm-list">
+              <div class="privacy-perm-item">
+                <div class="privacy-perm-label">Device Location (GPS & Wi-Fi)</div>
+                <p>Requested solely while actively using the app to show your current location dot on the map, calculate exact driving distance to destinations, and recommend famous food, monuments, and parks around you. Your real-time location stays within your client device and is never tracked in the background or shared with third-party advertisers.</p>
+              </div>
+              <div class="privacy-perm-item">
+                <div class="privacy-perm-label">Local Storage & Offline Caching</div>
+                <p>Used to cache your active routes, vehicle mileage parameters, and map tile choices locally on your device for uninterrupted offline road trip planning on remote highways.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Data Protection & Cloud Firestore -->
+          <div class="privacy-section">
+            <div class="privacy-section-head">
+              <div class="privacy-section-icon">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </div>
+              <h3 class="privacy-section-title">3. Privacy Protection & Cloud Security</h3>
+            </div>
+            <ul class="privacy-bullets">
+              <li><strong>Google Authentication Only:</strong> We authenticate users strictly through Google OAuth 2.0. We never request, store, or process user passwords.</li>
+              <li><strong>Encrypted Cloud Sync:</strong> Your saved trips and expense breakdowns are saved in Google Cloud Firestore under your private authenticated user document (<code>users/{user_id}/trips</code>), accessible only by your verified Google account.</li>
+              <li><strong>Zero Ad Trackers:</strong> TripWeave contains zero commercial ad trackers, marketing cookies, or third-party data analytics brokers.</li>
+            </ul>
+          </div>
+
+          <!-- Section 4: Sovereign Indian Map Compliance & Advisory -->
+          <div class="privacy-section">
+            <div class="privacy-section-head">
+              <div class="privacy-section-icon">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <h3 class="privacy-section-title">4. Sovereign Map Compliance & Road Advisory</h3>
+            </div>
+            <p class="privacy-text">
+              TripWeave utilizes official Google Maps layers with <code>gl=IN</code> compliance, adhering 100% to Survey of India standards with sovereign national borders for Jammu & Kashmir, Ladakh, and Arunachal Pradesh.
+            </p>
+            <p class="privacy-text" style="margin-top: 8px;">
+              <strong>Road Safety Advisory:</strong> Travel plans, visiting hours, and fuel cost models are decision-support estimates. Drivers must always adhere to local traffic rules, speed limits, and official road conditions.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Privacy Footer with Acceptance Control -->
+        <div class="privacy-action-footer">
+          <label class="privacy-consent-label" for="chk-privacy-agree">
+            <input type="checkbox" id="chk-privacy-agree" class="privacy-checkbox" />
+            <span>I have read and agree to the TripWeave Privacy Policy and Terms of Service.</span>
+          </label>
+          <button id="btn-accept-privacy" class="btn-privacy-accept" disabled>
+            <span id="btn-accept-privacy-label">Agree & Continue to Sign In</span>
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="screen-auth-gate" class="auth-gate-screen">
+      <div class="auth-gate-card">
+        
+        <!-- App Brand Header -->
+        <div class="auth-brand-header">
+          <div class="auth-logo-badge">
+            <svg class="auth-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
+            </svg>
+          </div>
+          <h1 class="auth-app-title">TripWeave</h1>
+          <p class="auth-app-subtitle">Sovereign Intelligent Road Trip Planner</p>
+        </div>
+
+        <!-- Sovereign & Autonomous Value Pillars -->
+        <div class="auth-features-list">
+          <div class="auth-feature-item">
+            <div class="auth-feature-icon-wrapper">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+              </svg>
+            </div>
+            <div class="auth-feature-text">
+              <strong>Official Indian Sovereign Maps</strong>
+              <span>100% Survey of India compliant with verified borders</span>
+            </div>
+          </div>
+
+          <div class="auth-feature-item">
+            <div class="auth-feature-icon-wrapper">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <div class="auth-feature-text">
+              <strong>Autonomous Route & Buffer Optimizer</strong>
+              <span>Real-time visiting hours check and fuel cost models</span>
+            </div>
+          </div>
+
+          <div class="auth-feature-item">
+            <div class="auth-feature-icon-wrapper">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+              </svg>
+            </div>
+            <div class="auth-feature-text">
+              <strong>Cloud Firestore Database Sync</strong>
+              <span>Trips, stops and budgets preserved across your devices</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="auth-divider">
+          <span>Account Authentication</span>
+        </div>
+
+        <!-- Google Sign-In Action -->
+        <div class="auth-action-area">
+          <button id="btn-google-signin" class="btn-google-signin" title="Sign in with Google">
+            <!-- Official Google 'G' Vector Icon -->
+            <svg class="google-g-icon" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span id="google-signin-btn-label">Sign in with Google</span>
+            <div id="google-signin-spinner" class="spinner-sm hidden"></div>
+          </button>
+        </div>
+
+        <!-- Footer with Link to Review Terms & Privacy -->
+        <div class="auth-card-footer">
+          <span>By signing in, you agree to our </span>
+          <button id="btn-view-terms" class="auth-footer-terms-btn">Terms & Privacy Policy</button>
+        </div>
+
+      </div>
+    </div>
+
     
     <!-- Top Header -->
     
 
     <!-- Main Screens Viewport -->
+    <div id="main-app-shell" class="main-app-shell hidden">
     <main class="main-content">
       
       <!-- SCREEN 1: MAP HOME -->
@@ -70,7 +273,7 @@
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                 <circle cx="12" cy="10" r="3"></circle>
               </svg>
-              <span id="header-trip-title">Bangalore to Coorg</span>
+              <span id="header-trip-title">No Active Trip</span>
             </button>
 
             <!-- Feasibility Pill -->
@@ -85,6 +288,16 @@
               </div>
               <span class="feasibility-label" id="feasibility-label-text">Feasible</span>
             </div>
+
+            <!-- Google Maps Official Layer Switcher Chip -->
+            <button class="chip" id="chip-google-layers" title="Toggle Google Maps (Roadmap, Satellite, Terrain)">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+              <span id="map-layer-label">Google Maps</span>
+            </button>
 
             <!-- Category Chips with Vector Icons -->
             <button class="chip" data-cat="attractions" id="chip-attractions">
@@ -132,6 +345,103 @@
           </div>
         </div>
 
+        <!-- Google Maps Style Locate Me Button -->
+        <button id="btn-locate-me" class="fab-locate-btn" title="Your Location">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path>
+            <circle cx="12" cy="12" r="7" stroke-dasharray="2 2" stroke-width="1.2"></circle>
+          </svg>
+        </button>
+
+        <!-- Selected Place Bottom Card (Google Maps Style with Full Place Photo) -->
+        <div id="selected-place-sheet" class="selected-place-sheet hidden">
+          <div class="selected-place-img-wrapper">
+            <img id="selected-place-img" src="" alt="Place Photo" class="selected-place-img" />
+            <div class="selected-place-img-overlay"></div>
+            <span class="selected-place-tag" id="selected-place-tag">Scenic Stop</span>
+            <button id="btn-close-place-card" class="place-close-btn" title="Close">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="selected-place-details">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+              <div style="min-width: 0; flex: 1;">
+                <h3 class="selected-place-name" id="selected-place-name">Place Name</h3>
+                <p class="selected-place-location" id="selected-place-location">Location, India</p>
+              </div>
+              <div class="selected-place-dist-badge" id="selected-place-dist-badge">-- km</div>
+            </div>
+            <div class="selected-place-meta-row" id="selected-place-meta-row">
+              <span class="meta-pill" id="selected-place-hours">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span id="selected-place-hours-text">09:00 AM - 06:00 PM</span>
+              </span>
+              <span class="meta-pill" id="selected-place-coords">--° N, --° E</span>
+            </div>
+            <div class="selected-place-actions">
+              <button id="btn-add-selected-stop" class="btn-primary" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Add to Itinerary</span>
+              </button>
+              <button id="btn-set-destination" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                  <line x1="4" y1="22" x2="4" y2="15"></line>
+                </svg>
+                <span>Destination</span>
+              </button>
+            </div>
+
+            <!-- Famous Places, Food & Parks Around This Location -->
+            <div class="nearby-explore-section" id="nearby-explore-section">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 8px;">
+                <strong style="font-size: 13.5px; font-weight: 800; color: var(--on-surface);">Famous Places Around <span id="nearby-city-name">Hyderabad</span></strong>
+                <span class="chip active" style="font-size: 10.5px; padding: 2px 8px;" id="nearby-count-badge">Top Picks</span>
+              </div>
+
+              <!-- Filter Category Chips (All, Monuments, Famous Food, Parks & Lakes) -->
+              <div class="nearby-tabs-row" id="nearby-tabs-row">
+                <button class="nearby-tab-chip active" data-filter="all">All</button>
+                <button class="nearby-tab-chip" data-filter="monuments">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                  </svg>
+                  <span>Monuments</span>
+                </button>
+                <button class="nearby-tab-chip" data-filter="food">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                  </svg>
+                  <span>Famous Food</span>
+                </button>
+                <button class="nearby-tab-chip" data-filter="parks">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"></path>
+                  </svg>
+                  <span>Parks &amp; Lakes</span>
+                </button>
+              </div>
+
+              <!-- List of Nearby Places -->
+              <div class="nearby-places-carousel" id="nearby-places-carousel">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Add Stop FAB -->
         <button id="fab-add-stop" class="fab-btn" title="Add Stop">
           <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -147,19 +457,22 @@
           
           <div class="sheet-peek-content" id="sheet-summary-peek">
             <div class="peek-left">
-              <span class="peek-title" id="peek-next-stop-title">Next: Mysore Palace</span>
-              <span class="peek-subtitle" id="peek-stats-subtitle">5 stops • 240 km • 4 travelers</span>
+              <span class="peek-title" id="peek-next-stop-title">No Stops Added</span>
+              <span class="peek-subtitle" id="peek-stats-subtitle">0 stops • 0 km • 0 travelers</span>
             </div>
             <div class="peek-right">
-              <span class="peek-cost" id="peek-total-cost">₹12,450</span>
-              <span class="peek-budget-caption" id="peek-budget-caption">of ₹16,000 budget</span>
+              <span class="peek-cost" id="peek-total-cost">₹0</span>
+              <span class="peek-budget-caption" id="peek-budget-caption">of ₹0 budget</span>
             </div>
           </div>
 
           <div class="sheet-expanded-body" id="sheet-expanded-body">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <strong style="font-size: 14px; color: var(--on-surface);">Itinerary Sequence</strong>
-              <button class="btn-small primary" id="btn-open-full-itinerary">Full Itinerary</button>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-small secondary" id="btn-sheet-add-stop" title="Add Stop to Itinerary">+ Add Stop</button>
+                <button class="btn-small primary" id="btn-open-full-itinerary">Full Itinerary</button>
+              </div>
             </div>
             <div id="sheet-stops-compact-list" style="display: flex; flex-direction: column; gap: 8px;">
               <!-- Populated dynamically -->
@@ -214,8 +527,8 @@
         <div class="budget-hero-card">
           <div>
             <div class="hero-total-label">Total Estimated Trip Cost</div>
-            <div class="hero-total-amount" id="budget-hero-amount">₹12,450</div>
-            <div class="hero-per-person" id="budget-per-person-text">₹3,112 / person • 4 travelers</div>
+            <div class="hero-total-amount" id="budget-hero-amount">₹0</div>
+            <div class="hero-per-person" id="budget-per-person-text">₹0 / person • 0 travelers</div>
           </div>
 
           <!-- Scenario Switch -->
@@ -229,10 +542,10 @@
           <div>
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: var(--on-surface-variant);">
               <span>Budget Allocated</span>
-              <span id="budget-remaining-text">₹3,550 Remaining</span>
+              <span id="budget-remaining-text">₹0 Remaining</span>
             </div>
             <div class="budget-progress-track">
-              <div class="budget-progress-fill" id="budget-meter-fill" style="width: 77%;"></div>
+              <div class="budget-progress-fill" id="budget-meter-fill" style="width: 0%;"></div>
             </div>
           </div>
         </div>
@@ -430,13 +743,14 @@
         <div class="modal-body" style="padding: 12px 18px 20px 18px; gap: 14px;">
           <!-- User Profile Card -->
           <div style="background: var(--surface-container); border: 1px solid var(--outline-variant); border-radius: 18px; padding: 14px; display: flex; align-items: center; gap: 12px;">
-            <div style="width: 44px; height: 44px; border-radius: 50%; background: #1A73E8; color: #FFFFFF; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              A
+            <div id="account-avatar-wrapper" style="width: 44px; height: 44px; border-radius: 50%; background: #1A73E8; color: #FFFFFF; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;">
+              <img id="account-avatar-img" src="" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
+              <span id="account-avatar-initial">A</span>
             </div>
             <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 14px; font-weight: 700; color: var(--on-surface);">Avinash</div>
-              <div style="font-size: 12px; color: var(--on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">avinash@gmail.com</div>
-              <span style="display: inline-block; font-size: 10px; font-weight: 700; color: #1A73E8; background: rgba(26, 115, 232, 0.12); padding: 2px 7px; border-radius: 10px; margin-top: 4px;">Google Verified</span>
+              <div id="account-user-name" style="font-size: 14px; font-weight: 700; color: var(--on-surface);">Google Explorer</div>
+              <div id="account-user-email" style="font-size: 12px; color: var(--on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">explorer@gmail.com</div>
+              <span id="account-cloud-status" style="display: inline-block; font-size: 10px; font-weight: 700; color: #1A73E8; background: rgba(26, 115, 232, 0.12); padding: 2px 7px; border-radius: 10px; margin-top: 4px;">Cloud Firestore Active</span>
             </div>
           </div>
 
@@ -485,6 +799,16 @@
                 <option value="ta">தமிழ்</option>
               </select>
             </div>
+
+            <!-- Sign Out Button -->
+            <button id="btn-account-signout" class="account-signout-btn" style="margin-top: 6px; width: 100%; padding: 10px 14px; border-radius: 12px; background: rgba(234, 67, 53, 0.08); border: 1px solid rgba(234, 67, 53, 0.25); color: #EA4335; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 180ms ease;">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Sign Out of Google</span>
+            </button>
           </div>
         </div>
       </div>
@@ -547,7 +871,7 @@
               </div>
               <p style="font-size: 12px; color: var(--on-surface-variant);">Objective: Minimizes toll, homestay & fuel cost with daylight driving.</p>
               <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
-                <div>Total Cost: <span style="color: var(--primary);">₹12,450</span></div>
+                <div>Total Cost: <span style="color: var(--primary);">₹0</span></div>
                 <div>Per Person: ₹3,112</div>
                 <div>Duration: 8 hrs 30 mins</div>
                 <div>Conflicts: 0</div>
@@ -836,8 +1160,8 @@
           <!-- Trip Meta Card -->
           <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); padding: 12px; display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <strong id="share-trip-title" style="font-size: 14px; color: var(--on-surface);">Bangalore to Coorg</strong>
-              <div id="share-trip-meta" style="font-size: 12px; color: var(--on-surface-variant); margin-top: 2px;">5 stops • 231 km • 4 travelers</div>
+              <strong id="share-trip-title" style="font-size: 14px; color: var(--on-surface);">No Active Trip</strong>
+              <div id="share-trip-meta" style="font-size: 12px; color: var(--on-surface-variant); margin-top: 2px;">0 stops • 0 km • 0 travelers</div>
             </div>
             <span class="chip" id="share-feasibility-chip" style="font-size: 11px; padding: 3px 8px; font-weight: 700;">Feasible</span>
           </div>
@@ -902,6 +1226,60 @@
       </div>
     </div>
 
+    <!-- MODAL: GOOGLE MAPS STYLE LOCATION PERMISSION -->
+    <div id="modal-location-permission" class="modal-backdrop hidden">
+      <div class="modal-card google-permission-card">
+        <div class="google-perm-header">
+          <div class="google-perm-icon-wrapper">
+            <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+          </div>
+          <h2 class="google-perm-title">Allow TripWeave to access this device's location?</h2>
+          <p class="google-perm-desc">
+            TripWeave uses your location to show where you are on the road, compute driving distance, and recommend nearby stops along your route.
+          </p>
+        </div>
+
+        <!-- Android 12+ Precise vs Approximate Accuracy Selector -->
+        <div class="google-perm-accuracy-selector">
+          <button class="accuracy-option active" id="btn-perm-precise" data-accuracy="precise">
+            <div class="accuracy-preview-map precise-preview">
+              <div class="preview-blue-dot"></div>
+            </div>
+            <div class="accuracy-label">
+              <strong>Precise</strong>
+              <span>Most accurate</span>
+            </div>
+          </button>
+
+          <button class="accuracy-option" id="btn-perm-approx" data-accuracy="approximate">
+            <div class="accuracy-preview-map approx-preview">
+              <div class="preview-approx-circle"></div>
+            </div>
+            <div class="accuracy-label">
+              <strong>Approximate</strong>
+              <span>Area level</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- Google Maps Permission Choices -->
+        <div class="google-perm-actions">
+          <button class="google-perm-btn primary" id="btn-perm-while-using">
+            While using the app
+          </button>
+          <button class="google-perm-btn secondary" id="btn-perm-only-this-time">
+            Only this time
+          </button>
+          <button class="google-perm-btn text" id="btn-perm-dont-allow">
+            Don't allow
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Floating Toast Notification -->
     <div id="app-toast" class="toast-pill hidden">
       <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -909,6 +1287,9 @@
       </svg>
       <span id="toast-text">Copied to clipboard</span>
     </div>
+
+    </div><!-- /main-app-shell -->
+  </div><!-- /app -->
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>

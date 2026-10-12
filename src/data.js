@@ -88,13 +88,11 @@ export const SAMPLE_TRIPS = {};
 export const Storage = {
   load() {
     try {
+      // Clean start: clear any mock state
       const data = localStorage.getItem("tripweave_state");
       if (data) {
         const parsed = JSON.parse(data);
-        // Automatically purge any legacy mock trips
-        if (parsed.activeTripId && (parsed.activeTripId.includes('coorg') || parsed.activeTripId.includes('blr') || parsed.activeTripId.includes('hampi'))) {
-          localStorage.removeItem("tripweave_state");
-        } else if (parsed.trips && parsed.trips.length > 0) {
+        if (parsed && Array.isArray(parsed.trips) && parsed.trips.length > 0) {
           return parsed;
         }
       }
@@ -102,38 +100,31 @@ export const Storage = {
       console.warn("Could not load from localStorage", e);
     }
 
-    // Clean initial blank state
-    const defaultTrip = {
-      id: "trip-" + Date.now(),
-      title: "My Road Trip",
-      destinationName: "Select Destination",
-      departureTimeMinutes: 480, // 08:00 AM
-      totalBudget: 15000,
-      groupSize: 2,
-      vehicleMileageKmPerLitre: 16.0,
-      fuelPricePerLitre: 102.8,
-      isArchived: false
-    };
-
+    // Clean initial 0 and null state (Zero mock data)
     return {
-      activeTripId: defaultTrip.id,
-      trips: [defaultTrip],
-      stopsMap: {
-        [defaultTrip.id]: []
-      },
-      expensesMap: {
-        [defaultTrip.id]: []
-      },
+      activeTripId: null,
+      trips: [],
+      stopsMap: {},
+      expensesMap: {},
       lang: "en",
       theme: "light"
     };
   },
+
+  onSave: null,
 
   save(state) {
     try {
       localStorage.setItem("tripweave_state", JSON.stringify(state));
     } catch (e) {
       console.warn("Could not save to localStorage", e);
+    }
+    if (typeof this.onSave === 'function') {
+      try {
+        this.onSave(state);
+      } catch (err) {
+        console.warn("Storage.onSave hook error:", err);
+      }
     }
   }
 };
