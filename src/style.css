@@ -420,7 +420,7 @@ input, textarea, select, [contenteditable="true"] {
 /* Floating Top Area over Map (Positioned at Very Top) */
 .map-floating-overlay {
   position: absolute;
-  top: 14px;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   left: 14px;
   right: 14px;
   z-index: 500;
@@ -2737,7 +2737,8 @@ body.theme-dark .btn-google-signin:hover {
   border: 2px solid rgba(26, 115, 232, 0.2);
   border-top-color: #1A73E8;
   border-radius: 50%;
-  animation: locateSpin 0.7s linear infinite;
+  animation: none;
+  display: inline-block;
 }
 
 
@@ -3068,4 +3069,43 @@ button, input, textarea, select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+
+/* Student Journey & Hostel Styles */
+.student-stay-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #EEF2FF;
+  color: #4F46E5;
+  border: 1px solid #C7D2FE;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.student-budget-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ECFDF5;
+  color: #059669;
+  border: 1px solid #A7F3D0;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 9999px;
+}
+
+.leaflet-tile {
+  outline: 1px solid transparent !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  image-rendering: -webkit-optimize-contrast !important;
+  image-rendering: crisp-edges !important;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }

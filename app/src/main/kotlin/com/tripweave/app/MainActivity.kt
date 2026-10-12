@@ -3,14 +3,19 @@ package com.tripweave.app
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.content.Context
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
 import android.os.Message
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -21,7 +26,15 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewAssetLoader
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import org.json.JSONObject
 
 class MainActivity : ComponentActivity() {
 
@@ -29,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private var popupDialog: Dialog? = null
     private var pendingGeoCallback: GeolocationPermissions.Callback? = null
     private var pendingGeoOrigin: String? = null
+    private lateinit var googleSignInClient: GoogleSignInClient
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -40,10 +54,36 @@ class MainActivity : ComponentActivity() {
         pendingGeoOrigin = null
     }
 
+    private val googleSignInLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account: GoogleSignInAccount = task.getResult(ApiException::class.java)
+            val email = account.email ?: ""
+            val displayName = account.displayName ?: (account.givenName ?: "Explorer")
+            val photoUrl = account.photoUrl?.toString() ?: ""
+            val id = account.id ?: ("google-" + System.currentTimeMillis())
+            val idToken = account.idToken ?: ""
+            notifyAuthSuccess(email, displayName, photoUrl, id, idToken)
+        } catch (e: ApiException) {
+            val msg = "Google Sign-In: " + e.statusCode + " (" + (e.localizedMessage ?: "canceled") + ")"
+            notifyAuthFailure(msg)
+        } catch (e: Exception) {
+            notifyAuthFailure(e.localizedMessage ?: "Sign-in failed")
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestProfile()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
@@ -63,8 +103,18 @@ class MainActivity : ComponentActivity() {
             overScrollMode = WebView.OVER_SCROLL_NEVER
         }
 
+        // Apply Status Bar Insets so header never clips under clock, battery, or notch
+        ViewCompat.setOnApplyWindowInsetsListener(mainWebView) { view, insets ->
+            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            view.setPadding(0, statusBarHeight, 0, 0)
+            insets
+        }
+
         cookieManager.setAcceptThirdPartyCookies(mainWebView, true)
         configureWebSettings(mainWebView.settings)
+
+        // Inject Native Google Auth Bridge
+        mainWebView.addJavascriptInterface(AndroidAuthBridge(), "AndroidAuthBridge")
 
         mainWebView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
@@ -80,6 +130,16 @@ class MainActivity : ComponentActivity() {
             ): Boolean {
                 val url = request.url.toString()
                 return isExternalIntent(url, view)
+            }
+
+            override fun onReceivedError(
+                view: WebView,
+                request: WebResourceRequest,
+                error: WebResourceError
+            ) {
+                if (request.isForMainFrame) {
+                    view.loadUrl("https://appassets.androidplatform.net/index.html")
+                }
             }
         }
 
@@ -173,11 +233,64 @@ class MainActivity : ComponentActivity() {
         mainWebView.loadUrl("https://appassets.androidplatform.net/index.html")
     }
 
+    private fun notifyAuthSuccess(email: String, displayName: String, photoUrl: String, id: String, idToken: String) {
+        val json = JSONObject().apply {
+            put("success", true)
+            put("email", email)
+            put("displayName", displayName)
+            put("photoUrl", photoUrl)
+            put("uid", id)
+            put("idToken", idToken)
+        }.toString()
+        mainWebView.post {
+            mainWebView.evaluateJavascript("if (window.onNativeGoogleSignInSuccess) { window.onNativeGoogleSignInSuccess(" + json + "); }", null)
+        }
+    }
+
+    private fun notifyAuthFailure(error: String) {
+        val safeError = JSONObject.quote(error)
+        mainWebView.post {
+            mainWebView.evaluateJavascript("if (window.onNativeGoogleSignInFailure) { window.onNativeGoogleSignInFailure(" + safeError + "); }", null)
+        }
+    }
+
+    inner class AndroidAuthBridge {
+        @JavascriptInterface
+        fun requestGoogleSignIn() {
+            runOnUiThread {
+                googleSignInClient.signOut().addOnCompleteListener {
+                    googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun signOut() {
+            runOnUiThread {
+                googleSignInClient.signOut()
+            }
+        }
+
+        @JavascriptInterface
+        fun isNativeAndroid(): Boolean {
+            return true
+        }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val net = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(net) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     private fun configureWebSettings(settings: WebSettings) {
+        val isOnline = isNetworkAvailable()
         settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
+            cacheMode = if (isOnline) WebSettings.LOAD_DEFAULT else WebSettings.LOAD_CACHE_ELSE_NETWORK
             setGeolocationEnabled(true)
             setSupportMultipleWindows(true)
             javaScriptCanOpenWindowsAutomatically = true
@@ -185,7 +298,7 @@ class MainActivity : ComponentActivity() {
             allowContentAccess = false
             useWideViewPort = true
             loadWithOverviewMode = true
-            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
+            userAgentString = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36 TripWeaveNative/1.2"
         }
     }
 
@@ -198,6 +311,9 @@ class MainActivity : ComponentActivity() {
             host.contains("firebaseapp.com") ||
             host.contains("gstatic.com") ||
             host.contains("openstreetmap.org") ||
+            host.contains("cartocdn.com") ||
+            host.contains("wikimedia.org") ||
+            host.contains("wikipedia.org") ||
             host.contains("komoot.de") ||
             host.contains("photon.komoot.io")
         ) {

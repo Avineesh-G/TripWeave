@@ -26,21 +26,27 @@ export function resizeMap() {
 
 const GOOGLE_TILE_PROVIDERS = {
   roadmap: {
-    url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+    url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&scale=2',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 20,
+    tileSize: 512,
+    zoomOffset: -1,
     attribution: 'Google Maps'
   },
   satellite: {
-    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&scale=2',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 20,
+    tileSize: 512,
+    zoomOffset: -1,
     attribution: 'Google Satellite'
   },
   terrain: {
-    url: 'https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
+    url: 'https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&scale=2',
     subdomains: ['0', '1', '2', '3'],
     maxZoom: 20,
+    tileSize: 512,
+    zoomOffset: -1,
     attribution: 'Google Terrain'
   }
 };
@@ -52,9 +58,12 @@ function createCleanTileLayer(layerKey = 'roadmap') {
   const layer = L.tileLayer(conf.url, {
     subdomains: conf.subdomains,
     maxZoom: conf.maxZoom,
+    tileSize: conf.tileSize || 512,
+    zoomOffset: conf.zoomOffset !== undefined ? conf.zoomOffset : -1,
+    detectRetina: true,
     attribution: conf.attribution,
     crossOrigin: true,
-    keepBuffer: 8,
+    keepBuffer: 6,
     updateWhenIdle: true,
     updateWhenZooming: false
   });
@@ -1995,7 +2004,7 @@ function setupPrivacyTermsAndAuthEvents() {
   if (googleBtn) {
     googleBtn.onclick = async () => {
       if (googleSpinner) googleSpinner.classList.remove('hidden');
-      if (googleBtnLabel) googleBtnLabel.textContent = 'Authenticating...';
+      if (googleBtnLabel) googleBtnLabel.textContent = 'Selecting Account...';
       googleBtn.disabled = true;
 
       try {
@@ -2368,7 +2377,7 @@ function finalizeTripCreation() {
 
 // Google Maps Layer Switcher (Roadmap, Satellite Hybrid, Terrain)
 window.switchGoogleMapLayer = function(type) {
-  if (!mapInstance || typeof google === 'undefined' || !google.maps) return;
+  if (!mapInstance) return;
   const mapType = type === 'satellite'
     ? google.maps.MapTypeId.HYBRID
     : (type === 'terrain' ? google.maps.MapTypeId.TERRAIN : google.maps.MapTypeId.ROADMAP);

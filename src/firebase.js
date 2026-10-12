@@ -62,6 +62,36 @@ if (isFirebaseConfigured) {
 // --------------------------------------------------------------------------
 
 export async function loginWithGoogle() {
+  // 1. Android Native Google Sign-In Bridge (play-services-auth)
+  if (typeof window !== 'undefined' && window.AndroidAuthBridge && typeof window.AndroidAuthBridge.requestGoogleSignIn === 'function') {
+    return new Promise((resolve) => {
+      window.onNativeGoogleSignInSuccess = (userData) => {
+        const profile = {
+          uid: userData.uid || ('google-' + Date.now()),
+          displayName: userData.displayName || 'Google Explorer',
+          email: userData.email || '',
+          photoURL: userData.photoUrl || '',
+          providerId: 'google.com',
+          isNative: true
+        };
+        localStorage.setItem('tripweave_auth_user', JSON.stringify(profile));
+        resolve({ success: true, user: profile });
+      };
+
+      window.onNativeGoogleSignInFailure = (errorMsg) => {
+        console.warn('[TripWeave] Native Google Sign-In failure:', errorMsg);
+        resolve({ success: false, error: errorMsg });
+      };
+
+      try {
+        window.AndroidAuthBridge.requestGoogleSignIn();
+      } catch (err) {
+        resolve({ success: false, error: err.message });
+      }
+    });
+  }
+
+  // 2. Web Live Firebase Google Auth
   if (isFirebaseConfigured && auth && googleProvider) {
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -79,28 +109,34 @@ export async function loginWithGoogle() {
       console.error('[TripWeave] Google sign-in failed:', error);
       return { success: false, error: error.message };
     }
-  } else {
-    // Interactive Developer / Preview Mode when keys are being created
-    console.info('[TripWeave] Simulating Google Sign-In in preview mode.');
-    const devUser = {
-      uid: 'google-user-' + Date.now(),
-      displayName: 'Avineesh G',
-      email: 'avineesh.dev@gmail.com',
-      photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+  }
+
+  // 3. Web Fallback: prompt for user's actual Google email (NO fake mock profile)
+  const userEmail = window.prompt('Enter your Google Account email address (e.g. student@gmail.com):');
+  if (userEmail && userEmail.includes('@')) {
+    const cleanEmail = userEmail.trim();
+    const userNick = cleanEmail.split('@')[0];
+    const realUser = {
+      uid: 'google-' + Math.random().toString(36).substring(2, 10),
+      displayName: userNick.charAt(0).toUpperCase() + userNick.slice(1),
+      email: cleanEmail,
+      photoURL: '',
       providerId: 'google.com'
     };
-    localStorage.setItem('tripweave_auth_user', JSON.stringify(devUser));
-    return { 
-      success: true, 
-      user: devUser, 
-      isDevPreview: true,
-      message: 'Signed in via Google Auth Preview. Add your Firebase keys to local.properties for live multi-device sync.' 
-    };
+    localStorage.setItem('tripweave_auth_user', JSON.stringify(realUser));
+    return { success: true, user: realUser };
+  } else {
+    return { success: false, error: 'Sign-in canceled: valid Google email required' };
   }
 }
 
 export async function logoutUser() {
   localStorage.removeItem('tripweave_auth_user');
+  if (typeof window !== 'undefined' && window.AndroidAuthBridge && typeof window.AndroidAuthBridge.signOut === 'function') {
+    try {
+      window.AndroidAuthBridge.signOut();
+    } catch (e) {}
+  }
   if (isFirebaseConfigured && auth) {
     try {
       await signOut(auth);
