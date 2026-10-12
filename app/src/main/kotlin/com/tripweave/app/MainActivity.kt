@@ -256,6 +256,20 @@ class MainActivity : ComponentActivity() {
 
     inner class AndroidAuthBridge {
         @JavascriptInterface
+        fun downloadUpdate(apkUrl: String) {
+            runOnUiThread {
+                try {
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        data = Uri.parse(apkUrl)
+                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+        @JavascriptInterface
         fun requestGoogleSignIn() {
             runOnUiThread {
                 googleSignInClient.signOut().addOnCompleteListener {

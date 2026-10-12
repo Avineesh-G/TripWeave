@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
   
   <!-- Custom Styling -->
-  <script type="module" crossorigin src="/assets/index-DnqUBp1l.js"></script>
+  <script type="module" crossorigin src="/assets/index-B_BT7iOj.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-YjOJmPtP.css">
 </head>
 <body class="theme-light">
@@ -799,6 +799,23 @@
               </select>
             </div>
 
+            
+            <!-- In-App Version & Update Check -->
+            <div style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--surface-container-low); border: 1px solid var(--outline-variant);">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">App Version</span>
+                  <span style="font-size: 11px; color: var(--on-surface-variant);" id="app-version-badge">TripWeave v1.2.0</span>
+                </div>
+              </div>
+              <button id="btn-check-update" class="btn-small" style="font-size: 11px; padding: 4px 10px; font-weight: 700; color: #1A73E8; border-color: #1A73E8; cursor: pointer;">Check Update</button>
+            </div>
+
             <!-- Sign Out Button -->
             <button id="btn-account-signout" class="account-signout-btn" style="margin-top: 6px; width: 100%; padding: 10px 14px; border-radius: 12px; background: rgba(234, 67, 53, 0.08); border: 1px solid rgba(234, 67, 53, 0.25); color: #EA4335; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 180ms ease;">
               <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -809,6 +826,62 @@
               <span>Sign Out of Google</span>
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    
+    <!-- MODAL: APP UPDATE AVAILABLE (In-App OTA Update System) -->
+    <div id="modal-app-update" class="modal-backdrop hidden">
+      <div class="modal-card" style="max-width: 360px; border-radius: 24px;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(26, 115, 232, 0.12); color: #1A73E8; display: flex; align-items: center; justify-content: center;">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </div>
+            <h2 class="modal-title" style="font-size: 16px;">Update Available</h2>
+          </div>
+          <button class="modal-close-btn" id="modal-update-close-btn">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" style="gap: 12px;">
+          <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <strong id="update-modal-version" style="font-size: 15px; color: var(--on-surface);">TripWeave v1.2.0</strong>
+              <span style="font-size: 11px; font-weight: 700; color: #1A73E8; background: rgba(26,115,232,0.12); padding: 2px 8px; border-radius: 9999px;">Latest</span>
+            </div>
+            <p style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.4; margin: 0;">A new updated release is available with enhanced performance, crisp 2x Retina maps, native Google sign-in, and student planning.</p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--on-surface);">What's New in This Version:</span>
+            <ul style="margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--on-surface-variant); line-height: 1.5; display: flex; flex-direction: column; gap: 4px;" id="update-modal-notes">
+              <li>High-DPI 2x Retina Google Maps rendering for crystal clarity</li>
+              <li>Genuine Android Google Sign-In with device account chooser</li>
+              <li>Status bar &amp; notification shade clearance (safe-area padding)</li>
+              <li>Student trip planning, student stays, and per-head budget models</li>
+              <li>Instant offline resilience with local storage and auto-sync</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 8px;">
+          <button id="modal-update-later-btn" class="btn-secondary" style="flex: 1;">Later</button>
+          <button id="btn-install-apk-update" class="btn-primary" style="flex: 2; background: #1A73E8; color: #FFFFFF; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download &amp; Install</span>
+          </button>
         </div>
       </div>
     </div>

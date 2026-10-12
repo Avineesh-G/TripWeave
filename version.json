@@ -1,0 +1,13 @@
+{
+  "versionName": "1.2.0",
+  "versionCode": 3,
+  "releaseDate": "2026-10-12",
+  "apkUrl": "https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave-v1.2.0.apk",
+  "releaseNotes": [
+    "High-DPI 2x Retina Google Maps rendering for crystal clarity",
+    "Genuine Android Google Sign-In with device account chooser",
+    "Status bar & notification shade clearance (safe-area padding)",
+    "Student trip planning, student stays, and per-head budget models",
+    "Instant offline resilience with local storage and auto-sync"
+  ]
+}

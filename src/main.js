@@ -2050,6 +2050,102 @@ function setupPrivacyTermsAndAuthEvents() {
   });
 }
 
+
+// ==========================================================================
+// IN-APP APK UPDATE CHECKER (v1.2.0 OTA Engine)
+// ==========================================================================
+const CURRENT_APP_VERSION = '1.2.0';
+const CURRENT_VERSION_CODE = 3;
+const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave-v1.2.0.apk';
+
+async function checkForAppUpdates(manualTrigger = false) {
+  try {
+    const res = await fetch('https://raw.githubusercontent.com/Avineesh-G/TripWeave/main/version.json?t=' + Date.now());
+    if (res.ok) {
+      const data = await res.json();
+      if (data.versionCode > CURRENT_VERSION_CODE || (data.versionName && data.versionName !== CURRENT_APP_VERSION)) {
+        showUpdateModal(data);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('[TripWeave] Update check info:', err);
+  }
+
+  if (manualTrigger) {
+    showUpdateModal({
+      versionName: CURRENT_APP_VERSION,
+      apkUrl: LATEST_APK_URL,
+      releaseNotes: [
+        'High-DPI 2x Retina Google Maps rendering for crystal clarity',
+        'Genuine Android Google Sign-In with device account chooser',
+        'Status bar & notification shade clearance (safe-area padding)',
+        'Student trip planning, student stays, and per-head budget models',
+        'Instant offline resilience with local storage and auto-sync'
+      ]
+    });
+  }
+}
+
+function showUpdateModal(info) {
+  const modal = document.getElementById('modal-app-update');
+  if (!modal) return;
+  const verEl = document.getElementById('update-modal-version');
+  if (verEl && info.versionName) verEl.textContent = `TripWeave v${info.versionName}`;
+
+  const installBtn = document.getElementById('btn-install-apk-update');
+  if (installBtn) {
+    installBtn.onclick = () => {
+      const apkUrl = info.apkUrl || LATEST_APK_URL;
+      if (typeof window !== 'undefined' && window.AndroidAuthBridge && typeof window.AndroidAuthBridge.downloadUpdate === 'function') {
+        window.AndroidAuthBridge.downloadUpdate(apkUrl);
+      } else {
+        window.open(apkUrl, '_blank');
+      }
+      modal.classList.add('hidden');
+      showToast('Downloading TripWeave update...');
+    };
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function setupUpdateCheckerEvents() {
+  const btnCheck = document.getElementById('btn-check-update');
+  const btnClose = document.getElementById('modal-update-close-btn');
+  const btnLater = document.getElementById('modal-update-later-btn');
+  const modal = document.getElementById('modal-app-update');
+
+  if (btnCheck) {
+    btnCheck.onclick = (e) => {
+      e.stopPropagation();
+      const acctModal = document.getElementById('modal-google-account');
+      if (acctModal) acctModal.classList.add('hidden');
+      checkForAppUpdates(true);
+    };
+  }
+
+  if (btnClose && modal) {
+    btnClose.onclick = () => modal.classList.add('hidden');
+  }
+
+  if (btnLater && modal) {
+    btnLater.onclick = () => modal.classList.add('hidden');
+  }
+
+  if (modal) {
+    modal.onclick = (e) => {
+      if (e.target === modal) modal.classList.add('hidden');
+    };
+  }
+
+  // Automatic check once on launch
+  setTimeout(() => {
+    checkForAppUpdates(false);
+  }, 2500);
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupEvents();
@@ -2057,6 +2153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupCategoryChips();
   setupLocationPermission();
   setupPrivacyTermsAndAuthEvents();
+  setupUpdateCheckerEvents();
   refreshApp();
 });
 
