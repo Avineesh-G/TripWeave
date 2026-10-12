@@ -2052,11 +2052,11 @@ function setupPrivacyTermsAndAuthEvents() {
 
 
 // ==========================================================================
-// IN-APP APK UPDATE CHECKER (v1.2.0 OTA Engine)
+// IN-APP APK UPDATE CHECKER (v1.3.0 OTA Engine)
 // ==========================================================================
-const CURRENT_APP_VERSION = '1.2.0';
-const CURRENT_VERSION_CODE = 3;
-const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave-v1.2.0.apk';
+const CURRENT_APP_VERSION = '1.3.0';
+const CURRENT_VERSION_CODE = 4;
+const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave-v1.3.0.apk';
 
 async function checkForAppUpdates(manualTrigger = false) {
   try {
