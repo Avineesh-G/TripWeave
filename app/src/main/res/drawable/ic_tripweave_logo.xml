@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- TripWeave Pin Base in Teal (#087F75) -->
+    <path
+        android:fillColor="#087F75"
+        android:pathData="M85,209.8 A171,171 0,0,1 427,209.8 C427,298.9 354.8,385.1 262.5,469.2 C259,472.5 253,472.5 249.5,469.2 C157.2,385.1 85,298.9 85,209.8 Z" />
+
+    <!-- Paper Airplane Navigation Cutout in White (#FFFFFF) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M359.4,145.5 L286.6,335.3 L243.7,266.4 L299.6,204.0 L228.1,245.6 L150.1,222.2 Z" />
+</vector>

@@ -22,8 +22,8 @@ android {
         applicationId = "com.tripweave.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
@@ -46,6 +46,10 @@ android {
 }
 
 dependencies {
+    implementation("androidx.webkit:webkit:1.12.0")
+    implementation("androidx.browser:browser:1.8.0")
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
     implementation(project(":core:model"))
     implementation(project(":core:planning"))
     implementation(project(":core:providers"))

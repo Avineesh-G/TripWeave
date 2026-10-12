@@ -33,8 +33,10 @@ export default defineConfig(({ mode }) => {
     process.env[key] || 
     '';
 
+  // SECURITY: Never bake private API keys into static JS bundles checked into git
+  const isDev = mode === 'development';
   const firebaseConfig = {
-    apiKey: getVal('FIREBASE_API_KEY'),
+    apiKey: isDev ? getVal('FIREBASE_API_KEY') : '',
     authDomain: getVal('FIREBASE_AUTH_DOMAIN'),
     projectId: getVal('FIREBASE_PROJECT_ID'),
     storageBucket: getVal('FIREBASE_STORAGE_BUCKET'),
@@ -43,7 +45,7 @@ export default defineConfig(({ mode }) => {
     measurementId: getVal('FIREBASE_MEASUREMENT_ID')
   };
 
-  const mapsApiKey = getVal('MAPS_API_KEY');
+  const mapsApiKey = isDev ? getVal('MAPS_API_KEY') : '';
 
   return {
     define: {

@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <link rel="icon" type="image/svg+xml" href="/app-logo.svg">
   <title>TripWeave — Soft Tonal UI/UX (Spec v3)</title>
   <!-- Google Fonts: Plus Jakarta Sans & Noto Indian Scripts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
+  
   <!-- Custom Styling -->
   <link rel="stylesheet" href="/src/style.css">
 </head>
@@ -94,7 +94,7 @@
             </ul>
           </div>
 
-          <!-- Section 4: Sovereign Indian Map Compliance & Advisory -->
+          <!-- Section 4: Map Guidelines & Road Safety Advisory -->
           <div class="privacy-section">
             <div class="privacy-section-head">
               <div class="privacy-section-icon">
@@ -103,10 +103,10 @@
                   <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
               </div>
-              <h3 class="privacy-section-title">4. Sovereign Map Compliance & Road Advisory</h3>
+              <h3 class="privacy-section-title">4. Map Guidelines & Road Safety Advisory</h3>
             </div>
             <p class="privacy-text">
-              TripWeave utilizes official Google Maps layers with <code>gl=IN</code> compliance, adhering 100% to Survey of India standards with sovereign national borders for Jammu & Kashmir, Ladakh, and Arunachal Pradesh.
+              TripWeave utilizes official Google Maps layers adhering to standard official map compliance and national road guidelines.
             </p>
             <p class="privacy-text" style="margin-top: 8px;">
               <strong>Road Safety Advisory:</strong> Travel plans, visiting hours, and fuel cost models are decision-support estimates. Drivers must always adhere to local traffic rules, speed limits, and official road conditions.
@@ -139,9 +139,7 @@
         <!-- App Brand Header -->
         <div class="auth-brand-header">
           <div class="auth-logo-badge">
-            <svg class="auth-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 19 21 12 17 5 21 12 2"></polygon>
-            </svg>
+            <img src="/app-logo.svg" alt="TripWeave Logo" class="auth-logo-img">
           </div>
           <h1 class="auth-app-title">TripWeave</h1>
           <p class="auth-app-subtitle">Sovereign Intelligent Road Trip Planner</p>
@@ -1291,8 +1289,7 @@
     </div><!-- /main-app-shell -->
   </div><!-- /app -->
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
   <!-- Application Entry -->
   <script type="module" src="/src/main.js"></script>
 </body>
