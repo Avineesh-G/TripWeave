@@ -2731,15 +2731,7 @@ body.theme-dark .btn-google-signin:hover {
   display: none !important;
 }
 
-.spinner-sm {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(26, 115, 232, 0.2);
-  border-top-color: #1A73E8;
-  border-radius: 50%;
-  animation: none;
-  display: inline-block;
-}
+
 
 
 /* ==========================================================================

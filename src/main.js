@@ -1965,7 +1965,7 @@ function setupPrivacyTermsAndAuthEvents() {
 
   const googleBtn = document.getElementById('btn-google-signin');
   const googleBtnLabel = document.getElementById('google-signin-btn-label');
-  const googleSpinner = document.getElementById('google-signin-spinner');
+  
   const signoutBtn = document.getElementById('btn-account-signout');
 
   // Checkbox toggle enables/disables the Accept button
@@ -2003,14 +2003,14 @@ function setupPrivacyTermsAndAuthEvents() {
   // Google Sign-In button handler
   if (googleBtn) {
     googleBtn.onclick = async () => {
-      if (googleSpinner) googleSpinner.classList.remove('hidden');
+      
       if (googleBtnLabel) googleBtnLabel.textContent = 'Selecting Account...';
       googleBtn.disabled = true;
 
       try {
         const res = await loginWithGoogle();
 
-        if (googleSpinner) googleSpinner.classList.add('hidden');
+        
         if (googleBtnLabel) googleBtnLabel.textContent = 'Sign in with Google';
         googleBtn.disabled = false;
 
@@ -2021,7 +2021,7 @@ function setupPrivacyTermsAndAuthEvents() {
           showToast(`Sign-in error: ${res.error || 'Failed'}`);
         }
       } catch (err) {
-        if (googleSpinner) googleSpinner.classList.add('hidden');
+        
         if (googleBtnLabel) googleBtnLabel.textContent = 'Sign in with Google';
         googleBtn.disabled = false;
         console.error('Google login error:', err);
