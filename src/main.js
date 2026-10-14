@@ -147,16 +147,18 @@ async function fetchLiveOsrmRoute(stops) {
   if (routeCache.has(coords)) return routeCache.get(coords);
 
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=true`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
     if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
       const route = data.routes[0];
+      const steps = (route.legs || []).flatMap(leg => leg.steps || []);
       const result = {
         polylineLatlngs: route.geometry.coordinates.map(c => [c[1], c[0]]),
         distanceKm: route.distance / 1000,
-        durationMinutes: Math.round(route.duration / 60)
+        durationMinutes: Math.round(route.duration / 60),
+        steps: steps
       };
       routeCache.set(coords, result);
       return result;
@@ -165,6 +167,386 @@ async function fetchLiveOsrmRoute(stops) {
     console.warn('OSRM live routing fallback to local calculation:', err);
   }
   return null;
+}
+
+// Dynamic Real Place Photo Resolver via Wikipedia PageImages API
+const wikiPhotoCache = new Map();
+
+async function fetchRealPlacePhoto(placeName) {
+  if (!placeName) return null;
+  const cleanTitle = placeName.split(',')[0].trim();
+  if (wikiPhotoCache.has(cleanTitle.toLowerCase())) {
+    return wikiPhotoCache.get(cleanTitle.toLowerCase());
+  }
+  try {
+    const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cleanTitle)}&prop=pageimages&format=json&pithumbsize=1000&origin=*`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const pages = data.query?.pages;
+      if (pages) {
+        const pageId = Object.keys(pages)[0];
+        if (pageId && pageId !== '-1' && pages[pageId].thumbnail?.source) {
+          const photo = pages[pageId].thumbnail.source;
+          wikiPhotoCache.set(cleanTitle.toLowerCase(), photo);
+          return photo;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Wiki photo lookup fallback:', err);
+  }
+  return null;
+}
+
+// Geocode Place String using local cache + Photon API
+async function geocodePlace(placeString) {
+  if (!placeString) return null;
+  const q = placeString.trim();
+  const lower = q.toLowerCase();
+
+  for (const [key, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
+    if (lower.includes(key) || lower.includes(hub.cityName.toLowerCase())) {
+      return { name: hub.cityName, lat: hub.lat, lng: hub.lng };
+    }
+  }
+
+  for (const item of LOCAL_INDIAN_DESTINATIONS) {
+    if (lower.includes(item.name.toLowerCase())) {
+      return { name: item.name, lat: item.lat, lng: item.lng };
+    }
+  }
+
+  try {
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.features && data.features.length > 0) {
+        const f = data.features[0];
+        const [lng, lat] = f.geometry.coordinates;
+        const name = f.properties.name || q;
+        return { name, lat, lng };
+      }
+    }
+  } catch (err) {
+    console.warn('Geocoding fallback error:', err);
+  }
+
+  return { name: q, lat: 12.9716, lng: 77.5946 };
+}
+
+// ==========================================================================
+// IN-APP TURN-BY-TURN NAVIGATION ENGINE (Google Maps Style)
+// ==========================================================================
+let isNavigating = false;
+let currentNavStepIndex = 0;
+let activeNavSteps = [];
+let currentNavRoute = null;
+
+function getManeuverSvg(type, modifier) {
+  const mod = (modifier || '').toLowerCase();
+  const t = (type || '').toLowerCase();
+  if (t === 'arrive') {
+    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
+  }
+  if (mod.includes('left')) {
+    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>`;
+  }
+  if (mod.includes('right')) {
+    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></svg>`;
+  }
+  if (mod.includes('uturn')) {
+    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>`;
+  }
+  if (t.includes('roundabout')) {
+    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"></circle><polyline points="12 9 15 12 12 15"></polyline></svg>`;
+  }
+  return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+}
+
+function getManeuverInstruction(step) {
+  if (!step) return 'Continue on route';
+  const name = step.name ? ` onto ${step.name}` : '';
+  const type = step.maneuver?.type || 'depart';
+  const modifier = step.maneuver?.modifier || '';
+
+  if (type === 'arrive') return 'Arrive at destination';
+  if (type === 'depart') return `Head ${modifier || 'forward'}${name}`;
+  if (type === 'turn') return `Turn ${modifier || 'ahead'}${name}`;
+  if (type === 'roundabout') return `Take roundabout exit${name}`;
+  if (type === 'merge') return `Merge${name}`;
+  if (type === 'fork') return `Keep ${modifier || 'straight'}${name}`;
+  return `Continue straight${name}`;
+}
+
+function startInAppNavigation(navRoute) {
+  if (!navRoute || !navRoute.steps || navRoute.steps.length === 0) {
+    showToast('No turn-by-turn route available. Add stops first.');
+    return;
+  }
+  currentNavRoute = navRoute;
+  activeNavSteps = navRoute.steps;
+  currentNavStepIndex = 0;
+  isNavigating = true;
+
+  const topHud = document.getElementById('nav-hud-top');
+  const bottomHud = document.getElementById('nav-hud-bottom');
+  const mapScreen = document.getElementById('screen-map');
+
+  if (topHud) topHud.classList.remove('hidden');
+  if (bottomHud) bottomHud.classList.remove('hidden');
+  if (mapScreen) mapScreen.classList.add('in-navigation-mode');
+
+  updateNavHud();
+  showToast('In-app turn-by-turn navigation started');
+  switchTab('map');
+}
+
+function updateNavHud() {
+  if (!isNavigating || !activeNavSteps || activeNavSteps.length === 0) return;
+  const step = activeNavSteps[currentNavStepIndex];
+  if (!step) return;
+
+  const iconBox = document.getElementById('nav-maneuver-icon');
+  const distEl = document.getElementById('nav-maneuver-dist');
+  const instEl = document.getElementById('nav-maneuver-instruction');
+  const etaEl = document.getElementById('nav-bottom-eta');
+  const subEl = document.getElementById('nav-bottom-sub');
+
+  if (iconBox) iconBox.innerHTML = getManeuverSvg(step.maneuver?.type, step.maneuver?.modifier);
+  if (distEl) {
+    const d = step.distance || 0;
+    distEl.textContent = d < 1000 ? `In ${Math.round(d)} m` : `In ${(d / 1000).toFixed(1)} km`;
+  }
+  if (instEl) instEl.textContent = getManeuverInstruction(step);
+
+  const remainingSteps = activeNavSteps.slice(currentNavStepIndex);
+  const remainingDistanceM = remainingSteps.reduce((acc, s) => acc + (s.distance || 0), 0);
+  const remainingDurationSec = remainingSteps.reduce((acc, s) => acc + (s.duration || 0), 0);
+
+  const remMins = Math.max(1, Math.round(remainingDurationSec / 60));
+  const remKm = (remainingDistanceM / 1000).toFixed(1);
+
+  if (etaEl) etaEl.textContent = `${remMins} min`;
+  if (subEl) subEl.textContent = `${remKm} km remaining • Step ${currentNavStepIndex + 1} of ${activeNavSteps.length}`;
+
+  if (step.maneuver?.location && mapInstance) {
+    const [lon, lat] = step.maneuver.location;
+    mapInstance.setView([lat, lon], 17);
+  }
+}
+
+function exitInAppNavigation() {
+  isNavigating = false;
+  currentNavRoute = null;
+  activeNavSteps = [];
+  const topHud = document.getElementById('nav-hud-top');
+  const bottomHud = document.getElementById('nav-hud-bottom');
+  const mapScreen = document.getElementById('screen-map');
+
+  if (topHud) topHud.classList.add('hidden');
+  if (bottomHud) bottomHud.classList.add('hidden');
+  if (mapScreen) mapScreen.classList.remove('in-navigation-mode');
+
+  if (mapInstance) {
+    resizeMap();
+    const plan = computePlan();
+    updateMapRoute(plan);
+  }
+  showToast('Navigation exited');
+}
+
+// ==========================================================================
+// ROUTE & CORRIDOR STOPS PROPOSAL (Traveler Approval Flow)
+// ==========================================================================
+let pendingProposalData = null;
+
+async function generateAndShowTripProposal(tripState) {
+  showToast('Computing fastest route & corridor stops...');
+
+  const modal = document.getElementById('modal-trip-proposal');
+  const createModal = document.getElementById('modal-create-trip');
+  if (createModal) createModal.classList.add('hidden');
+
+  const origGeo = await geocodePlace(tripState.origin);
+  const destGeo = await geocodePlace(tripState.destination);
+
+  const dummyStops = [
+    { latitude: origGeo.lat, longitude: origGeo.lng, name: origGeo.name },
+    { latitude: destGeo.lat, longitude: destGeo.lng, name: destGeo.name }
+  ];
+
+  const route = await fetchLiveOsrmRoute(dummyStops);
+  const distanceKm = route ? route.distanceKm : calculateHaversineKm(origGeo.lat, origGeo.lng, destGeo.lat, destGeo.lng);
+  const durationMins = route ? route.durationMinutes : Math.round((distanceKm / 55) * 60);
+
+  const estFuel = Math.round((distanceKm / (tripState.mileage || 15)) * 102.8);
+
+  const titleEl = document.getElementById('proposal-route-title');
+  const distEl = document.getElementById('proposal-distance');
+  const durEl = document.getElementById('proposal-duration');
+  const fuelEl = document.getElementById('proposal-fuel');
+  const stopsListEl = document.getElementById('proposal-stops-list');
+
+  if (titleEl) titleEl.textContent = `${origGeo.name} ➔ ${destGeo.name}`;
+  if (distEl) distEl.textContent = `${Math.round(distanceKm)} km`;
+  if (durEl) durEl.textContent = `${Math.floor(durationMins / 60)}h ${durationMins % 60}m`;
+  if (fuelEl) fuelEl.textContent = `Est. Fuel ₹${estFuel.toLocaleString('en-IN')}`;
+
+  const poly = route && route.polylineLatlngs && route.polylineLatlngs.length > 5 ? route.polylineLatlngs : null;
+  const pLen = poly ? poly.length : 0;
+
+  const stop1Coords = poly ? poly[Math.floor(pLen * 0.3)] : [origGeo.lat + (destGeo.lat - origGeo.lat) * 0.3, origGeo.lng + (destGeo.lng - origGeo.lng) * 0.3];
+  const stop2Coords = poly ? poly[Math.floor(pLen * 0.58)] : [origGeo.lat + (destGeo.lat - origGeo.lat) * 0.58, origGeo.lng + (destGeo.lng - origGeo.lng) * 0.58];
+  const stop3Coords = poly ? poly[Math.floor(pLen * 0.82)] : [origGeo.lat + (destGeo.lat - origGeo.lat) * 0.82, origGeo.lng + (destGeo.lng - origGeo.lng) * 0.82];
+
+  const corridorStops = [
+    {
+      id: 'corridor-break-1',
+      name: `${origGeo.name.split(',')[0]} Highway Express Fuel & Cafe`,
+      category: 'fuel',
+      durationMinutes: 25,
+      bufferMinutes: 10,
+      latitude: stop1Coords[0],
+      longitude: stop1Coords[1],
+      description: 'Clean restrooms, fuel pumps, and tea/coffee stop'
+    },
+    {
+      id: 'corridor-dining-2',
+      name: `Grand Highway Dhaba & Family Restaurant`,
+      category: 'food',
+      durationMinutes: 45,
+      bufferMinutes: 15,
+      latitude: stop2Coords[0],
+      longitude: stop2Coords[1],
+      description: 'Hot regional thali, vegetarian meals, and dining rest'
+    },
+    {
+      id: 'corridor-scenic-3',
+      name: `${destGeo.name.split(',')[0]} Scenic Valley & Heritage Viewpoint`,
+      category: 'monuments',
+      durationMinutes: 40,
+      bufferMinutes: 15,
+      latitude: stop3Coords[0],
+      longitude: stop3Coords[1],
+      description: 'Scenic photo spot, panoramic hill view & fresh breeze'
+    }
+  ];
+
+  pendingProposalData = {
+    tripState,
+    origGeo,
+    destGeo,
+    route,
+    distanceKm,
+    durationMins,
+    corridorStops
+  };
+
+  if (stopsListEl) {
+    stopsListEl.innerHTML = corridorStops.map((s, idx) => `
+      <div style="background: var(--surface-container); border: 1px solid var(--outline-variant); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; min-width: 0;">
+          <input type="checkbox" id="chk-${s.id}" checked style="width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0;" />
+          <div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--on-surface);">${s.name}</div>
+            <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px;">${s.description} • ${s.durationMinutes}m stop</div>
+          </div>
+        </label>
+        <span class="chip" style="font-size: 10px; padding: 2px 8px; text-transform: uppercase;">${s.category}</span>
+      </div>
+    `).join('');
+  }
+
+  if (modal) modal.classList.remove('hidden');
+}
+
+function approveAndSaveTripProposal() {
+  if (!pendingProposalData) return;
+  const { tripState, origGeo, destGeo, corridorStops } = pendingProposalData;
+
+  const newTripId = `trip-${Date.now()}`;
+  const totalBudget = tripState.budgetType === 'total' 
+    ? (tripState.budgetAmount || 0)
+    : ((tripState.budgetAmount || 0) * (tripState.groupSize || 1));
+
+  const newTrip = {
+    id: newTripId,
+    title: `${origGeo.name.split(',')[0]} to ${destGeo.name.split(',')[0]}`,
+    destinationName: destGeo.name,
+    departureTimeMinutes: tripState.departureMinutes || 360,
+    totalBudget: totalBudget || 0,
+    groupSize: tripState.groupSize || 2,
+    vehicleMileageKmPerLitre: tripState.mileage || 15.0,
+    fuelPricePerLitre: 102.8,
+    isArchived: false
+  };
+
+  const selectedStops = [];
+
+  // Stop 1: Origin
+  selectedStops.push({
+    id: `stop-${Date.now()}-orig`,
+    tripId: newTripId,
+    name: origGeo.name,
+    latitude: origGeo.lat,
+    longitude: origGeo.lng,
+    orderIndex: 0,
+    durationMinutes: 15,
+    bufferMinutes: 10,
+    isOvernight: false,
+    openingHourMinutes: 0,
+    closingHourMinutes: 1440
+  });
+
+  // Selected corridor stops
+  corridorStops.forEach(cs => {
+    const chk = document.getElementById(`chk-${cs.id}`);
+    if (!chk || chk.checked) {
+      selectedStops.push({
+        id: `stop-${Date.now()}-${cs.id}`,
+        tripId: newTripId,
+        name: cs.name,
+        latitude: cs.latitude,
+        longitude: cs.longitude,
+        orderIndex: selectedStops.length,
+        durationMinutes: cs.durationMinutes,
+        bufferMinutes: cs.bufferMinutes,
+        isOvernight: false,
+        openingHourMinutes: 360,
+        closingHourMinutes: 1380
+      });
+    }
+  });
+
+  // Final Stop: Destination
+  selectedStops.push({
+    id: `stop-${Date.now()}-dest`,
+    tripId: newTripId,
+    name: destGeo.name,
+    latitude: destGeo.lat,
+    longitude: destGeo.lng,
+    orderIndex: selectedStops.length,
+    durationMinutes: 120,
+    bufferMinutes: 20,
+    isOvernight: false,
+    openingHourMinutes: 360,
+    closingHourMinutes: 1260
+  });
+
+  state.trips.unshift(newTrip);
+  state.activeTripId = newTripId;
+  state.stopsMap[newTripId] = selectedStops;
+  state.expensesMap[newTripId] = [];
+
+  Storage.save(state);
+
+  const modal = document.getElementById('modal-trip-proposal');
+  if (modal) modal.classList.add('hidden');
+
+  switchTab('map');
+  refreshApp();
+  showToast('Trip route & approved corridor stops saved!');
 }
 
 // Live Places Search with Debounce & Instant Indian Attractions Cache
@@ -1118,17 +1500,109 @@ function updateTripsView() {
     const stops = state.stopsMap[trip.id] || [];
     const isActive = trip.id === state.activeTripId;
     return `
-      <div class="timeline-card" style="cursor: pointer; ${isActive ? 'border-color: var(--primary); background: var(--surface-container);' : ''}" onclick="selectTrip('${trip.id}')">
+      <div class="trip-card-item timeline-card" data-trip-id="${trip.id}" style="cursor: pointer; position: relative; ${isActive ? 'border-color: var(--primary); background: var(--surface-container);' : ''}">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <div>
-            <strong style="font-size: 14px; color: var(--on-surface);">${trip.title}</strong>
-            <div style="font-size: 12px; color: var(--on-surface-variant); margin-top: 2px;">${stops.length} stops • ${trip.groupSize} travelers</div>
+          <div style="flex: 1; min-width: 0; padding-right: 8px;">
+            <strong style="font-size: 14px; color: var(--on-surface); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${trip.title}</strong>
+            <div style="font-size: 12px; color: var(--on-surface-variant); margin-top: 2px;">
+              ${stops.length} stops • ${trip.groupSize || 1} travelers
+            </div>
           </div>
-          ${isActive ? '<span class="chip active" style="font-size: 10px; padding: 2px 8px;">Active</span>' : ''}
+          <div style="display: flex; align-items: center; gap: 6px;">
+            ${isActive ? '<span class="chip active" style="font-size: 10px; padding: 2px 8px;">Active</span>' : ''}
+            <button class="trip-delete-btn" data-delete-trip="${trip.id}" title="Delete Trip" style="background: none; border: none; padding: 6px; cursor: pointer; color: var(--error); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     `;
   }).join('');
+
+  container.querySelectorAll('.trip-card-item').forEach(card => {
+    const tripId = card.getAttribute('data-trip-id');
+    const deleteBtn = card.querySelector('.trip-delete-btn');
+
+    let pressTimer = null;
+    let isLongPress = false;
+
+    const startPress = () => {
+      isLongPress = false;
+      card.classList.add('long-pressing');
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        card.classList.remove('long-pressing');
+        if (navigator.vibrate) navigator.vibrate(50);
+        confirmAndDeleteTrip(tripId);
+      }, 600);
+    };
+
+    const cancelPress = () => {
+      card.classList.remove('long-pressing');
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+
+    card.addEventListener('touchstart', startPress, { passive: true });
+    card.addEventListener('touchend', cancelPress);
+    card.addEventListener('touchcancel', cancelPress);
+    card.addEventListener('mousedown', startPress);
+    card.addEventListener('mouseup', cancelPress);
+    card.addEventListener('mouseleave', cancelPress);
+
+    card.addEventListener('click', (e) => {
+      if (isLongPress) {
+        isLongPress = false;
+        return;
+      }
+      if (e.target.closest('.trip-delete-btn')) {
+        e.stopPropagation();
+        confirmAndDeleteTrip(tripId);
+        return;
+      }
+      selectTrip(tripId);
+    });
+
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        confirmAndDeleteTrip(tripId);
+      });
+    }
+  });
+}
+
+function confirmAndDeleteTrip(tripId) {
+  const trip = (state.trips || []).find(t => t.id === tripId);
+  const title = trip ? trip.title : 'this trip';
+  if (!confirm(`Delete "${title}"? This will remove all associated itinerary stops and expenses.`)) {
+    return;
+  }
+  deleteTripById(tripId);
+}
+
+function deleteTripById(tripId) {
+  state.trips = (state.trips || []).filter(t => t.id !== tripId);
+  delete state.stopsMap[tripId];
+  delete state.expensesMap[tripId];
+
+  const user = getCurrentUser();
+  if (user && user.uid) {
+    removeTripFromCloud(user.uid, tripId);
+  }
+
+  if (state.activeTripId === tripId) {
+    state.activeTripId = state.trips.length > 0 ? state.trips[0].id : null;
+  }
+
+  Storage.save(state);
+  refreshApp();
+  showToast('Trip deleted');
 }
 
 window.selectTrip = function(tripId) {
@@ -1525,34 +1999,6 @@ function setupEvents() {
     document.getElementById('modal-warnings-center').classList.add('hidden');
   };
 
-  // Component Gallery Launcher
-  const galleryModal = document.getElementById('modal-component-gallery');
-  document.getElementById('btn-open-gallery').onclick = () => { if (accountMenu) accountMenu.classList.add('hidden'); galleryModal.classList.remove('hidden'); };
-  const launchGalleryFromSettings = document.getElementById('btn-launch-gallery-from-settings');
-  if (launchGalleryFromSettings) launchGalleryFromSettings.onclick = () => galleryModal.classList.remove('hidden');
-  document.getElementById('modal-gallery-close-btn').onclick = () => galleryModal.classList.add('hidden');
-
-  // Compare Plans Launcher
-  const compareModal = document.getElementById('modal-compare-plans');
-  document.getElementById('btn-open-compare').onclick = () => { if (accountMenu) accountMenu.classList.add('hidden'); compareModal.classList.remove('hidden'); };
-  document.getElementById('modal-compare-close-btn').onclick = () => compareModal.classList.add('hidden');
-
-  document.getElementById('btn-use-budget-plan').onclick = () => {
-    currentScenario = 'low';
-    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('btn-scenario-low').classList.add('active');
-    compareModal.classList.add('hidden');
-    refreshApp();
-  };
-
-  document.getElementById('btn-use-time-plan').onclick = () => {
-    currentScenario = 'typical';
-    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('btn-scenario-typical').classList.add('active');
-    compareModal.classList.add('hidden');
-    refreshApp();
-  };
-
   // Scenario Buttons
   document.querySelectorAll('.scenario-btn').forEach(btn => {
     btn.onclick = () => {
@@ -1563,23 +2009,111 @@ function setupEvents() {
     };
   });
 
-  // Language Dropdown & Cards
-  const langSelect = document.getElementById('lang-select');
-  langSelect.value = state.lang;
-  langSelect.onchange = (e) => {
-    state.lang = e.target.value;
-    Storage.save(state);
-    refreshApp();
+  // Navigation HUD Controls
+  const btnNavNext = document.getElementById('btn-nav-next-step');
+  if (btnNavNext) {
+    btnNavNext.onclick = () => {
+      if (currentNavStepIndex < activeNavSteps.length - 1) {
+        currentNavStepIndex++;
+        updateNavHud();
+      } else {
+        showToast('You have arrived at your destination!');
+      }
+    };
+  }
+
+  const btnNavPrev = document.getElementById('btn-nav-prev-step');
+  if (btnNavPrev) {
+    btnNavPrev.onclick = () => {
+      if (currentNavStepIndex > 0) {
+        currentNavStepIndex--;
+        updateNavHud();
+      }
+    };
+  }
+
+  const btnNavExit = document.getElementById('btn-nav-exit');
+  if (btnNavExit) {
+    btnNavExit.onclick = () => exitInAppNavigation();
+  }
+
+  // Turn-by-Turn Navigation from Map Sheet
+  const btnStartNav = document.getElementById('btn-start-navigation');
+  if (btnStartNav) {
+    btnStartNav.onclick = async () => {
+      const plan = computePlan();
+      if (!plan.stops || plan.stops.length < 2) {
+        showToast('Add at least 2 stops to start navigation.');
+        return;
+      }
+      showToast('Calculating turn-by-turn route...');
+      const liveRoute = await fetchLiveOsrmRoute(plan.stops);
+      if (liveRoute && liveRoute.steps && liveRoute.steps.length > 0) {
+        startInAppNavigation(liveRoute);
+      } else {
+        showToast('Navigation route unavailable. Check network.');
+      }
+    };
+  }
+
+  // Turn-by-Turn Navigation from Selected Place Sheet
+  const btnNavSelected = document.getElementById('btn-navigate-to-selected');
+  if (btnNavSelected) {
+    btnNavSelected.onclick = async () => {
+      if (!currentSelectedPlace) return;
+      const startLat = userLocation ? userLocation.lat : 12.9716;
+      const startLng = userLocation ? userLocation.lng : 77.5946;
+      const dummyStops = [
+        { latitude: startLat, longitude: startLng, name: 'Current Location' },
+        { latitude: currentSelectedPlace.latitude, longitude: currentSelectedPlace.longitude, name: currentSelectedPlace.name }
+      ];
+      showToast(`Routing to ${currentSelectedPlace.name}...`);
+      const route = await fetchLiveOsrmRoute(dummyStops);
+      if (route && route.steps && route.steps.length > 0) {
+        const sheet = document.getElementById('selected-place-sheet');
+        if (sheet) sheet.classList.add('hidden');
+        startInAppNavigation(route);
+      } else {
+        showToast('Could not load navigation directions.');
+      }
+    };
+  }
+
+  // Copy GPS Coordinates Click
+  const btnCopyCoords = document.getElementById('btn-copy-coords');
+  if (btnCopyCoords) {
+    btnCopyCoords.onclick = (e) => {
+      e.stopPropagation();
+      if (currentSelectedPlace) {
+        const text = `${currentSelectedPlace.latitude.toFixed(5)}, ${currentSelectedPlace.longitude.toFixed(5)}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            showToast(`Coordinates copied: ${text}`);
+          }).catch(() => {
+            showToast(`Coordinates: ${text}`);
+          });
+        } else {
+          showToast(`Coordinates: ${text}`);
+        }
+      }
+    };
+  }
+
+  // Trip Proposal Modal Listeners
+  const btnPropApprove = document.getElementById('modal-proposal-approve-btn');
+  if (btnPropApprove) btnPropApprove.onclick = approveAndSaveTripProposal;
+
+  const btnPropCancel = document.getElementById('modal-proposal-cancel-btn');
+  if (btnPropCancel) btnPropCancel.onclick = () => {
+    const modal = document.getElementById('modal-trip-proposal');
+    if (modal) modal.classList.add('hidden');
   };
 
-  document.querySelectorAll('[data-lang]').forEach(btn => {
-    btn.onclick = () => {
-      state.lang = btn.getAttribute('data-lang');
-      langSelect.value = state.lang;
-      Storage.save(state);
-      refreshApp();
-    };
-  });
+  const btnPropClose = document.getElementById('modal-proposal-close-btn');
+  if (btnPropClose) btnPropClose.onclick = () => {
+    const modal = document.getElementById('modal-trip-proposal');
+    if (modal) modal.classList.add('hidden');
+  };
 
   // Theme Toggle
   document.getElementById('theme-toggle-btn').onclick = () => {
@@ -1769,27 +2303,7 @@ function acquireUserLocation(highAccuracy = true, shouldFlyTo = false) {
 
 function setupLocationPermission() {
   const locateBtn = document.getElementById('btn-locate-me');
-  const modal = document.getElementById('modal-location-permission');
-  if (!locateBtn || !modal) return;
-
-  const btnPrecise = document.getElementById('btn-perm-precise');
-  const btnApprox = document.getElementById('btn-perm-approx');
-  const btnWhileUsing = document.getElementById('btn-perm-while-using');
-  const btnOnlyThisTime = document.getElementById('btn-perm-only-this-time');
-  const btnDontAllow = document.getElementById('btn-perm-dont-allow');
-
-  if (btnPrecise && btnApprox) {
-    btnPrecise.onclick = () => {
-      selectedAccuracy = 'precise';
-      btnPrecise.classList.add('active');
-      btnApprox.classList.remove('active');
-    };
-    btnApprox.onclick = () => {
-      selectedAccuracy = 'approximate';
-      btnApprox.classList.add('active');
-      btnPrecise.classList.remove('active');
-    };
-  }
+  if (!locateBtn) return;
 
   locateBtn.onclick = (e) => {
     e.stopPropagation();
@@ -1798,49 +2312,14 @@ function setupLocationPermission() {
       locateBtn.style.transform = 'scale(0.92)';
       setTimeout(() => { locateBtn.style.transform = ''; }, 180);
     } else {
-      const savedPerm = localStorage.getItem('tripweave_location_perm');
-      if (savedPerm === 'while_using') {
-        acquireUserLocation(true);
-      } else {
-        modal.classList.remove('hidden');
-      }
+      acquireUserLocation(true, true);
     }
   };
 
-  if (btnWhileUsing) {
-    btnWhileUsing.onclick = () => {
-      localStorage.setItem('tripweave_location_perm', 'while_using');
-      modal.classList.add('hidden');
-      acquireUserLocation(selectedAccuracy === 'precise', true);
-    };
-  }
-
-  if (btnOnlyThisTime) {
-    btnOnlyThisTime.onclick = () => {
-      modal.classList.add('hidden');
-      acquireUserLocation(selectedAccuracy === 'precise', true);
-    };
-  }
-
-  if (btnDontAllow) {
-    btnDontAllow.onclick = () => {
-      localStorage.setItem('tripweave_location_perm', 'denied');
-      modal.classList.add('hidden');
-      showToast('Location permission denied');
-    };
-  }
-
-  // Automatic Google Maps Style Permission Prompt on Launch
-  const savedPerm = localStorage.getItem('tripweave_location_perm');
-  if (!savedPerm) {
-    setTimeout(() => {
-      modal.classList.remove('hidden');
-    }, 500);
-  } else if (savedPerm === 'while_using') {
-    setTimeout(() => {
-      acquireUserLocation(true, false);
-    }, 300);
-  }
+  // Directly acquire location on app launch (native browser/Android prompt)
+  setTimeout(() => {
+    acquireUserLocation(true, false);
+  }, 400);
 }
 
 
@@ -2054,9 +2533,9 @@ function setupPrivacyTermsAndAuthEvents() {
 // ==========================================================================
 // IN-APP APK UPDATE CHECKER (v1.3.0 OTA Engine)
 // ==========================================================================
-const CURRENT_APP_VERSION = '1.3.0';
-const CURRENT_VERSION_CODE = 4;
-const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave-v1.3.0.apk';
+const CURRENT_APP_VERSION = '1.4.0';
+const CURRENT_VERSION_CODE = 5;
+const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave-v1.4.0.apk';
 
 async function checkForAppUpdates(manualTrigger = false) {
   try {
@@ -2408,10 +2887,25 @@ function renderCreateTripStep() {
 }
 
 function handleCreateStepNext() {
-  // Save current step data before advancing
+  // Save current step data with mandatory validation
   if (createTripState.currentStep === 1) {
-    createTripState.origin = document.getElementById('step-origin-input').value.trim() || 'Bangalore, Karnataka';
-    createTripState.destination = document.getElementById('step-dest-input').value.trim() || 'Madikeri, Coorg';
+    const origInput = document.getElementById('step-origin-input');
+    const destInput = document.getElementById('step-dest-input');
+    const originVal = origInput ? origInput.value.trim() : '';
+    const destVal = destInput ? destInput.value.trim() : '';
+
+    if (!originVal || !destVal) {
+      if (origInput && !originVal) origInput.style.border = '2px solid var(--error)';
+      if (destInput && !destVal) destInput.style.border = '2px solid var(--error)';
+      showToast('Please enter both Origin and Destination to create your trip route.');
+      return;
+    }
+
+    if (origInput) origInput.style.border = '';
+    if (destInput) destInput.style.border = '';
+
+    createTripState.origin = originVal;
+    createTripState.destination = destVal;
   } else if (createTripState.currentStep === 2) {
     createTripState.departureDate = document.getElementById('step-date-input').value;
     const timeVal = document.getElementById('step-time-input').value;
@@ -2427,8 +2921,8 @@ function handleCreateStepNext() {
     createTripState.currentStep++;
     renderCreateTripStep();
   } else {
-    // Step 5: Finalize and create trip
-    finalizeTripCreation();
+    // Step 5: Show Route, Fastest Way & Corridor Stops Proposal for Traveler Approval
+    generateAndShowTripProposal(createTripState);
   }
 }
 
@@ -3107,7 +3601,7 @@ function setupNearbyTabsListener() {
 
 // Master Handler for Map Place Selection & Nearby Discovery
 async function handleMapPlaceSelection(lat, lng, explicitName = null) {
-  if (!mapInstance || typeof google === 'undefined' || !google.maps) return;
+  if (!mapInstance) return;
 
   if (selectedPlaceMarker) {
     try { selectedPlaceMarker.setMap(null); } catch (e) {}
@@ -3187,7 +3681,8 @@ async function handleMapPlaceSelection(lat, lng, explicitName = null) {
   nameEl.textContent = placeName;
   locEl.textContent = locality;
   tagEl.textContent = formatCategoryTag(category);
-  coordsEl.textContent = `${lat.toFixed(4)} N, ${lng.toFixed(4)} E`;
+  coordsEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  fetchRealPlacePhoto(placeName).then(realPhoto => { if (realPhoto && imgEl) { imgEl.src = realPhoto; if (currentSelectedPlace) currentSelectedPlace.imageUrl = realPhoto; } });
   distEl.textContent = userLocation ? `${calculateHaversineKm(userLocation.lat, userLocation.lng, lat, lng).toFixed(1)} km away` : 'Selected Spot';
   imgEl.src = initialPhoto;
 

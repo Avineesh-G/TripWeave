@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
   
   <!-- Custom Styling -->
-  <script type="module" crossorigin src="/assets/index-DTqsE_HT.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BFHRfzSA.css">
+  <script type="module" crossorigin src="/assets/index-BQtJ8bqm.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BrHNcoM8.css">
 </head>
 <body class="theme-light">
   <!-- Mobile Aspect Ratio Container -->
@@ -219,6 +219,41 @@
         <!-- Leaflet Map full-bleed -->
         <div id="leaflet-map" class="map-viewport"></div>
 
+        <!-- In-App Turn-by-Turn Navigation HUD (Google Maps Style) -->
+        <div id="nav-hud-top" class="nav-hud-top hidden">
+          <div class="nav-maneuver-icon-box" id="nav-maneuver-icon">
+            <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+          </div>
+          <div class="nav-maneuver-text">
+            <div class="nav-maneuver-dist" id="nav-maneuver-dist">In 1.2 km</div>
+            <div class="nav-maneuver-instruction" id="nav-maneuver-instruction">Head north toward highway</div>
+          </div>
+        </div>
+
+        <div id="nav-hud-bottom" class="nav-hud-bottom hidden">
+          <div class="nav-bottom-stats">
+            <span class="nav-bottom-eta" id="nav-bottom-eta">-- min</span>
+            <span class="nav-bottom-sub" id="nav-bottom-sub">-- km remaining</span>
+          </div>
+          <div class="nav-hud-actions">
+            <button class="btn-nav-step" id="btn-nav-prev-step" title="Previous Maneuver">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button class="btn-nav-step" id="btn-nav-next-step" title="Next Maneuver">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+            <button class="btn-nav-exit" id="btn-nav-exit" title="Exit Navigation">Exit</button>
+          </div>
+        </div>
+
+
         <!-- Floating Top Area (Moved Up to Very Top) -->
         <div class="map-floating-overlay">
           <!-- Top Floating Search Pill with Actions & Google Auth Avatar -->
@@ -371,7 +406,13 @@
                 </svg>
                 <span id="selected-place-hours-text">09:00 AM - 06:00 PM</span>
               </span>
-              <span class="meta-pill" id="selected-place-coords">--° N, --° E</span>
+              <button class="meta-pill" id="btn-copy-coords" title="Click to copy GPS coordinates" style="cursor: pointer; background: var(--surface-container); border: 1px solid var(--primary); color: var(--primary); display: inline-flex; align-items: center; gap: 5px;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span id="selected-place-coords">--° N, --° E</span>
+              </button>
             </div>
             <div class="selected-place-actions">
               <button id="btn-add-selected-stop" class="btn-primary" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;">
@@ -380,6 +421,12 @@
                   <line x1="5" y1="12" x2="19" y2="12"></line>
                 </svg>
                 <span>Add to Itinerary</span>
+              </button>
+              <button id="btn-navigate-to-selected" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 5px;" title="Directions">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                </svg>
+                <span>Directions</span>
               </button>
               <button id="btn-set-destination" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
                 <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -458,6 +505,12 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <strong style="font-size: 14px; color: var(--on-surface);">Itinerary Sequence</strong>
               <div style="display: flex; gap: 8px;">
+                <button class="btn-small primary" id="btn-start-navigation" style="display: inline-flex; align-items: center; gap: 4px; background: #2563EB; color: #FFFFFF;" title="Turn-by-turn Navigation">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                  </svg>
+                  <span>Navigate</span>
+                </button>
                 <button class="btn-small secondary" id="btn-sheet-add-stop" title="Add Stop to Itinerary">+ Add Stop</button>
                 <button class="btn-small primary" id="btn-open-full-itinerary">Full Itinerary</button>
               </div>
@@ -605,32 +658,6 @@
         </div>
 
         <div class="content-scrollable">
-          <!-- Component Gallery Launcher Card -->
-          <div style="background: var(--primary-container); color: var(--on-primary-container); padding: 16px; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-weight: 700; font-size: 14px;">Component Gallery</div>
-              <div style="font-size: 12px; opacity: 0.85;">Inspect tokens in all 4 Indian languages</div>
-            </div>
-            <button class="btn-small primary" id="btn-launch-gallery-from-settings">Open</button>
-          </div>
-
-          <!-- Language Selection -->
-          <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 10px;">
-            <div style="font-weight: 700; font-size: 14px;">Language & Script</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <button class="btn-small" data-lang="en" style="padding: 10px; text-align: left; background: var(--surface-container);">
-                <strong>English</strong><br><span style="font-size: 11px; opacity: 0.7;">Default</span>
-              </button>
-              <button class="btn-small" data-lang="te" style="padding: 10px; text-align: left; background: var(--surface-container);">
-                <strong>తెలుగు</strong><br><span style="font-size: 11px; opacity: 0.7;">Telugu</span>
-              </button>
-              <button class="btn-small" data-lang="hi" style="padding: 10px; text-align: left; background: var(--surface-container);">
-                <strong>हिन्दी</strong><br><span style="font-size: 11px; opacity: 0.7;">Hindi</span>
-              </button>
-              <button class="btn-small" data-lang="ta" style="padding: 10px; text-align: left; background: var(--surface-container);">
-                <strong>தமிழ்</strong><br><span style="font-size: 11px; opacity: 0.7;">Tamil</span>
-              </button>
-            </div>
           </div>
 
           <!-- Assumptions Form -->
@@ -744,25 +771,6 @@
 
           <!-- Quick Action Buttons -->
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button id="btn-open-compare" class="account-menu-item" style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; background: var(--surface-container-low); border: 1px solid var(--outline-variant); cursor: pointer;">
-              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-              </svg>
-              <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">Compare Plans</span>
-            </button>
-
-            <button id="btn-open-gallery" class="account-menu-item" style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; background: var(--surface-container-low); border: 1px solid var(--outline-variant); cursor: pointer;">
-              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="7"></rect>
-                <rect x="14" y="3" width="7" height="7"></rect>
-                <rect x="14" y="14" width="7" height="7"></rect>
-                <rect x="3" y="14" width="7" height="7"></rect>
-              </svg>
-              <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">Component Gallery</span>
-            </button>
-
             <button id="theme-toggle-btn" class="account-menu-item" style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; background: var(--surface-container-low); border: 1px solid var(--outline-variant); cursor: pointer;">
               <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="9"></circle>
@@ -771,22 +779,7 @@
               <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">Toggle Dark / Light Mode</span>
             </button>
 
-            <div style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--surface-container-low); border: 1px solid var(--outline-variant);">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-                <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">Language</span>
-              </div>
-              <select id="lang-select" class="lang-dropdown">
-                <option value="en">EN</option>
-                <option value="te">తెలుగు</option>
-                <option value="hi">हिन्दी</option>
-                <option value="ta">தமிழ்</option>
-              </select>
-            </div>
+            
 
             
             <!-- In-App Version & Update Check -->
@@ -904,113 +897,11 @@
       </div>
     </div>
 
-    <!-- MODAL: COMPARE PLANS -->
-    <div id="modal-compare-plans" class="modal-backdrop hidden">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h2 class="modal-title">
-            <svg class="icon-sm" style="color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10"></line>
-              <line x1="12" y1="20" x2="12" y2="4"></line>
-              <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
-            <span>Compare Plans</span>
-          </h2>
-          <button class="modal-close-btn" id="modal-compare-close-btn">
-            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div style="display: flex; flex-direction: column; gap: 14px;">
-            <!-- Plan 1 -->
-            <div class="plan-card selected" id="plan-card-budget">
-              <div class="plan-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="plan-name">Budget-First Plan</span>
-                <span class="confidence-chip official">Optimal Cost</span>
-              </div>
-              <p style="font-size: 12px; color: var(--on-surface-variant);">Objective: Minimizes toll, homestay & fuel cost with daylight driving.</p>
-              <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
-                <div>Total Cost: <span style="color: var(--primary);">₹0</span></div>
-                <div>Per Person: ₹3,112</div>
-                <div>Duration: 8 hrs 30 mins</div>
-                <div>Conflicts: 0</div>
-              </div>
-              <button class="btn-small primary" style="margin-top: 8px;" id="btn-use-budget-plan">Select This Plan</button>
-            </div>
-
-            <!-- Plan 2 -->
-            <div class="plan-card" id="plan-card-time">
-              <div class="plan-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="plan-name">Time-First Plan</span>
-                <span class="confidence-chip calculated">Fast Corridor</span>
-              </div>
-              <p style="font-size: 12px; color: var(--on-surface-variant);">Objective: Uses expressways and fast corridors to arrive earlier.</p>
-              <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600;">
-                <div>Total Cost: <span>₹14,200</span></div>
-                <div>Per Person: ₹3,550</div>
-                <div>Duration: <span style="color: var(--success);">6 hrs 50 mins</span></div>
-                <div>Conflicts: 0 (1 tight window)</div>
-              </div>
-              <button class="btn-small" style="margin-top: 8px; background: var(--surface-container-high);" id="btn-use-time-plan">Select This Plan</button>
-            </div>
-          </div>
-        </div>
+    
       </div>
     </div>
 
-    <!-- MODAL: COMPONENT GALLERY -->
-    <div id="modal-component-gallery" class="modal-backdrop hidden">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h2 class="modal-title">
-            <svg class="icon-sm" style="color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7"></rect>
-              <rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect>
-              <rect x="3" y="14" width="7" height="7"></rect>
-            </svg>
-            <span>Component Gallery</span>
-          </h2>
-          <button class="modal-close-btn" id="modal-gallery-close-btn">
-            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <!-- 1. Feasibility Rings -->
-          <div class="gallery-section">
-            <div class="gallery-section-title">1. Feasibility Ring & Pill</div>
-            <div class="gallery-grid">
-              <div class="feasibility-pill">
-                <div class="feasibility-ring-wrapper">
-                  <svg class="feasibility-ring-svg" viewBox="0 0 36 36">
-                    <circle class="ring-bg" cx="18" cy="18" r="14"></circle>
-                    <circle class="ring-budget" cx="18" cy="18" r="14" style="stroke-dashoffset: 20; stroke: var(--success);"></circle>
-                    <circle class="ring-bg-inner" cx="18" cy="18" r="10"></circle>
-                    <circle class="ring-time" cx="18" cy="18" r="10" style="stroke-dashoffset: 15; stroke: var(--primary);"></circle>
-                  </svg>
-                </div>
-                <span class="feasibility-label">Feasible</span>
-              </div>
-
-              <div class="feasibility-pill" style="border-left: 3px solid var(--caution);">
-                <div class="feasibility-ring-wrapper">
-                  <svg class="feasibility-ring-svg" viewBox="0 0 36 36">
-                    <circle class="ring-bg" cx="18" cy="18" r="14"></circle>
-                    <circle class="ring-budget" cx="18" cy="18" r="14" style="stroke-dashoffset: 35; stroke: var(--caution);"></circle>
-                    <circle class="ring-bg-inner" cx="18" cy="18" r="10"></circle>
-                    <circle class="ring-time" cx="18" cy="18" r="10" style="stroke-dashoffset: 5; stroke: var(--caution);"></circle>
-                  </svg>
-                </div>
-                <span class="feasibility-label" style="color: var(--caution);">Tight</span>
-              </div>
-            </div>
-          </div>
+    
 
           <!-- 2. Confidence Chips -->
           <div class="gallery-section">
@@ -1288,59 +1179,7 @@
       </div>
     </div>
 
-    <!-- MODAL: GOOGLE MAPS STYLE LOCATION PERMISSION -->
-    <div id="modal-location-permission" class="modal-backdrop hidden">
-      <div class="modal-card google-permission-card">
-        <div class="google-perm-header">
-          <div class="google-perm-icon-wrapper">
-            <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-          </div>
-          <h2 class="google-perm-title">Allow TripWeave to access this device's location?</h2>
-          <p class="google-perm-desc">
-            TripWeave uses your location to show where you are on the road, compute driving distance, and recommend nearby stops along your route.
-          </p>
-        </div>
-
-        <!-- Android 12+ Precise vs Approximate Accuracy Selector -->
-        <div class="google-perm-accuracy-selector">
-          <button class="accuracy-option active" id="btn-perm-precise" data-accuracy="precise">
-            <div class="accuracy-preview-map precise-preview">
-              <div class="preview-blue-dot"></div>
-            </div>
-            <div class="accuracy-label">
-              <strong>Precise</strong>
-              <span>Most accurate</span>
-            </div>
-          </button>
-
-          <button class="accuracy-option" id="btn-perm-approx" data-accuracy="approximate">
-            <div class="accuracy-preview-map approx-preview">
-              <div class="preview-approx-circle"></div>
-            </div>
-            <div class="accuracy-label">
-              <strong>Approximate</strong>
-              <span>Area level</span>
-            </div>
-          </button>
-        </div>
-
-        <!-- Google Maps Permission Choices -->
-        <div class="google-perm-actions">
-          <button class="google-perm-btn primary" id="btn-perm-while-using">
-            While using the app
-          </button>
-          <button class="google-perm-btn secondary" id="btn-perm-only-this-time">
-            Only this time
-          </button>
-          <button class="google-perm-btn text" id="btn-perm-dont-allow">
-            Don't allow
-          </button>
-        </div>
-      </div>
-    </div>
+    
 
     <!-- Floating Toast Notification -->
     <div id="app-toast" class="toast-pill hidden">
@@ -1355,5 +1194,63 @@
 
   
   <!-- Application Entry -->
+
+    <!-- MODAL: TRIP ROUTE & CORRIDOR STOPS PROPOSAL (Traveler Approval Flow) -->
+    <div id="modal-trip-proposal" class="modal-backdrop hidden">
+      <div class="modal-card" style="max-width: 420px; max-height: 88vh;">
+        <div class="modal-header">
+          <h2 class="modal-title">
+            <svg class="icon-sm" style="color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+            </svg>
+            <span>Review & Approve Route</span>
+          </h2>
+          <button class="modal-close-btn" id="modal-proposal-close-btn" title="Close">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" style="gap: 14px;">
+          <!-- Route summary pill -->
+          <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong id="proposal-route-title" style="font-size: 14.5px; color: var(--on-surface);">Bangalore to Coorg</strong>
+              <span class="chip active" id="proposal-fastest-chip" style="font-size: 10px; padding: 2px 8px;">Fastest Route</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 700; color: var(--primary);" id="proposal-stats-row">
+              <span id="proposal-distance">-- km</span>
+              <span>•</span>
+              <span id="proposal-duration">-- hrs</span>
+              <span>•</span>
+              <span id="proposal-fuel">Est. Fuel ₹--</span>
+            </div>
+          </div>
+
+          <!-- Suggested Corridor Stops -->
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.4px;">Curated Corridor Stops</span>
+              <span style="font-size: 11px; color: var(--on-surface-variant);">Select stops to include</span>
+            </div>
+            <div id="proposal-stops-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; padding-right: 2px;">
+              <!-- Populated dynamically with breaks, restaurants, scenic stops -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="display: flex; gap: 8px;">
+          <button class="btn-secondary" id="modal-proposal-cancel-btn" style="flex: 1;">Cancel</button>
+          <button class="btn-primary" id="modal-proposal-approve-btn" style="flex: 2; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Approve & Save Trip</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
 </body>
 </html>

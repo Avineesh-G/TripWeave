@@ -3103,3 +3103,157 @@ button, input, textarea, select {
   transform: translateZ(0);
 }
 
+
+
+/* In-App Turn-by-Turn Navigation HUD (Google Maps Style) */
+.nav-hud-top {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  left: 12px;
+  right: 12px;
+  background: #1E293B;
+  color: #F8FAFC;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  padding: 14px 16px;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  animation: fadeInDown 0.25s ease-out;
+}
+
+.nav-hud-top.hidden, .nav-hud-bottom.hidden {
+  display: none !important;
+}
+
+.nav-maneuver-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #3B82F6;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.nav-maneuver-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-maneuver-dist {
+  font-size: 17px;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: -0.3px;
+}
+
+.nav-maneuver-instruction {
+  font-size: 13px;
+  color: #CBD5E1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-hud-bottom {
+  position: absolute;
+  bottom: 84px;
+  left: 12px;
+  right: 12px;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 20px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.22);
+  padding: 12px 16px;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: slideUpPlace 0.25s ease-out;
+}
+
+.nav-bottom-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-bottom-eta {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.nav-bottom-sub {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.nav-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-nav-exit {
+  background: var(--error-container);
+  color: var(--error);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-nav-step {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Trip Card Long Press & Actions */
+.trip-card-item {
+  position: relative;
+  transition: transform 0.15s ease, background 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.trip-card-item.long-pressing {
+  transform: scale(0.97);
+  background: var(--primary-container) !important;
+}
+
+.trip-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--on-surface-variant);
+  padding: 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.trip-delete-btn:hover {
+  background: var(--error-container);
+  color: var(--error);
+}
