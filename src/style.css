@@ -3257,3 +3257,60 @@ button, input, textarea, select {
   background: var(--error-container);
   color: var(--error);
 }
+
+/* Proposal Modal Corridor Stops & Category Filter */
+.proposal-filter-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.proposal-filter-row::-webkit-scrollbar {
+  display: none;
+}
+.proposal-filter-chip {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.proposal-filter-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #FFFFFF;
+}
+.corridor-stop-card {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  padding: 11px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.corridor-stop-card.selected {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: var(--surface-container-high);
+}
+.corridor-detour-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary);
+  white-space: nowrap;
+}
+.corridor-ev-tag {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}

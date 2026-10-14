@@ -360,6 +360,7 @@ function exitInAppNavigation() {
 // ROUTE & CORRIDOR STOPS PROPOSAL (Traveler Approval Flow)
 // ==========================================================================
 let pendingProposalData = null;
+let currentProposalFilter = 'all';
 
 async function generateAndShowTripProposal(tripState) {
   showToast('Computing fastest route & corridor stops...');
@@ -378,58 +379,96 @@ async function generateAndShowTripProposal(tripState) {
 
   const route = await fetchLiveOsrmRoute(dummyStops);
   const distanceKm = route ? route.distanceKm : calculateHaversineKm(origGeo.lat, origGeo.lng, destGeo.lat, destGeo.lng);
-  const durationMins = route ? route.durationMinutes : Math.round((distanceKm / 55) * 60);
-
-  const estFuel = Math.round((distanceKm / (tripState.mileage || 15)) * 102.8);
+  const baseDriveMinutes = route ? route.durationMinutes : Math.round((distanceKm / 55) * 60);
 
   const titleEl = document.getElementById('proposal-route-title');
   const distEl = document.getElementById('proposal-distance');
   const durEl = document.getElementById('proposal-duration');
+  const countEl = document.getElementById('proposal-stops-count');
   const fuelEl = document.getElementById('proposal-fuel');
   const stopsListEl = document.getElementById('proposal-stops-list');
 
   if (titleEl) titleEl.textContent = `${origGeo.name} ➔ ${destGeo.name}`;
   if (distEl) distEl.textContent = `${Math.round(distanceKm)} km`;
-  if (durEl) durEl.textContent = `${Math.floor(durationMins / 60)}h ${durationMins % 60}m`;
-  if (fuelEl) fuelEl.textContent = `Est. Fuel ₹${estFuel.toLocaleString('en-IN')}`;
 
   const poly = route && route.polylineLatlngs && route.polylineLatlngs.length > 5 ? route.polylineLatlngs : null;
   const pLen = poly ? poly.length : 0;
 
-  const stop1Coords = poly ? poly[Math.floor(pLen * 0.3)] : [origGeo.lat + (destGeo.lat - origGeo.lat) * 0.3, origGeo.lng + (destGeo.lng - origGeo.lng) * 0.3];
-  const stop2Coords = poly ? poly[Math.floor(pLen * 0.58)] : [origGeo.lat + (destGeo.lat - origGeo.lat) * 0.58, origGeo.lng + (destGeo.lng - origGeo.lng) * 0.58];
-  const stop3Coords = poly ? poly[Math.floor(pLen * 0.82)] : [origGeo.lat + (destGeo.lat - origGeo.lat) * 0.82, origGeo.lng + (destGeo.lng - origGeo.lng) * 0.82];
+  const getPt = (fraction) => {
+    if (poly && pLen > 0) return poly[Math.floor(pLen * fraction)];
+    return [
+      origGeo.lat + (destGeo.lat - origGeo.lat) * fraction,
+      origGeo.lng + (destGeo.lng - origGeo.lng) * fraction
+    ];
+  };
 
+  const pt1 = getPt(0.22);
+  const pt2 = getPt(0.42);
+  const pt3 = getPt(0.58);
+  const pt4 = getPt(0.74);
+  const pt5 = getPt(0.88);
+
+  // Curated corridor stops with EV charging, dhabas, veg food, scenic viewpoints & heritage sights
   const corridorStops = [
     {
-      id: 'corridor-break-1',
-      name: `${origGeo.name.split(',')[0]} Highway Express Fuel & Cafe`,
+      id: 'corridor-ev-fuel-1',
+      name: `${origGeo.name.split(',')[0]} Expressway EV Fast-Charging & Fuel Plaza`,
       category: 'fuel',
+      badgeText: 'EV 60kW + Fuel',
+      detourText: '0.2 km off NH',
       durationMinutes: 25,
       bufferMinutes: 10,
-      latitude: stop1Coords[0],
-      longitude: stop1Coords[1],
-      description: 'Clean restrooms, fuel pumps, and tea/coffee stop'
+      latitude: pt1[0],
+      longitude: pt1[1],
+      description: '60kW CCS2 DC Fast Chargers, petrol/diesel pumps & cafe'
     },
     {
-      id: 'corridor-dining-2',
-      name: `Grand Highway Dhaba & Family Restaurant`,
+      id: 'corridor-dhaba-2',
+      name: 'Grand Highway Dhaba & Family Garden Restaurant',
       category: 'food',
+      badgeText: 'Highway Dhaba',
+      detourText: 'On Highway',
       durationMinutes: 45,
       bufferMinutes: 15,
-      latitude: stop2Coords[0],
-      longitude: stop2Coords[1],
-      description: 'Hot regional thali, vegetarian meals, and dining rest'
+      latitude: pt2[0],
+      longitude: pt2[1],
+      description: 'Hot tandoori clay oven, regional thali, lassi & outdoor seating'
     },
     {
       id: 'corridor-scenic-3',
-      name: `${destGeo.name.split(',')[0]} Scenic Valley & Heritage Viewpoint`,
+      name: `${destGeo.name.split(',')[0]} Panoramic Valley Overlook & Viewpoint`,
       category: 'monuments',
-      durationMinutes: 40,
+      badgeText: 'Scenic Viewpoint',
+      detourText: '1.2 km detour',
+      durationMinutes: 35,
+      bufferMinutes: 10,
+      latitude: pt3[0],
+      longitude: pt3[1],
+      description: 'Hill photography point, valley panorama & fresh mountain air'
+    },
+    {
+      id: 'corridor-dining-4',
+      name: 'Pure Vegetarian Highway Food Court & Coffee House',
+      category: 'food',
+      badgeText: 'Pure Veg',
+      detourText: '0.4 km off NH',
+      durationMinutes: 30,
+      bufferMinutes: 10,
+      latitude: pt4[0],
+      longitude: pt4[1],
+      description: 'South Indian dosas, filter coffee, North Indian meals & clean restrooms'
+    },
+    {
+      id: 'corridor-monument-5',
+      name: `Ancient Hill Fort & Heritage Monument`,
+      category: 'monuments',
+      badgeText: 'Heritage Sight',
+      detourText: '2.1 km detour',
+      durationMinutes: 45,
       bufferMinutes: 15,
-      latitude: stop3Coords[0],
-      longitude: stop3Coords[1],
-      description: 'Scenic photo spot, panoramic hill view & fresh breeze'
+      latitude: pt5[0],
+      longitude: pt5[1],
+      description: 'Historical architecture, scenic ramparts & stone pillared halls'
     }
   ];
 
@@ -439,31 +478,102 @@ async function generateAndShowTripProposal(tripState) {
     destGeo,
     route,
     distanceKm,
-    durationMins,
-    corridorStops
+    baseDriveMinutes,
+    corridorStops,
+    checkedStopIds: new Set(corridorStops.map(s => s.id))
   };
 
-  if (stopsListEl) {
-    stopsListEl.innerHTML = corridorStops.map((s, idx) => `
-      <div style="background: var(--surface-container); border: 1px solid var(--outline-variant); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; min-width: 0;">
-          <input type="checkbox" id="chk-${s.id}" checked style="width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0;" />
-          <div>
-            <div style="font-size: 13px; font-weight: 700; color: var(--on-surface);">${s.name}</div>
-            <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px;">${s.description} • ${s.durationMinutes}m stop</div>
-          </div>
-        </label>
-        <span class="chip" style="font-size: 10px; padding: 2px 8px; text-transform: uppercase;">${s.category}</span>
-      </div>
-    `).join('');
+  function updateProposalLiveMetrics() {
+    const checked = corridorStops.filter(s => pendingProposalData.checkedStopIds.has(s.id));
+    const visitMins = checked.reduce((acc, s) => acc + s.durationMinutes, 0);
+    const totalMinutes = baseDriveMinutes + visitMins;
+
+    const estFuel = Math.round((distanceKm / (tripState.mileage || 15)) * 102.8);
+    const estFood = checked.filter(s => s.category === 'food').length * (tripState.groupSize || 2) * 280;
+    const totalEstCost = estFuel + estFood;
+
+    if (durEl) {
+      durEl.textContent = `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m total`;
+    }
+    if (countEl) {
+      countEl.textContent = `${checked.length} of ${corridorStops.length} stops selected`;
+    }
+    if (fuelEl) {
+      fuelEl.textContent = `Est. ₹${totalEstCost.toLocaleString('en-IN')}`;
+    }
   }
+
+  function renderProposalStops() {
+    if (!stopsListEl) return;
+    const filtered = currentProposalFilter === 'all'
+      ? corridorStops
+      : corridorStops.filter(s => s.category === currentProposalFilter);
+
+    if (filtered.length === 0) {
+      stopsListEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--on-surface-variant); font-size: 12px;">No stops match this filter.</div>';
+      return;
+    }
+
+    stopsListEl.innerHTML = filtered.map(s => {
+      const isChecked = pendingProposalData.checkedStopIds.has(s.id);
+      return `
+        <div class="corridor-stop-card ${isChecked ? 'selected' : ''}" data-cat="${s.category}">
+          <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; flex: 1; min-width: 0;">
+            <input type="checkbox" class="corridor-stop-chk" data-stop-id="${s.id}" ${isChecked ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--primary); margin-top: 2px; flex-shrink: 0;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-size: 13.5px; font-weight: 700; color: var(--on-surface);">${s.name}</span>
+                <span class="corridor-detour-tag ${s.category === 'fuel' ? 'corridor-ev-tag' : ''}">${s.detourText}</span>
+              </div>
+              <div style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 3px; line-height: 1.4;">
+                ${s.description}
+              </div>
+              <div style="font-size: 11px; font-weight: 600; color: var(--primary); margin-top: 4px;">
+                ${s.durationMinutes} mins visit • ${s.badgeText}
+              </div>
+            </div>
+          </label>
+        </div>
+      `;
+    }).join('');
+
+    stopsListEl.querySelectorAll('.corridor-stop-chk').forEach(chk => {
+      chk.onchange = () => {
+        const sid = chk.getAttribute('data-stop-id');
+        if (chk.checked) {
+          pendingProposalData.checkedStopIds.add(sid);
+          chk.closest('.corridor-stop-card')?.classList.add('selected');
+        } else {
+          pendingProposalData.checkedStopIds.delete(sid);
+          chk.closest('.corridor-stop-card')?.classList.remove('selected');
+        }
+        updateProposalLiveMetrics();
+      };
+    });
+  }
+
+  // Setup proposal filter tabs
+  const filterTabs = document.getElementById('proposal-filter-tabs');
+  if (filterTabs) {
+    filterTabs.querySelectorAll('.proposal-filter-chip').forEach(tab => {
+      tab.onclick = () => {
+        filterTabs.querySelectorAll('.proposal-filter-chip').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentProposalFilter = tab.getAttribute('data-pfilter') || 'all';
+        renderProposalStops();
+      };
+    });
+  }
+
+  renderProposalStops();
+  updateProposalLiveMetrics();
 
   if (modal) modal.classList.remove('hidden');
 }
 
 function approveAndSaveTripProposal() {
   if (!pendingProposalData) return;
-  const { tripState, origGeo, destGeo, corridorStops } = pendingProposalData;
+  const { tripState, origGeo, destGeo, corridorStops, checkedStopIds } = pendingProposalData;
 
   const newTripId = `trip-${Date.now()}`;
   const totalBudget = tripState.budgetType === 'total' 
@@ -499,10 +609,9 @@ function approveAndSaveTripProposal() {
     closingHourMinutes: 1440
   });
 
-  // Selected corridor stops
+  // Approved corridor stops in sequential route order
   corridorStops.forEach(cs => {
-    const chk = document.getElementById(`chk-${cs.id}`);
-    if (!chk || chk.checked) {
+    if (checkedStopIds.has(cs.id)) {
       selectedStops.push({
         id: `stop-${Date.now()}-${cs.id}`,
         tripId: newTripId,
@@ -2535,7 +2644,7 @@ function setupPrivacyTermsAndAuthEvents() {
 // ==========================================================================
 const CURRENT_APP_VERSION = '1.4.0';
 const CURRENT_VERSION_CODE = 5;
-const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave-v1.4.0.apk';
+const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk';
 
 async function checkForAppUpdates(manualTrigger = false) {
   try {
@@ -2571,6 +2680,11 @@ function showUpdateModal(info) {
   if (!modal) return;
   const verEl = document.getElementById('update-modal-version');
   if (verEl && info.versionName) verEl.textContent = `TripWeave v${info.versionName}`;
+
+  const notesList = document.getElementById('update-modal-notes');
+  if (notesList && Array.isArray(info.releaseNotes) && info.releaseNotes.length > 0) {
+    notesList.innerHTML = info.releaseNotes.map(n => '<li>' + n + '</li>').join('');
+  }
 
   const installBtn = document.getElementById('btn-install-apk-update');
   if (installBtn) {

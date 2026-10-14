@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
   
   <!-- Custom Styling -->
-  <script type="module" crossorigin src="/assets/index-BQtJ8bqm.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-BrHNcoM8.css">
+  <script type="module" crossorigin src="/assets/index-jyLkVbPm.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DHCRtWVH.css">
 </head>
 <body class="theme-light">
   <!-- Mobile Aspect Ratio Container -->
@@ -792,7 +792,7 @@
                 </svg>
                 <div style="display: flex; flex-direction: column;">
                   <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">App Version</span>
-                  <span style="font-size: 11px; color: var(--on-surface-variant);" id="app-version-badge">TripWeave v1.3.0</span>
+                  <span style="font-size: 11px; color: var(--on-surface-variant);" id="app-version-badge">TripWeave v1.4.0</span>
                 </div>
               </div>
               <button id="btn-check-update" class="btn-small" style="font-size: 11px; padding: 4px 10px; font-weight: 700; color: #1A73E8; border-color: #1A73E8; cursor: pointer;">Check Update</button>
@@ -838,7 +838,7 @@
         <div class="modal-body" style="gap: 12px;">
           <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <strong id="update-modal-version" style="font-size: 15px; color: var(--on-surface);">TripWeave v1.3.0</strong>
+              <strong id="update-modal-version" style="font-size: 15px; color: var(--on-surface);">TripWeave v1.4.0</strong>
               <span style="font-size: 11px; font-weight: 700; color: #1A73E8; background: rgba(26,115,232,0.12); padding: 2px 8px; border-radius: 9999px;">Latest</span>
             </div>
             <p style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.4; margin: 0;">A new updated release is available with enhanced performance, crisp 2x Retina maps, native Google sign-in, and student planning.</p>
@@ -1220,10 +1220,12 @@
               <strong id="proposal-route-title" style="font-size: 14.5px; color: var(--on-surface);">Bangalore to Coorg</strong>
               <span class="chip active" id="proposal-fastest-chip" style="font-size: 10px; padding: 2px 8px;">Fastest Route</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 700; color: var(--primary);" id="proposal-stats-row">
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 12.5px; font-weight: 700; color: var(--primary);" id="proposal-stats-row">
               <span id="proposal-distance">-- km</span>
               <span>•</span>
               <span id="proposal-duration">-- hrs</span>
+              <span>•</span>
+              <span id="proposal-stops-count">0 stops</span>
               <span>•</span>
               <span id="proposal-fuel">Est. Fuel ₹--</span>
             </div>
@@ -1231,9 +1233,15 @@
 
           <!-- Suggested Corridor Stops -->
           <div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <span style="font-size: 12px; font-weight: 700; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.4px;">Curated Corridor Stops</span>
-              <span style="font-size: 11px; color: var(--on-surface-variant);">Select stops to include</span>
+              <span style="font-size: 11px; color: var(--on-surface-variant);">Within 10 km corridor</span>
+            </div>
+            <div class="proposal-filter-row" id="proposal-filter-tabs" style="margin-bottom: 10px;">
+              <button class="proposal-filter-chip active" data-pfilter="all">All Stops</button>
+              <button class="proposal-filter-chip" data-pfilter="fuel">Fuel & EV</button>
+              <button class="proposal-filter-chip" data-pfilter="food">Dhabas & Food</button>
+              <button class="proposal-filter-chip" data-pfilter="monuments">Scenic & Sights</button>
             </div>
             <div id="proposal-stops-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; padding-right: 2px;">
               <!-- Populated dynamically with breaks, restaurants, scenic stops -->

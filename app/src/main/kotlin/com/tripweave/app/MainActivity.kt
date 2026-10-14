@@ -276,11 +276,12 @@ class MainActivity : ComponentActivity() {
 
     inner class AndroidAuthBridge {
         @JavascriptInterface
-        fun downloadUpdate(apkUrl: String) {
+        fun downloadUpdate(apkUrl: String?) {
             runOnUiThread {
                 try {
+                    val targetUrl = if (apkUrl.isNullOrBlank()) "https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk" else apkUrl
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                        data = Uri.parse(apkUrl)
+                        data = Uri.parse(targetUrl)
                         flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
                     }
                     startActivity(intent)
@@ -289,7 +290,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-                @JavascriptInterface
+
+        @JavascriptInterface
         fun requestGoogleSignIn() {
             runOnUiThread {
                 try {
