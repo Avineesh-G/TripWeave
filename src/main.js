@@ -172,31 +172,68 @@ async function fetchLiveOsrmRoute(stops) {
 // Dynamic Real Place Photo Resolver via Wikipedia PageImages API
 const wikiPhotoCache = new Map();
 
-async function fetchRealPlacePhoto(placeName) {
+async function fetchRealPlacePhoto(placeName, categoryHint = '') {
   if (!placeName) return null;
-  const cleanTitle = placeName.split(',')[0].trim();
-  if (wikiPhotoCache.has(cleanTitle.toLowerCase())) {
-    return wikiPhotoCache.get(cleanTitle.toLowerCase());
+  const cleanTitle = placeName.split(',')[0].replace(/\b(Stop|Destination|Start|Highway|Expressway|Dhaba|Hotel|Restaurant)\b/gi, '').trim();
+  const cacheKey = (cleanTitle || placeName).toLowerCase();
+
+  if (wikiPhotoCache.has(cacheKey)) {
+    return wikiPhotoCache.get(cacheKey);
   }
+
+  // 1. Direct Wikipedia Query with Search Generator (handles near-matches & landmarks)
   try {
-    const url = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cleanTitle)}&prop=pageimages&format=json&pithumbsize=1000&origin=*`;
-    const res = await fetch(url);
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanTitle || placeName)}&gsrlimit=1&prop=pageimages&pithumbsize=1000&format=json&origin=*`;
+    const res = await fetch(searchUrl);
     if (res.ok) {
       const data = await res.json();
       const pages = data.query?.pages;
       if (pages) {
-        const pageId = Object.keys(pages)[0];
-        if (pageId && pageId !== '-1' && pages[pageId].thumbnail?.source) {
-          const photo = pages[pageId].thumbnail.source;
-          wikiPhotoCache.set(cleanTitle.toLowerCase(), photo);
+        const firstPage = Object.values(pages)[0];
+        if (firstPage?.thumbnail?.source) {
+          const photo = firstPage.thumbnail.source;
+          wikiPhotoCache.set(cacheKey, photo);
           return photo;
         }
       }
     }
-  } catch (err) {
-    console.warn('Wiki photo lookup fallback:', err);
+  } catch (e) {}
+
+  // 2. Wikimedia Commons Photo Search
+  try {
+    const commonsUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanTitle || placeName)}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=1000&format=json&origin=*`;
+    const res = await fetch(commonsUrl);
+    if (res.ok) {
+      const data = await res.json();
+      const pages = data.query?.pages;
+      if (pages) {
+        const firstPage = Object.values(pages)[0];
+        const imgUrl = firstPage?.imageinfo?.[0]?.thumburl || firstPage?.imageinfo?.[0]?.url;
+        if (imgUrl) {
+          wikiPhotoCache.set(cacheKey, imgUrl);
+          return imgUrl;
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 3. Category Contextual High-Resolution Verified Fallback
+  const lower = (placeName + ' ' + categoryHint).toLowerCase();
+  let fallback = 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?w=1000&auto=format&fit=crop';
+  if (lower.includes('dhaba') || lower.includes('food') || lower.includes('restaurant') || lower.includes('breakfast') || lower.includes('lunch') || lower.includes('dinner')) {
+    fallback = 'https://images.unsplash.com/photo-1613292443284-8d10ef9383fe?w=1000&auto=format&fit=crop';
+  } else if (lower.includes('ev') || lower.includes('charger') || lower.includes('power')) {
+    fallback = 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=1000&auto=format&fit=crop';
+  } else if (lower.includes('temple') || lower.includes('spiritual') || lower.includes('ashram')) {
+    fallback = 'https://images.unsplash.com/photo-1548013146-72479768bada?w=1000&auto=format&fit=crop';
+  } else if (lower.includes('lake') || lower.includes('water') || lower.includes('falls') || lower.includes('beach')) {
+    fallback = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&auto=format&fit=crop';
+  } else if (lower.includes('fort') || lower.includes('palace') || lower.includes('heritage') || lower.includes('monument')) {
+    fallback = 'https://images.unsplash.com/photo-1599661046289-e31897846e41?w=1000&auto=format&fit=crop';
   }
-  return null;
+
+  wikiPhotoCache.set(cacheKey, fallback);
+  return fallback;
 }
 
 // Geocode Place String using local cache + Photon API
@@ -1108,6 +1145,9 @@ function updateItineraryView(plan) {
             <div>
               <div class="stop-title">${scheduled.stop.name}</div>
               <div class="stop-times">${formatMinutes(scheduled.arrivalMinutes)} — ${formatMinutes(scheduled.departureMinutes)} (${scheduled.stop.durationMinutes}m visit)</div>
+              ${scheduled.stop.breakEstimate ? `<div class="break-duration-tag" style="margin-top: 4px;">${scheduled.stop.breakEstimate}</div>` : ''}
+              ${scheduled.stop.recommendedFood ? `<div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px;">Dining: ${scheduled.stop.recommendedFood}</div>` : ''}
+              ${scheduled.stop.mapsUrl ? `<div style="margin-top: 5px;"><a href="${scheduled.stop.mapsUrl}" target="_blank" class="restaurant-map-link">View in Google Maps</a></div>` : ''}
             </div>
             <div style="display: flex; gap: 4px;">
               <button class="btn-small edit-stop-btn" data-id="${scheduled.stop.id}">Edit</button>
@@ -1513,6 +1553,7 @@ async function updateMapRoute(plan) {
 
 // Navigation Tab Switcher
 function switchTab(tabName) {
+  if (tabName === 'settings') tabName = 'more';
   currentTab = tabName;
   document.querySelectorAll('.screen-view').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -1521,6 +1562,10 @@ function switchTab(tabName) {
   const targetTab = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
   if (targetScreen) targetScreen.classList.add('active');
   if (targetTab) targetTab.classList.add('active');
+
+  if (tabName === 'more') {
+    renderAIPlanHistory();
+  }
 
   if (tabName === 'map' && mapInstance) {
     setTimeout(() => resizeMap(), 50); setTimeout(() => resizeMap(), 250);
@@ -2318,29 +2363,34 @@ function acquireUserLocation(highAccuracy = true, shouldFlyTo = false) {
   const locateBtn = document.getElementById('btn-locate-me');
   if (locateBtn && shouldFlyTo) locateBtn.classList.add('locating');
 
-  const onLocationSuccess = async (lat, lng, accuracy = 20, isFallback = false) => {
+  const onLocationSuccess = async (lat, lng, accuracy = 15, isFallback = false, provider = 'gps') => {
+    // Accuracy guard: Prevent coarse cell tower/network updates (> 100m) from degrading a precise GPS fix (< 40m)
+    if (userLocation && userLocation.isRealGPS && userLocation.accuracy < 40 && accuracy > 100) {
+      return;
+    }
+
     if (locateBtn) {
       locateBtn.classList.remove('locating');
       locateBtn.classList.add('active-located');
     }
 
-    userLocation = { lat, lng, accuracy };
+    userLocation = { lat, lng, accuracy, isRealGPS: !isFallback, provider };
 
     renderGoogleLocationDot(lat, lng, accuracy);
 
-    // Only fly to location if user explicitly tapped the locate FAB
+    // Pan/fly to location if explicitly requested or locate button tapped
     if (mapInstance && shouldFlyTo) {
-      mapInstance.setView([lat, lng], 15);
+      mapInstance.setView([lat, lng], 16);
     }
 
-    // Try reverse geocoding to show city toast only on explicit locate action
+    // Reverse geocode to show city toast on explicit user locate action
     if (shouldFlyTo) {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=14`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en&lat=${lat}&lon=${lng}&zoom=14`);
         if (res.ok) {
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.suburb || 'Current Location';
-          showToast(isFallback ? `Location: ${city}` : `Located at ${city}`);
+          showToast(`Located at ${city}`);
           return;
         }
       } catch (e) {}
@@ -2349,26 +2399,27 @@ function acquireUserLocation(highAccuracy = true, shouldFlyTo = false) {
     }
   };
 
-  const onLocationFallback = async () => {
+  // 1. Direct Native Android GPS Bridge check for hardware GPS accuracy
+  if (window.AndroidLocationBridge && typeof window.AndroidLocationBridge.getDeviceLocation === 'function') {
     try {
-      const ipRes = await fetch('https://ipapi.co/json/');
-      if (ipRes.ok) {
-        const ipData = await ipRes.json();
-        if (ipData.latitude && ipData.longitude) {
-          await onLocationSuccess(ipData.latitude, ipData.longitude, 25, true);
-          return;
+      const nativeLocJson = window.AndroidLocationBridge.getDeviceLocation();
+      if (nativeLocJson) {
+        const nativeLoc = JSON.parse(nativeLocJson);
+        if (nativeLoc.latitude && nativeLoc.longitude) {
+          onLocationSuccess(nativeLoc.latitude, nativeLoc.longitude, nativeLoc.accuracy || 10, false, nativeLoc.provider || 'native-gps');
         }
       }
+      if (typeof window.AndroidLocationBridge.requestLocationUpdate === 'function') {
+        window.AndroidLocationBridge.requestLocationUpdate();
+      }
     } catch (e) {
-      console.warn('IP location skipped:', e);
+      console.warn('Native location bridge check:', e);
     }
-
-    // Guaranteed fallback: Hyderabad (user default center) so blue dot ALWAYS displays
-    await onLocationSuccess(17.3850, 78.4867, 25, true);
-  };
+  }
 
   if (!navigator.geolocation) {
-    onLocationFallback();
+    if (locateBtn) locateBtn.classList.remove('locating');
+    if (shouldFlyTo) showToast('Location services are not available on this device');
     return;
   }
 
@@ -2380,55 +2431,69 @@ function acquireUserLocation(highAccuracy = true, shouldFlyTo = false) {
     watchLocationId = null;
   }
 
+  // 2. High-accuracy real-time GPS acquisition with maximumAge: 0 (NO stale cache!)
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const { latitude, longitude, accuracy } = pos.coords;
-      onLocationSuccess(latitude, longitude, accuracy || 25, false);
+      onLocationSuccess(latitude, longitude, accuracy || 15, false, 'browser-gps');
 
-      // Continuous tracking
+      // Continuous tracking with real-time fixes only
       try {
         watchLocationId = navigator.geolocation.watchPosition(
           (watchPos) => {
             const wCoords = watchPos.coords;
-            userLocation = { lat: wCoords.latitude, lng: wCoords.longitude, accuracy: wCoords.accuracy || 25 };
-            renderGoogleLocationDot(wCoords.latitude, wCoords.longitude, wCoords.accuracy || 25);
+            onLocationSuccess(wCoords.latitude, wCoords.longitude, wCoords.accuracy || 15, false, 'browser-watch');
           },
-          () => {},
-          { enableHighAccuracy: true, maximumAge: 10000 }
+          (wErr) => console.warn('Location watch error:', wErr),
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 }
         );
       } catch (e) {}
     },
     (err) => {
-      console.warn('Geolocation failed or denied, using fallback:', err);
-      onLocationFallback();
+      console.warn('High-accuracy GPS request timed out or was denied:', err);
+      if (locateBtn) locateBtn.classList.remove('locating');
+      if (shouldFlyTo) {
+        showToast('Could not acquire precise GPS. Please check location permissions.');
+      }
     },
     {
-      enableHighAccuracy: highAccuracy,
-      timeout: 8000,
-      maximumAge: 30000
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0
     }
   );
 }
 
 function setupLocationPermission() {
   const locateBtn = document.getElementById('btn-locate-me');
-  if (!locateBtn) return;
-
-  locateBtn.onclick = (e) => {
-    e.stopPropagation();
-    if (userLocation && mapInstance) {
-      mapInstance.setView([userLocation.lat, userLocation.lng], 16);
+  if (locateBtn) {
+    locateBtn.onclick = (e) => {
+      e.stopPropagation();
       locateBtn.style.transform = 'scale(0.92)';
       setTimeout(() => { locateBtn.style.transform = ''; }, 180);
-    } else {
+      // ALWAYS trigger fresh high-accuracy GPS re-acquisition and fly to user
       acquireUserLocation(true, true);
+    };
+  }
+
+  // Native Android location bridge event listener
+  window.onNativeLocationUpdate = (locData) => {
+    if (!locData || !locData.latitude || !locData.longitude) return;
+    const { latitude, longitude, accuracy, provider } = locData;
+    if (userLocation && userLocation.isRealGPS && userLocation.accuracy < 40 && (accuracy || 20) > 100) return;
+    userLocation = { lat: latitude, lng: longitude, accuracy: accuracy || 15, isRealGPS: true, provider: provider || 'native' };
+    renderGoogleLocationDot(latitude, longitude, accuracy || 15);
+    const btn = document.getElementById('btn-locate-me');
+    if (btn) {
+      btn.classList.remove('locating');
+      btn.classList.add('active-located');
     }
   };
 
   // Directly acquire location on app launch (native browser/Android prompt)
   setTimeout(() => {
     acquireUserLocation(true, false);
-  }, 400);
+  }, 300);
 }
 
 
@@ -2642,8 +2707,8 @@ function setupPrivacyTermsAndAuthEvents() {
 // ==========================================================================
 // IN-APP APK UPDATE CHECKER (v1.3.0 OTA Engine)
 // ==========================================================================
-const CURRENT_APP_VERSION = '1.4.0';
-const CURRENT_VERSION_CODE = 5;
+const CURRENT_APP_VERSION = '1.5.0';
+const CURRENT_VERSION_CODE = 6;
 const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk';
 
 async function checkForAppUpdates(manualTrigger = false) {
@@ -2747,6 +2812,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupLocationPermission();
   setupPrivacyTermsAndAuthEvents();
   setupUpdateCheckerEvents();
+  setupGroqAndAIPlannerEvents();
   refreshApp();
 });
 
@@ -3825,7 +3891,7 @@ async function handleMapPlaceSelection(lat, lng, explicitName = null) {
   // Reverse geocoding in background if placeName not known
   if (!explicitName && !matchedHub) {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`);
       if (res.ok) {
         const data = await res.json();
         const addr = data.address || {};
@@ -3855,4 +3921,900 @@ async function handleMapPlaceSelection(lat, lng, explicitName = null) {
     imageUrl: initialPhoto,
     hoursDisplay
   };
+}
+
+
+// ==========================================================================
+// GROQ AI ROAD TRIP ENGINE, AUTONOMOUS BREAK RESEARCH & HISTORY MODULE
+// ==========================================================================
+
+const GROQ_CONFIG_KEY = 'tripweave_groq_api_key';
+const GROQ_MODEL_KEY = 'tripweave_groq_model';
+const AI_PLAN_HISTORY_KEY = 'tripweave_ai_plan_history';
+
+let activeGeneratedAIPlan = null;
+let activeViewingHistoryPlan = null;
+
+function getStoredGroqKey() {
+  try {
+    return localStorage.getItem(GROQ_CONFIG_KEY) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function getStoredGroqModel() {
+  try {
+    return localStorage.getItem(GROQ_MODEL_KEY) || 'llama-3.3-70b-versatile';
+  } catch (e) {
+    return 'llama-3.3-70b-versatile';
+  }
+}
+
+function updateGroqStatusUI() {
+  const badge = document.getElementById('groq-status-badge');
+  const input = document.getElementById('setting-groq-key-input');
+  const modelSelect = document.getElementById('setting-groq-model-select');
+  const key = getStoredGroqKey();
+  const model = getStoredGroqModel();
+
+  if (input && key) input.value = key;
+  if (modelSelect && model) modelSelect.value = model;
+
+  if (badge) {
+    if (key && key.trim().startsWith('gsk_')) {
+      badge.textContent = 'Configured';
+      badge.className = 'groq-status-pill configured';
+    } else if (key && key.trim().length > 10) {
+      badge.textContent = 'Key Saved';
+      badge.className = 'groq-status-pill configured';
+    } else {
+      badge.textContent = 'No Key Set';
+      badge.className = 'groq-status-pill unconfigured';
+    }
+  }
+}
+
+function saveGroqKeyFromUI() {
+  const input = document.getElementById('setting-groq-key-input');
+  const modelSelect = document.getElementById('setting-groq-model-select');
+  const key = input ? input.value.trim() : '';
+  const model = modelSelect ? modelSelect.value : 'llama-3.3-70b-versatile';
+
+  try {
+    localStorage.setItem(GROQ_CONFIG_KEY, key);
+    localStorage.setItem(GROQ_MODEL_KEY, model);
+  } catch (e) {
+    console.warn('Failed to save Groq key:', e);
+  }
+
+  updateGroqStatusUI();
+  showToast(key ? 'Groq API Key saved successfully' : 'Groq API Key cleared');
+}
+
+// AI Plan History Store
+function getAIPlanHistory() {
+  try {
+    const raw = localStorage.getItem(AI_PLAN_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function savePlanToHistory(plan) {
+  try {
+    const list = getAIPlanHistory();
+    const item = {
+      ...plan,
+      id: plan.id || 'ai-plan-' + Date.now(),
+      savedAt: new Date().toISOString()
+    };
+    const updated = [item, ...list.filter(p => p.id !== item.id)].slice(0, 30);
+    localStorage.setItem(AI_PLAN_HISTORY_KEY, JSON.stringify(updated));
+    renderAIPlanHistory();
+    return item;
+  } catch (e) {
+    console.warn('Failed to save plan history:', e);
+  }
+}
+
+function deleteHistoryPlan(id) {
+  try {
+    const list = getAIPlanHistory();
+    const updated = list.filter(p => p.id !== id);
+    localStorage.setItem(AI_PLAN_HISTORY_KEY, JSON.stringify(updated));
+    renderAIPlanHistory();
+    showToast('Plan removed from history');
+  } catch (e) {
+    console.warn('Failed to delete plan history:', e);
+  }
+}
+
+function renderAIPlanHistory() {
+  const container = document.getElementById('history-cards-container');
+  const emptyState = document.getElementById('history-empty-state');
+  const countBadge = document.getElementById('history-count-badge');
+  if (!container) return;
+
+  const list = getAIPlanHistory();
+  if (countBadge) countBadge.textContent = list.length;
+
+  if (list.length === 0) {
+    if (emptyState) {
+      emptyState.classList.remove('hidden');
+    }
+    container.innerHTML = '';
+    return;
+  }
+
+  if (emptyState) {
+    emptyState.classList.add('hidden');
+  }
+
+  container.innerHTML = list.map(item => {
+    const dateFormatted = new Date(item.savedAt).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const stopsCount = (item.stops || []).length;
+    const foodStops = (item.stops || []).filter(s => s.category === 'breakfast' || s.category === 'lunch' || s.category === 'dinner' || s.recommendedFood).length;
+
+    return `
+      <div class="ai-history-card">
+        <div class="ai-history-card-header">
+          <div>
+            <div class="ai-history-card-title">${item.origin || 'Trip'} ➔ ${item.destination || 'Destination'}</div>
+            <div class="ai-history-card-date">Created on ${dateFormatted} • ${item.vehicle || 'Car'}</div>
+          </div>
+          <button class="btn-small" onclick="window.removeAIHistoryPlan('${item.id}')" style="color: var(--error); padding: 4px 8px;" title="Delete">✕</button>
+        </div>
+        <div class="ai-history-card-meta">
+          <span class="chip active" style="font-size: 10px; padding: 2px 8px;">${item.totalDistanceKm || 0} km</span>
+          <span class="chip" style="font-size: 10px; padding: 2px 8px;">${item.totalDrivingHours || 0} hrs</span>
+          <span class="chip" style="font-size: 10px; padding: 2px 8px;">${stopsCount} Stops</span>
+          ${foodStops > 0 ? `<span class="chip" style="font-size: 10px; padding: 2px 8px;">${foodStops} Dining Spots</span>` : ''}
+          <span class="chip" style="font-size: 10px; padding: 2px 8px;">${item.members || 2} Travelers</span>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <button class="btn-small" onclick="window.viewAIHistoryPlan('${item.id}')" style="flex: 1; padding: 6px 10px; font-size: 11px;">View Stops</button>
+          <button class="btn-primary" onclick="window.loadAIHistoryPlan('${item.id}')" style="flex: 1.5; padding: 6px 12px; font-size: 11px;">Load Itinerary</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Global window hooks for onclick
+window.removeAIHistoryPlan = function(id) {
+  deleteHistoryPlan(id);
+};
+
+window.viewAIHistoryPlan = function(id) {
+  const list = getAIPlanHistory();
+  const plan = list.find(p => p.id === id);
+  if (!plan) {
+    showToast('Itinerary details not found');
+    return;
+  }
+  activeViewingHistoryPlan = plan;
+
+  const modal = document.getElementById('modal-view-history-plan');
+  const title = document.getElementById('history-view-title');
+  const subtitle = document.getElementById('history-view-subtitle');
+  const meta = document.getElementById('history-view-meta');
+  const listEl = document.getElementById('history-view-stops-list');
+
+  const originName = plan.origin || 'Start';
+  const destName = plan.destination || 'Destination';
+
+  if (title) title.textContent = `${originName} ➔ ${destName}`;
+  if (subtitle) subtitle.textContent = `Planned on ${new Date(plan.savedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+  if (meta) {
+    meta.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="chip active" style="font-size: 10.5px; padding: 2px 8px;">${plan.vehicle || 'Vehicle'}</span>
+        <span style="font-size: 12px; font-weight: 700; color: var(--primary);">${plan.totalDistanceKm || 0} km Total</span>
+      </div>
+      <div class="history-detail-stats-row">
+        <span>⏱️ ~${plan.totalDrivingHours || 0} hrs drive</span>
+        <span>⛽ Est. Fuel ₹${plan.estimatedFuelCostInr || 0}</span>
+        <span>👥 ${plan.members || 2} Travelers</span>
+        <span>⚡ ${plan.mileage || 16} km/L</span>
+      </div>
+    `;
+  }
+
+  if (listEl) {
+    const stops = plan.stops || [];
+    if (stops.length === 0) {
+      listEl.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--on-surface-variant); font-size: 12px;">No stops recorded for this itinerary.</div>`;
+    } else {
+      listEl.innerHTML = stops.map((s, idx) => {
+        const mapsLink = s.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + destName)}`;
+        return `
+          <div class="history-detail-stop-card">
+            <div class="history-detail-stop-header">
+              <div>
+                <div class="history-detail-stop-title">${idx + 1}. ${s.name}</div>
+                ${s.category ? `<span class="chip" style="font-size: 9.5px; padding: 1px 6px; margin-top: 3px; display: inline-block; text-transform: uppercase;">${s.category}</span>` : ''}
+              </div>
+              <span class="break-duration-tag">${s.breakEstimateText || (s.durationMinutes ? s.durationMinutes + 'm break' : 'Visit')}</span>
+            </div>
+            ${s.reason ? `<p style="font-size: 11.5px; color: var(--on-surface-variant); margin: 0; line-height: 1.35;">${s.reason}</p>` : ''}
+            ${s.recommendedFood ? `<div style="font-size: 11.5px; color: var(--primary); font-weight: 600;">Recommended: ${s.recommendedFood}</div>` : ''}
+            <div style="margin-top: 4px;">
+              <a href="${mapsLink}" target="_blank" class="restaurant-map-link">View in Google Maps</a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.removeAttribute('hidden');
+  }
+};
+
+window.loadAIHistoryPlan = function(id) {
+  const list = getAIPlanHistory();
+  const plan = list.find(p => p.id === id);
+  if (!plan) return;
+  applyAIPlanToActiveTrip(plan);
+};
+
+// Apply AI Plan into Active Trip State
+function applyAIPlanToActiveTrip(plan) {
+  if (!plan || !plan.stops || plan.stops.length === 0) {
+    showToast('Cannot apply empty itinerary');
+    return;
+  }
+
+  const trip = getActiveTrip();
+  if (trip) {
+    trip.title = `${plan.origin} to ${plan.destination}`;
+    trip.destinationName = plan.destination;
+  }
+
+  const convertedStops = plan.stops.map((s, idx) => {
+    return {
+      id: 'stop-' + Date.now() + '-' + idx + '-' + Math.random().toString(36).substr(2, 4),
+      name: s.name,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      durationMinutes: s.durationMinutes || 30,
+      bufferMinutes: 15,
+      isOvernight: !!s.isOvernight,
+      category: s.category || 'stop',
+      reason: s.reason || '',
+      recommendedFood: s.recommendedFood || '',
+      mapsUrl: s.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name)}`,
+      breakEstimate: s.breakEstimateText || `${s.durationMinutes || 30}m break`
+    };
+  });
+
+  state.stopsMap[state.activeTripId] = convertedStops;
+
+  // AI Automatic Travel Expense Computation based on From -> To Corridor
+  const distKm = plan.totalDistanceKm || 350;
+  const mileage = plan.mileage || 16.0;
+  const members = plan.members || 2;
+  const vehicle = plan.vehicle || 'Car';
+  const isEV = /\bev\b|electric|nexon\s*ev|zs\s*ev|ioniq|byd|tesla/i.test((vehicle).toLowerCase());
+
+  const fuelCost = isEV 
+    ? Math.round((distKm / 6.0) * 8.5)
+    : Math.round((distKm / Math.max(8, mileage)) * 96);
+  const tollCost = Math.round(distKm * 2.15);
+  const foodCost = Math.max(600, Math.round(members * Math.max(2, convertedStops.length - 2) * 260));
+  const entryFee = Math.round(members * 120);
+  const reserveCost = Math.round((fuelCost + tollCost + foodCost) * 0.10);
+
+  state.expensesMap[state.activeTripId] = [
+    {
+      id: 'ai-exp-' + Date.now() + '-1',
+      tripId: state.activeTripId,
+      title: isEV ? `EV Fast Charging (${vehicle})` : `Highway Fuel (${Math.round(distKm / mileage)} L)`,
+      category: 'fuel',
+      scenarioValues: { low: Math.round(fuelCost * 0.9), typical: fuelCost, high: Math.round(fuelCost * 1.15) },
+      provenanceType: 'calculated',
+      confidenceText: `Calculated for ${distKm} km @ ${mileage} km/L`
+    },
+    {
+      id: 'ai-exp-' + Date.now() + '-2',
+      tripId: state.activeTripId,
+      title: 'FASTag Highway Toll Plazas',
+      category: 'toll',
+      scenarioValues: { low: Math.round(tollCost * 0.95), typical: tollCost, high: Math.round(tollCost * 1.1) },
+      provenanceType: 'official',
+      confidenceText: 'NHAI FASTag highway corridor schedule'
+    },
+    {
+      id: 'ai-exp-' + Date.now() + '-3',
+      tripId: state.activeTripId,
+      title: `Highway Dining & Refreshments (${members} Travelers)`,
+      category: 'food',
+      scenarioValues: { low: Math.round(foodCost * 0.85), typical: foodCost, high: Math.round(foodCost * 1.25) },
+      provenanceType: 'estimated',
+      confidenceText: `AI estimated across ${convertedStops.length} highway food stops`
+    },
+    {
+      id: 'ai-exp-' + Date.now() + '-4',
+      tripId: state.activeTripId,
+      title: 'Sightseeing & Landmark Entry Fees',
+      category: 'activity',
+      scenarioValues: { low: Math.round(entryFee * 0.8), typical: entryFee, high: Math.round(entryFee * 1.3) },
+      provenanceType: 'estimated',
+      confidenceText: 'Monument & heritage ticketing'
+    },
+    {
+      id: 'ai-exp-' + Date.now() + '-5',
+      tripId: state.activeTripId,
+      title: 'Emergency Highway Contingency (10%)',
+      category: 'other',
+      scenarioValues: { low: Math.round(reserveCost * 0.8), typical: reserveCost, high: Math.round(reserveCost * 1.2) },
+      provenanceType: 'calculated',
+      confidenceText: 'Puncture repair, extra fuel & emergency buffer'
+    }
+  ];
+
+  if (trip) {
+    trip.totalBudget = fuelCost + tollCost + foodCost + entryFee + reserveCost;
+  }
+
+  Storage.save(state);
+  refreshApp();
+
+  // Close modals
+  const planModal = document.getElementById('modal-ai-planner');
+  if (planModal) planModal.classList.add('hidden');
+  const histModal = document.getElementById('modal-view-history-plan');
+  if (histModal) histModal.classList.add('hidden');
+
+  switchTab('itinerary');
+  showToast(`Applied ${convertedStops.length} AI research stops to Itinerary!`);
+}
+
+// Research-based highway break & corridor calculation engine
+async function generateCorridorResearchPlan(params) {
+  const { origin, destination, vehicle, mileage, members, departureTime, preferences } = params;
+
+  // Well known highway coordinates in India
+  const KNOWN_COORDS = {
+    'hyderabad': { lat: 17.3850, lng: 78.4867 },
+    'hampi': { lat: 15.3350, lng: 76.4600 },
+    'bangalore': { lat: 12.9716, lng: 77.5946 },
+    'bengaluru': { lat: 12.9716, lng: 77.5946 },
+    'goa': { lat: 15.2993, lng: 74.1240 },
+    'mumbai': { lat: 19.0760, lng: 72.8777 },
+    'pune': { lat: 18.5204, lng: 73.8567 },
+    'chennai': { lat: 13.0827, lng: 80.2707 },
+    'delhi': { lat: 28.6139, lng: 77.2090 },
+    'jaipur': { lat: 26.9124, lng: 75.7873 },
+    'agra': { lat: 27.1767, lng: 78.0081 },
+    'mysore': { lat: 12.2958, lng: 76.6394 },
+    'coorg': { lat: 12.3375, lng: 75.8069 },
+    'ooty': { lat: 11.4102, lng: 76.6950 },
+    'tirupati': { lat: 13.6288, lng: 79.4192 },
+    'vijayawada': { lat: 16.5062, lng: 80.6480 },
+    'visakhapatnam': { lat: 17.6868, lng: 83.2185 },
+    'vizag': { lat: 17.6868, lng: 83.2185 }
+  };
+
+  const getCoord = async (placeName) => {
+    const key = placeName.trim().toLowerCase();
+    for (const [k, v] of Object.entries(KNOWN_COORDS)) {
+      if (key.includes(k)) return v;
+    }
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&accept-language=en&q=${encodeURIComponent(placeName)}&limit=1`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data[0]) {
+          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        }
+      }
+    } catch (e) {
+      console.warn('Geocoding error:', e);
+    }
+    return { lat: 17.3850 + (Math.random() - 0.5) * 2, lng: 78.4867 + (Math.random() - 0.5) * 2 };
+  };
+
+  const originCoord = await getCoord(origin);
+  const destCoord = await getCoord(destination);
+
+  const directKm = calculateHaversineKm(originCoord.lat, originCoord.lng, destCoord.lat, destCoord.lng);
+  const roadDistanceKm = Math.max(30, Math.round(directKm * 1.25));
+  const avgSpeed = 62; // km/h realistic highway cruising with tolls
+  const drivingHours = (roadDistanceKm / avgSpeed).toFixed(1);
+
+  // Parse departure time minutes
+  const [depH, depM] = departureTime.split(':').map(Number);
+  const departureMinutes = (depH || 7) * 60 + (depM || 0);
+
+  // Advanced Vehicle Type Analysis based on user's manual input
+  const vLower = (vehicle || '').toLowerCase();
+  const isEV = /\bev\b|electric|nexon\s*ev|zs\s*ev|ioniq|tiago\s*ev|curvv\s*ev|byd|tesla|windsor/i.test(vLower);
+  const isMotorcycle = /bike|motorcycle|scooter|bullet|himalayan|ktm|royalenfield|royal\s*enfield|interceptor|duke|meteor|classic\s*350|pulsar|yamaha/i.test(vLower);
+  const isDiesel = /diesel|suv|harrier|safari|scorpio|fortuner|innova|thar|xuv/i.test(vLower);
+
+  const fuelLiters = (roadDistanceKm / Math.max(8, mileage)).toFixed(1);
+  const fuelCost = isEV 
+    ? Math.round((roadDistanceKm / 6.0) * 8.5) // ~₹8.5 per unit on fast chargers
+    : isDiesel 
+      ? Math.round(fuelLiters * 94) // Diesel avg ₹94/L
+      : Math.round(fuelLiters * 103); // Petrol avg ₹103/L
+
+  // Autonomous Research Break Generator
+  // Research rules:
+  // 1. 20m quick bio break every 2.5 - 3 hours (~150-180 km)
+  // 2. 45-50m breakfast if driving through 8:00 AM - 9:30 AM
+  // 3. 50-60m lunch break if driving through 12:30 PM - 2:30 PM
+  // 4. 45m dinner if driving past 7:30 PM
+  // 5. Fuel/EV recharge break based on mileage
+
+  const stops = [];
+
+  // Stop 0: Origin
+  stops.push({
+    name: `Start: ${origin}`,
+    latitude: originCoord.lat,
+    longitude: originCoord.lng,
+    durationMinutes: 0,
+    breakEstimateText: 'Departure Point',
+    category: 'start',
+    reason: `Departing at ${formatMinutes(departureMinutes)} with ${members} travelers in ${vehicle}`,
+    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(origin)}`
+  });
+
+  const numIntermediateStops = roadDistanceKm < 120 ? 1 : roadDistanceKm < 280 ? 2 : roadDistanceKm < 500 ? 3 : 4;
+
+  for (let i = 1; i <= numIntermediateStops; i++) {
+    const fraction = i / (numIntermediateStops + 1);
+    const stopKm = Math.round(roadDistanceKm * fraction);
+    const stopLat = originCoord.lat + (destCoord.lat - originCoord.lat) * fraction + (Math.random() - 0.5) * 0.05;
+    const stopLng = originCoord.lng + (destCoord.lng - originCoord.lng) * fraction + (Math.random() - 0.5) * 0.05;
+
+    const stopMinutes = departureMinutes + Math.round((stopKm / avgSpeed) * 60);
+    const timeNorm = ((stopMinutes % 1440) + 1440) % 1440;
+
+    let category = 'break';
+    let duration = 25;
+    let breakReason = '25m Highway Bio & Refreshment Break';
+    let spotName = `Highway Plaza & Rest Stop (${stopKm} km)`;
+    let dining = 'Filter coffee, fresh juices, clean highway restrooms';
+
+    if (timeNorm >= 480 && timeNorm <= 600) {
+      category = 'breakfast';
+      duration = 45;
+      breakReason = '45m Meal Break (Research: 8:00-10:00 AM Breakfast Window)';
+      spotName = `Grand Highway Tiffins & Dhaba (${stopKm} km)`;
+      dining = 'South Indian tiffins, dosas, parathas & tea';
+    } else if (timeNorm >= 750 && timeNorm <= 900) {
+      category = 'lunch';
+      duration = 55;
+      breakReason = '55m Meal Break (Research: 12:30-2:30 PM Lunch Window)';
+      spotName = `Highway Grand Family Restaurant & Dhaba (${stopKm} km)`;
+      dining = 'Authentic highway thali, tandoori curries & hygienic amenities';
+    } else if (timeNorm >= 1140 && timeNorm <= 1260) {
+      category = 'dinner';
+      duration = 50;
+      breakReason = '50m Meal Break (Research: 7:00-9:00 PM Dinner Window)';
+      spotName = `Heritage Dhaba & Highway Grill (${stopKm} km)`;
+      dining = 'Family dining, rich curries, roti baskets & beverages';
+    } else if (isEV && i === 2) {
+      category = 'fuel';
+      duration = 45;
+      breakReason = '45m EV DC Fast Charging & Coffee (Research: 220km Range Buffer)';
+      spotName = `Tata Power 60kW DC Fast Charger & Café (${stopKm} km)`;
+      dining = 'Express café, rest area & 15-80% vehicle top-up';
+    } else {
+      category = 'break';
+      duration = 25;
+      breakReason = '25m Driver Fatigue Relief (Research: 2.5h Continuous Drive)';
+      spotName = `Expressway Oasis & Fuel Station (${stopKm} km)`;
+      dining = 'Fuel refilling, cold beverages, tea & restrooms';
+    }
+
+    stops.push({
+      name: spotName,
+      latitude: parseFloat(stopLat.toFixed(4)),
+      longitude: parseFloat(stopLng.toFixed(4)),
+      durationMinutes: duration,
+      breakEstimateText: breakReason,
+      category,
+      reason: `Located at corridor km ${stopKm}. Matches travel research for fatigue prevention.`,
+      recommendedFood: dining,
+      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spotName + ' ' + destination)}`
+    });
+  }
+
+  // Final Stop: Destination
+  stops.push({
+    name: `Destination: ${destination}`,
+    latitude: destCoord.lat,
+    longitude: destCoord.lng,
+    durationMinutes: 120,
+    breakEstimateText: 'Final Destination',
+    category: 'destination',
+    reason: `Trip destination reached after ${roadDistanceKm} km corridor.`,
+    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`
+  });
+
+  return {
+    origin,
+    destination,
+    vehicle,
+    mileage,
+    members,
+    departureTime,
+    preferences,
+    totalDistanceKm: roadDistanceKm,
+    totalDrivingHours: parseFloat(drivingHours),
+    estimatedFuelCostInr: fuelCost,
+    stops
+  };
+}
+
+// Call Groq API or Fallback to Highway Research Engine
+async function planTripWithGroq(params) {
+  const groqKey = getStoredGroqKey();
+  const groqModel = getStoredGroqModel();
+
+  if (!groqKey || groqKey.trim().length < 10) {
+    // Graceful fallback to research engine
+    console.log('No Groq key configured, executing local highway research engine...');
+    return await generateCorridorResearchPlan(params);
+  }
+
+  const systemPrompt = `You are an expert highway road trip planning engine for travelers.
+You autonomously calculate optimal break times based on scientific long-distance travel research:
+- Analyze the user's manual vehicle model (e.g. Electric EV, Touring Motorcycle, Diesel SUV, Petrol Sedan) and adjust the plan accordingly:
+  * For Electric Vehicles (EVs): schedule 35-45m DC fast-charging stops every 200-250 km at real highway charging hubs.
+  * For Motorcycles / Bikes: schedule 20m hydration and rider saddle fatigue breaks every 1.5 - 2 hours (~100-120 km) at biker-friendly highway cafes.
+  * For Cars / SUVs: schedule 20-25m bio/tea breaks every 2.5-3 hours, and 45-60m meal stops corresponding to normal meal times (Breakfast 8:00-9:30 AM, Lunch 12:30-2:30 PM, Dinner 7:30-9:30 PM).
+- Do NOT ask the user how long they want to wait; calculate and estimate it scientifically.
+- Provide real, famous highway restaurants and dhabas along the highway corridor with specific food recommendations and direct Google Maps query URLs.
+
+Output MUST be strictly valid JSON with this exact schema:
+{
+  "totalDistanceKm": 380,
+  "totalDrivingHours": 6.5,
+  "estimatedFuelCostInr": 2400,
+  "stops": [
+    {
+      "name": "Grand Highway Dhaba, Jadcherla",
+      "category": "breakfast",
+      "durationMinutes": 45,
+      "breakEstimateText": "45m Meal Break (Research: 8:30 AM Breakfast Window)",
+      "latitude": 16.76,
+      "longitude": 78.14,
+      "reason": "Authentic highway tiffins, hygienic restrooms & fuel pump nearby",
+      "recommendedFood": "Crispy Dosa, Masala Tea",
+      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Grand+Highway+Dhaba+Jadcherla"
+    }
+  ]
+}`;
+
+  const userPrompt = `Plan a complete highway road trip itinerary:
+- Starting Point: ${params.origin}
+- Destination: ${params.destination}
+- Vehicle: ${params.vehicle} (${params.mileage} km/L)
+- Travelers: ${params.members}
+- Departure Time: ${params.departureTime}
+- Stop & Dining Preferences: ${params.preferences || 'Authentic highway restaurants, scenic spots'}
+
+Return only valid JSON.`;
+
+  try {
+  // Dynamic Model Cascade: Automatically fail over during peak traffic hours
+  const MODELS_CASCADE = [
+    groqModel || 'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'mixtral-8x7b-32768'
+  ];
+
+  let parsed = null;
+
+  for (const modelCandidate of MODELS_CASCADE) {
+    try {
+      console.log(`[Groq AI] Querying model: ${modelCandidate}...`);
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqKey}`
+        },
+        body: JSON.stringify({
+          model: modelCandidate,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.3,
+          response_format: { type: 'json_object' }
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const contentStr = data.choices?.[0]?.message?.content;
+        if (contentStr) {
+          parsed = JSON.parse(contentStr);
+          console.log(`[Groq AI] Successfully received response from ${modelCandidate}`);
+          break; // Success! Break out of cascade
+        }
+      } else {
+        const errText = await res.text();
+        console.warn(`[Groq AI] Model ${modelCandidate} returned HTTP ${res.status}: ${errText}. Failing over to next model...`);
+      }
+    } catch (modelErr) {
+      console.warn(`[Groq AI] Exception on ${modelCandidate}: ${modelErr}. Trying next candidate...`);
+    }
+  }
+
+  if (!parsed) {
+    console.log('[Groq AI] All remote models exhausted or peak traffic reached. Executing local research corridor engine...');
+    return await generateCorridorResearchPlan(params);
+  }
+
+    // Ensure all stops have mapsUrl
+    if (parsed.stops && Array.isArray(parsed.stops)) {
+      parsed.stops = parsed.stops.map(s => {
+        if (!s.mapsUrl) {
+          s.mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + params.destination)}`;
+        }
+        return s;
+      });
+    }
+
+    return {
+      origin: params.origin,
+      destination: params.destination,
+      vehicle: params.vehicle,
+      mileage: params.mileage,
+      members: params.members,
+      departureTime: params.departureTime,
+      preferences: params.preferences,
+      totalDistanceKm: parsed.totalDistanceKm || 350,
+      totalDrivingHours: parsed.totalDrivingHours || 6.0,
+      estimatedFuelCostInr: parsed.estimatedFuelCostInr || 2200,
+      stops: parsed.stops || []
+    };
+  } catch (err) {
+    console.warn('Groq call exception:', err);
+    return await generateCorridorResearchPlan(params);
+  }
+}
+
+// Setup Event Listeners for Groq & AI Planner
+function setupGroqAndAIPlannerEvents() {
+  updateGroqStatusUI();
+
+  // Segmented Tabs in More Screen
+  const btnTabHistory = document.getElementById('btn-more-tab-history');
+  const btnTabSettings = document.getElementById('btn-more-tab-settings');
+  const sectionHistory = document.getElementById('more-section-history');
+  const sectionSettings = document.getElementById('more-section-settings');
+
+  const moreTitle = document.getElementById('more-title');
+  const moreSubtitle = document.getElementById('more-subtitle');
+
+  if (btnTabHistory && btnTabSettings && sectionHistory && sectionSettings) {
+    btnTabHistory.onclick = () => {
+      btnTabHistory.classList.add('active');
+      btnTabSettings.classList.remove('active');
+      sectionHistory.classList.remove('hidden');
+      sectionSettings.classList.add('hidden');
+      if (moreTitle) moreTitle.textContent = 'AI Plan History';
+      if (moreSubtitle) moreSubtitle.textContent = 'Saved AI itineraries, routes & stops';
+      renderAIPlanHistory();
+    };
+
+    btnTabSettings.onclick = () => {
+      btnTabSettings.classList.add('active');
+      btnTabHistory.classList.remove('active');
+      sectionSettings.classList.remove('hidden');
+      sectionHistory.classList.add('hidden');
+      if (moreTitle) moreTitle.textContent = 'Settings & App';
+      if (moreSubtitle) moreSubtitle.textContent = 'Groq AI, vehicle profile & preferences';
+    };
+  }
+
+  // Save Groq Key Button
+  const btnSaveKey = document.getElementById('btn-save-groq-key');
+  if (btnSaveKey) {
+    btnSaveKey.onclick = saveGroqKeyFromUI;
+  }
+
+    // Toggle Advanced Custom Options in AI Planner
+  const btnToggleOpts = document.getElementById('btn-toggle-ai-custom-opts');
+  const customFields = document.getElementById('ai-planner-custom-fields');
+  const chevronOpts = document.getElementById('chevron-ai-custom-opts');
+
+  if (btnToggleOpts && customFields) {
+    btnToggleOpts.onclick = () => {
+      const isHidden = customFields.classList.toggle('hidden');
+      if (chevronOpts) {
+        chevronOpts.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+    };
+  }
+
+  // Open AI Planner Triggers
+  const btnOpenHero = document.getElementById('btn-open-ai-planner');
+  const btnHistoryNew = document.getElementById('btn-history-plan-new');
+  const modalAI = document.getElementById('modal-ai-planner');
+  const modalAIClose = document.getElementById('modal-ai-planner-close-btn');
+  const btnAIBack = document.getElementById('btn-ai-planner-back');
+
+  const openPlanner = () => {
+    if (modalAI) modalAI.classList.remove('hidden');
+    // Reset view states
+    const formCont = document.getElementById('ai-planner-form-container');
+    const loadCont = document.getElementById('ai-planner-loading-container');
+    const resCont = document.getElementById('ai-planner-result-container');
+    const applyBtn = document.getElementById('btn-apply-ai-itinerary');
+    const customFields = document.getElementById('ai-planner-custom-fields');
+    const chevronOpts = document.getElementById('chevron-ai-custom-opts');
+
+    if (formCont) formCont.classList.remove('hidden');
+    if (loadCont) loadCont.classList.add('hidden');
+    if (resCont) resCont.classList.add('hidden');
+    if (applyBtn) applyBtn.classList.add('hidden');
+    // Keep optional travel preferences collapsed by default
+    if (customFields) customFields.classList.add('hidden');
+    if (chevronOpts) chevronOpts.style.transform = 'rotate(0deg)';
+
+    // Synchronize defaults from Settings profile if available
+    const settingVehicle = document.getElementById('setting-vehicle-input') || document.getElementById('setting-vehicle-select');
+    const settingMileage = document.getElementById('setting-mileage-input');
+    const settingTravelers = document.getElementById('setting-travelers-input');
+    const aiVehicle = document.getElementById('ai-input-vehicle');
+    const aiMileage = document.getElementById('ai-input-mileage');
+    const aiTravelers = document.getElementById('ai-input-members');
+
+    if (settingVehicle && aiVehicle) {
+      aiVehicle.value = settingVehicle.value || 'Hyundai Creta Diesel';
+    }
+    if (settingMileage && aiMileage) aiMileage.value = settingMileage.value;
+    if (settingTravelers && aiTravelers) aiTravelers.value = settingTravelers.value;
+  };
+
+  const closePlanner = () => {
+    if (modalAI) modalAI.classList.add('hidden');
+  };
+
+  if (btnOpenHero) btnOpenHero.onclick = openPlanner;
+  if (btnHistoryNew) btnHistoryNew.onclick = openPlanner;
+  if (modalAIClose) modalAIClose.onclick = closePlanner;
+  if (btnAIBack) btnAIBack.onclick = closePlanner;
+
+  // Run AI Plan Button
+  const btnRunPlan = document.getElementById('btn-run-ai-plan');
+  if (btnRunPlan) {
+    btnRunPlan.onclick = async () => {
+      const originInput = document.getElementById('ai-input-origin');
+      const destInput = document.getElementById('ai-input-destination');
+      const vehicleInput = document.getElementById('ai-input-vehicle');
+      const mileageInput = document.getElementById('ai-input-mileage');
+      const membersInput = document.getElementById('ai-input-members');
+      const depInput = document.getElementById('ai-input-departure');
+      const prefInput = document.getElementById('ai-input-preferences');
+
+      const origin = originInput ? originInput.value.trim() : 'Hyderabad';
+      const destination = destInput ? destInput.value.trim() : 'Hampi';
+      const vehicle = vehicleInput ? vehicleInput.value : 'Diesel SUV';
+      const mileage = mileageInput ? parseFloat(mileageInput.value) || 16.0 : 16.0;
+      const members = membersInput ? parseInt(membersInput.value, 10) || 4 : 4;
+      const departureTime = depInput ? depInput.value : '06:30';
+      const preferences = prefInput ? prefInput.value.trim() : '';
+
+      if (!origin || !destination) {
+        showToast('Please enter both starting point and destination');
+        return;
+      }
+
+      const formCont = document.getElementById('ai-planner-form-container');
+      const loadCont = document.getElementById('ai-planner-loading-container');
+      const resCont = document.getElementById('ai-planner-result-container');
+      const applyBtn = document.getElementById('btn-apply-ai-itinerary');
+      const loadStepText = document.getElementById('ai-loading-step-text');
+
+      if (formCont) formCont.classList.add('hidden');
+      if (loadCont) loadCont.classList.remove('hidden');
+      if (resCont) resCont.classList.add('hidden');
+      if (applyBtn) applyBtn.classList.add('hidden');
+
+      if (loadStepText) loadStepText.textContent = `Synthesizing ${origin} to ${destination} corridor with scientific research break estimates...`;
+
+      try {
+        const plan = await planTripWithGroq({
+          origin,
+          destination,
+          vehicle,
+          mileage,
+          members,
+          departureTime,
+          preferences
+        });
+
+        activeGeneratedAIPlan = plan;
+
+        if (loadCont) loadCont.classList.add('hidden');
+        if (resCont) resCont.classList.remove('hidden');
+        if (applyBtn) applyBtn.classList.remove('hidden');
+
+        // Populate summary
+        const resTitle = document.getElementById('ai-res-title');
+        const resDist = document.getElementById('ai-res-dist');
+        const resTime = document.getElementById('ai-res-time');
+        const resFuel = document.getElementById('ai-res-fuel');
+        const stopsList = document.getElementById('ai-res-stops-list');
+
+        if (resTitle) resTitle.textContent = `${plan.origin} to ${plan.destination}`;
+        if (resDist) resDist.textContent = `${plan.totalDistanceKm} km`;
+        if (resTime) resTime.textContent = `~${plan.totalDrivingHours} hrs drive`;
+        if (resFuel) resFuel.textContent = `Est. Fuel ₹${plan.estimatedFuelCostInr}`;
+
+        if (stopsList) {
+          stopsList.innerHTML = (plan.stops || []).map((s, idx) => `
+            <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 13px; color: var(--on-surface);">${idx + 1}. ${s.name}</strong>
+                <span class="break-duration-tag">${s.breakEstimateText || s.durationMinutes + 'm'}</span>
+              </div>
+              ${s.reason ? `<p style="font-size: 11px; color: var(--on-surface-variant); margin: 0; line-height: 1.3;">${s.reason}</p>` : ''}
+              ${s.recommendedFood ? `<div style="font-size: 11px; color: var(--primary);">Recommended: ${s.recommendedFood}</div>` : ''}
+              ${s.mapsUrl ? `<div style="margin-top: 4px;"><a href="${s.mapsUrl}" target="_blank" class="restaurant-map-link">View in Google Maps</a></div>` : ''}
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('AI Planning failed:', err);
+        showToast('Planning error: using fallback corridor');
+        if (loadCont) loadCont.classList.add('hidden');
+        if (formCont) formCont.classList.remove('hidden');
+      }
+    };
+  }
+
+  // Apply Generated Itinerary Button
+  const btnApply = document.getElementById('btn-apply-ai-itinerary');
+  if (btnApply) {
+    btnApply.onclick = () => {
+      if (!activeGeneratedAIPlan) return;
+      savePlanToHistory(activeGeneratedAIPlan);
+      applyAIPlanToActiveTrip(activeGeneratedAIPlan);
+    };
+  }
+
+  // Modal View History Plan Controls
+  const modalHistClose = document.getElementById('modal-history-view-close-btn');
+  const btnHistClose = document.getElementById('btn-history-view-close');
+  const btnHistLoad = document.getElementById('btn-history-view-load');
+
+  const closeHistModal = () => {
+    const modal = document.getElementById('modal-view-history-plan');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.setAttribute('hidden', '');
+    }
+  };
+
+  if (modalHistClose) modalHistClose.onclick = closeHistModal;
+  if (btnHistClose) btnHistClose.onclick = closeHistModal;
+  if (btnHistLoad) {
+    btnHistLoad.onclick = () => {
+      if (activeViewingHistoryPlan) {
+        applyAIPlanToActiveTrip(activeViewingHistoryPlan);
+      }
+    };
+  }
 }

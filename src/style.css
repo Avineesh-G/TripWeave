@@ -4,6 +4,12 @@
    ========================================================================== */
 
 :root {
+  /* Safe Area & Dynamic Island Inset Tokens */
+    /* Safe Area & Dynamic Island Inset Tokens */
+  --status-bar-height: 58px;
+  --native-safe-top: 58px;
+  --safe-top: 58px;
+  --safe-bottom: 20px;
   /* Tonal Palette — Light Theme (Primary) */
   --md-seed: #3B5FCC;
   --bg-canvas: #FAFAFD;
@@ -100,6 +106,19 @@ body.theme-dark {
   --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.2);
 
   --desktop-bg: #090B0F;
+}
+
+
+/* Global Hidden Utility with Maximum Specificity */
+.hidden {
+  display: none !important;
+}
+
+@supports (padding-top: max(0px)) {
+  :root {
+    --safe-top: max(58px, env(safe-area-inset-top, 58px));
+    --safe-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  }
 }
 
 /* Anti-Pixelation Global Setup */
@@ -367,7 +386,7 @@ input, textarea, select, [contenteditable="true"] {
   height: 100%;
 }
 
-/* Screen View — Ample Bottom Padding to Prevent Cropping */
+/* Screen View — Dynamic Island & Safe Area Cleared */
 .screen-view {
   position: absolute;
   inset: 0;
@@ -376,7 +395,8 @@ input, textarea, select, [contenteditable="true"] {
   background: var(--bg-canvas);
   overflow-y: auto;
   overflow-x: hidden;
-  padding-top: 14px; padding-bottom: 110px;
+  padding-top: 0;
+  padding-bottom: calc(var(--safe-bottom) + 95px);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -420,7 +440,7 @@ input, textarea, select, [contenteditable="true"] {
 /* Floating Top Area over Map (Positioned at Very Top) */
 .map-floating-overlay {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  top: calc(var(--native-safe-top, var(--safe-top, 58px)) + 10px);
   left: 14px;
   right: 14px;
   z-index: 500;
@@ -872,13 +892,46 @@ input, textarea, select, [contenteditable="true"] {
 
 /* Screen Headers */
 .screen-header-bar {
-  padding: 16px 16px 12px 16px;
+  padding-top: calc(var(--native-safe-top, var(--safe-top, 58px)) + 14px);
+  padding-bottom: 14px;
+  padding-left: 20px;
+  padding-right: 20px;
   background: var(--surface);
-  border-bottom: 1px solid var(--outline-variant);
+  border-bottom: none;
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.screen-header-bar.header-with-tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+.more-header-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tab-content-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tab-content-section.hidden {
+  display: none !important;
 }
 
 .screen-title {
@@ -1246,7 +1299,12 @@ input, textarea, select, [contenteditable="true"] {
   padding: 16px;
 }
 
-.modal-backdrop.hidden { display: none; }
+/* Absolute Modal Hidden Enforcement */
+[hidden],
+.modal-backdrop.hidden,
+.hidden {
+  display: none !important;
+}
 
 .modal-card {
   background: var(--surface);
@@ -1334,15 +1392,27 @@ input, textarea, select, [contenteditable="true"] {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input-field label {
   font-size: 12px;
   font-weight: 600;
   color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.input-field input, .input-field select {
+.input-field input, 
+.input-field select, 
+.input-field textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--outline-variant);
@@ -1351,10 +1421,19 @@ input, textarea, select, [contenteditable="true"] {
   font-family: inherit;
   font-size: 13px;
   outline: none;
+  text-overflow: ellipsis;
 }
 
-.input-field input:focus, .input-field select:focus {
+.input-field select {
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.input-field input:focus, 
+.input-field select:focus, 
+.input-field textarea:focus {
   border-color: var(--primary);
+  background: var(--surface);
 }
 
 /* Compare Plans */
@@ -3108,7 +3187,7 @@ button, input, textarea, select {
 /* In-App Turn-by-Turn Navigation HUD (Google Maps Style) */
 .nav-hud-top {
   position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  top: calc(var(--native-safe-top, var(--safe-top, 58px)) + 10px);
   left: 12px;
   right: 12px;
   background: #1E293B;
@@ -3313,4 +3392,422 @@ button, input, textarea, select {
 .corridor-ev-tag {
   background: rgba(16, 185, 129, 0.15);
   color: #059669;
+}
+
+/* ==========================================================================
+   MORE SCREEN, AI PLAN HISTORY & GROQ PLANNER STYLES
+   ========================================================================== */
+
+/* Segmented Switcher in More Screen */
+.more-segmented-tabs {
+  display: flex;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  margin: 0;
+  gap: 4px;
+}
+
+.more-tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all var(--motion-micro);
+}
+
+.more-tab-btn.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.history-badge-count {
+  font-size: 10px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  font-weight: 800;
+}
+
+/* AI Plan History Cards */
+.ai-history-card {
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--motion-micro), border-color var(--motion-micro);
+}
+
+.ai-history-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.ai-history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ai-history-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+.ai-history-meta {
+  font-size: 11.5px;
+  color: var(--on-surface-variant);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 2px;
+}
+
+.ai-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btn-load-plan {
+  flex: 2;
+  background: var(--primary);
+  color: var(--on-primary);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.btn-view-plan {
+  flex: 1.5;
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-pill);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.btn-delete-plan {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--error);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* AI Planner Trigger Hero Banner on Itinerary Screen */
+.ai-planner-hero {
+  margin: 12px 16px 4px 16px;
+  background: linear-gradient(135deg, #3B5FCC 0%, #1A73E8 60%, #0B1F5C 100%);
+  color: #FFFFFF;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: 0 6px 20px rgba(59, 95, 204, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-planner-hero::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 90px;
+  height: 90px;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ai-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-hero-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.22);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ai-hero-title {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: #FFFFFF;
+}
+
+.ai-hero-desc {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+.ai-hero-btn {
+  background: #FFFFFF;
+  color: #1A73E8;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform var(--motion-micro);
+}
+
+.ai-hero-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Groq Configuration Section in Settings */
+.groq-config-card {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.groq-status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.groq-status-pill.ready {
+  background: var(--success-container);
+  color: var(--success);
+}
+
+.groq-status-pill.unconfigured {
+  background: var(--caution-container);
+  color: var(--caution);
+}
+
+/* AI Research Break Badges */
+.break-duration-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+}
+
+.break-duration-tag.meal {
+  background: #FFE8D6;
+  color: #A34200;
+}
+
+.break-duration-tag.bio {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+
+.break-duration-tag.fuel {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.break-duration-tag.sight {
+  background: #F3E8FF;
+  color: #7E22CE;
+}
+
+/* Clickable Restaurant / Map Links */
+.restaurant-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #1A73E8;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(26, 115, 232, 0.08);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(26, 115, 232, 0.2);
+  transition: all var(--motion-micro);
+}
+
+.restaurant-map-link:hover {
+  background: rgba(26, 115, 232, 0.16);
+  text-decoration: underline;
+}
+
+/* History Empty State Card — Vertical Stack, Centered, No Squash */
+#history-empty-state {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 36px 20px !important;
+  background: var(--surface-container-low) !important;
+  border: 1px dashed var(--outline-variant) !important;
+  border-radius: var(--radius-lg) !important;
+  gap: 8px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#history-empty-state.hidden {
+  display: none !important;
+}
+
+.empty-state-icon-box {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--surface-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.empty-state-icon-box svg {
+  width: 26px;
+  height: 26px;
+  stroke: var(--primary);
+  display: block;
+}
+
+.history-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.history-empty-desc {
+  font-size: 12.5px;
+  color: var(--on-surface-variant);
+  max-width: 280px;
+  line-height: 1.45;
+  margin: 0 0 6px 0;
+}
+
+/* More Tab Button Icons */
+.more-tab-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  display: inline-block !important;
+  flex-shrink: 0 !important;
+  vertical-align: middle;
+}
+
+
+/* History View Modal Refinement */
+.history-detail-summary-card {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-detail-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.history-detail-stop-card {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform var(--motion-micro);
+}
+
+.history-detail-stop-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.history-detail-stop-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--on-surface);
+  line-height: 1.3;
 }

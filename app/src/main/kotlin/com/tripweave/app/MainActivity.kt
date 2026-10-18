@@ -5,6 +5,9 @@ import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -43,15 +46,19 @@ class MainActivity : ComponentActivity() {
     private var pendingGeoCallback: GeolocationPermissions.Callback? = null
     private var pendingGeoOrigin: String? = null
     private lateinit var googleSignInClient: GoogleSignInClient
+    private var nativeLocationListener: LocationListener? = null
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        pendingGeoCallback?.invoke(pendingGeoOrigin, granted, false)
+        pendingGeoCallback?.invoke(pendingGeoOrigin, granted, true)
         pendingGeoCallback = null
         pendingGeoOrigin = null
+        if (granted) {
+            requestFreshNativeLocation()
+        }
     }
 
         private val googleSignInLauncher = registerForActivityResult(
@@ -123,10 +130,16 @@ class MainActivity : ComponentActivity() {
             overScrollMode = WebView.OVER_SCROLL_NEVER
         }
 
-        // Apply Status Bar Insets so header never clips under clock, battery, or notch
+        // Dynamic Island & Cutout Inset Bridge to Web layer
         ViewCompat.setOnApplyWindowInsetsListener(mainWebView) { view, insets ->
-            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            view.setPadding(0, statusBarHeight, 0, 0)
+            val cutout = insets.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()).top
+            val density = resources.displayMetrics.density
+            val topDp = if (density > 0f) (cutout / density).toInt() else 58
+            val safeTopDp = maxOf(topDp, 58)
+            view.post {
+                mainWebView.evaluateJavascript("document.documentElement.style.setProperty('--native-safe-top', '" + safeTopDp + "px');", null)
+            }
+            view.setPadding(0, 0, 0, 0)
             insets
         }
 
@@ -135,6 +148,7 @@ class MainActivity : ComponentActivity() {
 
         // Inject Native Google Auth Bridge
         mainWebView.addJavascriptInterface(AndroidAuthBridge(), "AndroidAuthBridge")
+        mainWebView.addJavascriptInterface(AndroidLocationBridge(), "AndroidLocationBridge")
 
         mainWebView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
@@ -169,7 +183,7 @@ class MainActivity : ComponentActivity() {
                 callback: GeolocationPermissions.Callback
             ) {
                 if (hasLocationPermission()) {
-                    callback.invoke(origin, true, false)
+                    callback.invoke(origin, true, true)
                 } else {
                     pendingGeoCallback = callback
                     pendingGeoOrigin = origin
@@ -327,6 +341,118 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    inner class AndroidLocationBridge {
+        @JavascriptInterface
+        fun getDeviceLocation(): String {
+            return getBestLocationJson()
+        }
+
+        @JavascriptInterface
+        fun requestLocationUpdate() {
+            runOnUiThread {
+                requestFreshNativeLocation()
+            }
+        }
+
+        @JavascriptInterface
+        fun isLocationPermissionGranted(): Boolean {
+            return hasLocationPermission()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun getBestLocationJson(): String {
+        if (!hasLocationPermission()) return ""
+        try {
+            val lm = getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return ""
+            val gpsLoc = try {
+                if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) else null
+            } catch (e: Exception) { null }
+
+            val netLoc = try {
+                if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) else null
+            } catch (e: Exception) { null }
+
+            val bestLoc = when {
+                gpsLoc != null && netLoc != null -> {
+                    if (gpsLoc.accuracy <= netLoc.accuracy || (System.currentTimeMillis() - gpsLoc.time < 300000)) gpsLoc else netLoc
+                }
+                gpsLoc != null -> gpsLoc
+                netLoc != null -> netLoc
+                else -> null
+            }
+
+            if (bestLoc != null) {
+                return JSONObject().apply {
+                    put("latitude", bestLoc.latitude)
+                    put("longitude", bestLoc.longitude)
+                    put("accuracy", bestLoc.accuracy.toDouble())
+                    put("provider", bestLoc.provider)
+                    put("time", bestLoc.time)
+                }.toString()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return ""
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun requestFreshNativeLocation() {
+        if (!hasLocationPermission()) {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+            return
+        }
+
+        try {
+            val lm = getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
+
+            val bestKnown = getBestLocationJson()
+            if (bestKnown.isNotBlank()) {
+                mainWebView.post {
+                    mainWebView.evaluateJavascript("if (window.onNativeLocationUpdate) { window.onNativeLocationUpdate($bestKnown); }", null)
+                }
+            }
+
+            nativeLocationListener?.let {
+                try { lm.removeUpdates(it) } catch (e: Exception) {}
+            }
+
+            val listener = object : LocationListener {
+                override fun onLocationChanged(loc: Location) {
+                    val json = JSONObject().apply {
+                        put("latitude", loc.latitude)
+                        put("longitude", loc.longitude)
+                        put("accuracy", loc.accuracy.toDouble())
+                        put("provider", loc.provider)
+                        put("time", loc.time)
+                    }.toString()
+                    mainWebView.post {
+                        mainWebView.evaluateJavascript("if (window.onNativeLocationUpdate) { window.onNativeLocationUpdate($json); }", null)
+                    }
+                }
+                override fun onProviderEnabled(provider: String) {}
+                override fun onProviderDisabled(provider: String) {}
+            }
+            nativeLocationListener = listener
+
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1500L, 1f, listener)
+            }
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 5f, listener)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+
     private fun isNetworkAvailable(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
         val net = cm.activeNetwork ?: return false
@@ -386,6 +512,12 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        nativeLocationListener?.let {
+            try {
+                val lm = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+                lm?.removeUpdates(it)
+            } catch (e: Exception) {}
+        }
         popupDialog?.dismiss()
         mainWebView.destroy()
         super.onDestroy()

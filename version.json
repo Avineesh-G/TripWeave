@@ -1,15 +1,14 @@
 {
-  "versionName": "1.4.0",
-  "versionCode": 5,
-  "releaseDate": "2026-10-14",
+  "versionName": "1.5.0",
+  "versionCode": 6,
+  "releaseDate": "2026-10-19",
   "apkUrl": "https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk",
   "releaseNotes": [
-    "Mandatory trip creation input validation (requires origin & destination)",
-    "Corridor stops & fastest route review proposal before saving trip",
-    "In-app Google Maps-style turn-by-turn navigation with maneuver HUD",
-    "Long-press to delete trips with haptic feedback & confirmation",
-    "Live Wikipedia authentic place photography & copyable GPS coordinates",
-    "Direct native Android location acquisition without custom permission dialog",
-    "Adjusted search bar positioning to eliminate status bar collisions"
+    "Hardware-grade native GPS with zero stale caching and 0s maximumAge",
+    "Real place photos engine with high-res Wikipedia & Wikimedia Commons integration",
+    "Seamless immersive header with zero line collisions on mobile screens",
+    "Dynamic AI model cascade with automatic peak load resilience",
+    "Auto-generated travel expenses model and manual vehicle selection",
+    "Pure English terminology throughout travel recommendations"
   ]
 }
