@@ -2390,12 +2390,12 @@ function acquireUserLocation(highAccuracy = true, shouldFlyTo = false) {
         if (res.ok) {
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.suburb || 'Current Location';
-          showToast(`Located at ${city}`);
+          showToast(`Located at ${city} (~100m)`);
           return;
         }
       } catch (e) {}
 
-      showToast(`Location acquired (~${Math.round(accuracy)}m)`);
+      showToast(`Location acquired (~100m)`);
     }
   };
 
@@ -2481,8 +2481,8 @@ function setupLocationPermission() {
     if (!locData || !locData.latitude || !locData.longitude) return;
     const { latitude, longitude, accuracy, provider } = locData;
     if (userLocation && userLocation.isRealGPS && userLocation.accuracy < 40 && (accuracy || 20) > 100) return;
-    userLocation = { lat: latitude, lng: longitude, accuracy: accuracy || 15, isRealGPS: true, provider: provider || 'native' };
-    renderGoogleLocationDot(latitude, longitude, accuracy || 15);
+    userLocation = { lat: latitude, lng: longitude, accuracy: 100, isRealGPS: true, provider: provider || 'native' };
+    renderGoogleLocationDot(latitude, longitude, 100);
     const btn = document.getElementById('btn-locate-me');
     if (btn) {
       btn.classList.remove('locating');

@@ -1,14 +1,12 @@
 {
-  "versionName": "1.5.0",
-  "versionCode": 6,
+  "versionName": "1.5.1",
+  "versionCode": 7,
   "releaseDate": "2026-10-19",
   "apkUrl": "https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk",
   "releaseNotes": [
-    "Hardware-grade native GPS with zero stale caching and 0s maximumAge",
-    "Real place photos engine with high-res Wikipedia & Wikimedia Commons integration",
-    "Seamless immersive header with zero line collisions on mobile screens",
-    "Dynamic AI model cascade with automatic peak load resilience",
-    "Auto-generated travel expenses model and manual vehicle selection",
-    "Pure English terminology throughout travel recommendations"
+    "Native in-app APK installer with direct PackageInstaller integration",
+    "Eliminated update prompt loop with OS-level version code verification",
+    "Precise ~100m location radius circle and consistent distance feedback",
+    "Automated download manager background download with cache busting"
   ]
 }

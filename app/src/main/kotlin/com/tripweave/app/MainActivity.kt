@@ -8,6 +8,15 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
+import androidx.core.content.FileProvider
+import java.io.File
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -47,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private var pendingGeoOrigin: String? = null
     private lateinit var googleSignInClient: GoogleSignInClient
     private var nativeLocationListener: LocationListener? = null
+    private var downloadReceiver: BroadcastReceiver? = null
 
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -452,6 +462,107 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+
+    private fun downloadAndInstallApk(url: String) {
+        try {
+            val freshUrl = if (url.contains("?")) "$url&t=${System.currentTimeMillis()}" else "$url?t=${System.currentTimeMillis()}"
+            val dm = getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+            if (dm == null) {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(freshUrl)).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(intent)
+                return
+            }
+
+            val destinationFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "TripWeave-Update.apk")
+            if (destinationFile.exists()) {
+                destinationFile.delete()
+            }
+
+            val request = DownloadManager.Request(Uri.parse(freshUrl)).apply {
+                setTitle("TripWeave Update")
+                setDescription("Downloading latest version...")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationUri(Uri.fromFile(destinationFile))
+                setMimeType("application/vnd.android.package-archive")
+            }
+
+            val downloadId = dm.enqueue(request)
+
+            downloadReceiver?.let {
+                try { unregisterReceiver(it) } catch (e: Exception) {}
+            }
+
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L) ?: -1L
+                    if (id == downloadId) {
+                        try {
+                            unregisterReceiver(this)
+                            downloadReceiver = null
+                        } catch (e: Exception) {}
+
+                        installDownloadedApk(destinationFile)
+                    }
+                }
+            }
+            downloadReceiver = receiver
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+            }
+
+            mainWebView.post {
+                mainWebView.evaluateJavascript("if (typeof showToast === 'function') { showToast('Downloading update in background...'); }", null)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(intent)
+        }
+    }
+
+    private fun installDownloadedApk(file: File) {
+        if (!file.exists()) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!packageManager.canRequestPackageInstalls()) {
+                try {
+                    val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                        data = Uri.parse("package:$packageName")
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    startActivity(settingsIntent)
+                } catch (e: Exception) {}
+            }
+        }
+
+        try {
+            val apkUri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                file
+            )
+
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+            startActivity(installIntent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(intent)
+        }
+    }
 
     private fun isNetworkAvailable(): Boolean {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
