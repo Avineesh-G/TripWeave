@@ -440,7 +440,7 @@ input, textarea, select, [contenteditable="true"] {
 /* Floating Top Area over Map (Positioned at Very Top) */
 .map-floating-overlay {
   position: absolute;
-  top: calc(var(--native-safe-top, var(--safe-top, 58px)) + 10px);
+  top: calc(var(--native-safe-top, 14px) + 8px);
   left: 14px;
   right: 14px;
   z-index: 500;
@@ -651,7 +651,16 @@ input, textarea, select, [contenteditable="true"] {
 }
 
 .account-menu-item:hover {
-  background: var(--surface-container-high);
+  background: var(--surface-container-high) !important;
+}
+
+.account-signout-btn:hover {
+  background: rgba(234, 67, 53, 0.16) !important;
+}
+
+.account-signout-btn:active,
+.account-menu-item:active {
+  transform: scale(0.98);
 }
 
 @keyframes fadeInDown {
@@ -738,11 +747,12 @@ input, textarea, select, [contenteditable="true"] {
   bottom: 0;
   background: var(--surface);
   border-radius: 20px 20px 0 0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
   border-top: 1px solid var(--outline-variant);
   z-index: 600;
   transition: height var(--motion-standard);
-  height: 160px;
+  height: 168px;
+  padding-bottom: 74px; /* Ensure content stays clearly above floating bottom nav */
   display: flex;
   flex-direction: column;
 }
@@ -832,21 +842,22 @@ input, textarea, select, [contenteditable="true"] {
    ========================================================================== */
 .app-nav {
   position: absolute;
-  bottom: 14px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   left: 14px;
   right: 14px;
-  height: 60px;
-  background: var(--floating-nav-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--floating-nav-border);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--floating-nav-shadow);
+  height: 58px;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 29px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.16);
   display: flex;
   align-items: center;
   justify-content: space-around;
   z-index: 1000;
-  padding: 0 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   flex-shrink: 0;
 }
 
@@ -1722,19 +1733,20 @@ body.theme-dark .leaflet-tile {
 /* Floating Toast Pill Notification */
 .toast-pill {
   position: fixed;
-  bottom: 84px;
+  bottom: calc(160px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%) translateY(0);
   background: #1E293B;
   color: #F8FAFC;
-  padding: 10px 18px;
+  padding: 8px 16px;
   border-radius: var(--radius-pill);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   z-index: 3500;
   pointer-events: none;
   opacity: 1;
@@ -1843,7 +1855,7 @@ body.theme-dark .leaflet-tile {
 .fab-locate-btn {
   position: absolute;
   right: 14px;
-  bottom: 226px; /* Sits cleanly above the Add Stop FAB */
+  bottom: 172px; /* Floats cleanly above the bottom peek sheet */
   z-index: 700;
   width: 44px;
   height: 44px;
@@ -2291,16 +2303,37 @@ body.theme-dark .accuracy-preview-map {
    Zero-Collision Sheet Expansion & Smooth FAB Transition (Spec v3)
    ========================================================================== */
 
-/* When bottom sheet is expanded, hide floating map FABs to prevent any overlap */
-#screen-map.sheet-is-expanded .fab-btn,
-#screen-map.sheet-is-expanded .fab-locate-btn {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transform: translateY(24px) scale(0.85) !important;
+.fab-btn, .fab-locate-btn {
+  transition: opacity 320ms cubic-bezier(0.2, 0, 0, 1),
+              transform 320ms cubic-bezier(0.2, 0, 0, 1),
+              visibility 320ms !important;
 }
 
-.fab-btn, .fab-locate-btn {
-  transition: opacity 240ms cubic-bezier(0.2, 0, 0, 1), transform 240ms cubic-bezier(0.2, 0, 0, 1), background 150ms ease !important;
+/* When in ENLARGE state: floating map FABs disappear with smooth animation to eliminate collision */
+#screen-map.card-is-enlarged .fab-btn,
+#screen-map.card-is-enlarged .fab-locate-btn,
+#screen-map.sheet-is-expanded .fab-btn,
+#screen-map.sheet-is-expanded .fab-locate-btn,
+body.sheet-is-expanded .fab-btn,
+body.sheet-is-expanded .fab-locate-btn {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(20px) scale(0.85) !important;
+  visibility: hidden !important;
+}
+
+/* When in ENCLOSE state: floating map FABs appear again with smooth animation */
+#screen-map.card-is-enclosed:not(.sheet-is-expanded) .fab-btn,
+#screen-map.card-is-enclosed:not(.sheet-is-expanded) .fab-locate-btn {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) scale(1) !important;
+  visibility: visible !important;
+}
+
+/* Floating Navigation Bar stays permanently visible & accessible */
+.app-nav {
+  transition: transform 320ms cubic-bezier(0.2, 0, 0, 1), opacity 260ms ease !important;
 }
 
 
@@ -2744,6 +2777,34 @@ body.theme-dark .auth-gate-card {
 
 .btn-google-signin:active {
   background: #EEEEEE;
+  transform: translateY(0);
+}
+
+.btn-guest-signin {
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.btn-guest-signin:hover {
+  background: var(--surface-container-high);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.btn-guest-signin:active {
   transform: translateY(0);
 }
 
@@ -3259,6 +3320,10 @@ button, input, textarea, select {
   animation: slideUpPlace 0.25s ease-out;
 }
 
+body.navigation-in-progress .nav-hud-bottom {
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
 .nav-bottom-stats {
   display: flex;
   flex-direction: column;
@@ -3276,10 +3341,77 @@ button, input, textarea, select {
   color: var(--on-surface-variant);
 }
 
+.nav-maneuver-street {
+  font-size: 11.5px;
+  color: #94A3B8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-speed-badge {
+  background: rgba(37, 99, 235, 0.14);
+  color: #2563EB;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+}
+
+.btn-nav-control-icon {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--motion-micro);
+}
+
+.btn-nav-control-icon:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: scale(1.05);
+}
+
+.btn-nav-simulate {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all var(--motion-micro);
+  white-space: nowrap;
+}
+
+.btn-nav-simulate:hover {
+  background: var(--surface-container-highest);
+  border-color: var(--primary);
+}
+
+.btn-nav-simulate.active {
+  background: var(--primary);
+  color: #FFFFFF;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
 .nav-hud-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .btn-nav-exit {
@@ -3304,6 +3436,55 @@ button, input, textarea, select {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: all var(--motion-micro);
+}
+
+.btn-nav-step:hover {
+  background: var(--surface-container-highest);
+  border-color: var(--primary);
+}
+
+/* Google Maps 3D Vehicle Navigation Arrow */
+.google-nav-vehicle-container {
+  width: 36px;
+  height: 36px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.nav-vehicle-shadow {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  filter: blur(4px);
+  bottom: 0px;
+}
+
+.nav-vehicle-pulse-ring {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(26, 115, 232, 0.22);
+  animation: navPulseRing 2s infinite ease-out;
+}
+
+@keyframes navPulseRing {
+  0% { transform: scale(0.85); opacity: 0.8; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.nav-vehicle-chevron-svg {
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35));
+  position: relative;
+  z-index: 2;
 }
 
 /* Trip Card Long Press & Actions */
@@ -3810,4 +3991,1066 @@ button, input, textarea, select {
   font-weight: 700;
   color: var(--on-surface);
   line-height: 1.3;
+}
+
+
+/* ==========================================================================
+   HIGHWAY ROUTE & DIRECTIONS COMPONENT
+   ========================================================================== */
+.top-search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.map-search-bar.hidden {
+  display: none !important;
+}
+
+.map-directions-box.hidden {
+  display: none !important;
+}
+
+.map-directions-box {
+  pointer-events: auto;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 20px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fadeInDown 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dir-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dir-back-btn, .dir-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--on-surface-variant);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all var(--motion-micro);
+  flex-shrink: 0;
+}
+
+.dir-back-btn:hover, .dir-close-btn:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+}
+
+.dir-title-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.dir-inputs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.dir-connector-track {
+  position: absolute;
+  left: 17px;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  border-left: 2px dotted var(--outline);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dir-input-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 5px 10px;
+  position: relative;
+  z-index: 2;
+  transition: border-color var(--motion-micro), background-color var(--motion-micro), box-shadow var(--motion-micro);
+}
+
+.dir-input-line:focus-within {
+  background: var(--surface);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+.dir-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dir-dot.start {
+  background: #1A73E8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+}
+
+.dir-dot.end {
+  background: #E11D48;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.2);
+}
+
+.dir-input-line input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+  outline: none;
+  padding: 4px 0;
+}
+
+.dir-loc-btn, .dir-swap-btn {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  transition: background var(--motion-micro);
+}
+
+.dir-loc-btn:hover, .dir-swap-btn:hover {
+  background: var(--surface-container-high);
+}
+
+.btn-calc-route {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-pill);
+}
+
+
+/* ==========================================================================
+   ROUTE CORRIDOR AMENITIES (Inside Expanded Sheet - Clean Zero-Clash Layout)
+   ========================================================================== */
+.corridor-amenities-tray {
+  position: relative;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 18px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.corridor-tray-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.corridor-tray-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.corridor-tray-title-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.corridor-close-btn {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all var(--motion-micro);
+}
+
+.corridor-close-btn:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border-color: var(--outline);
+}
+
+.corridor-tray-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--on-surface);
+  line-height: 1.25;
+}
+
+.corridor-tray-sub {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  margin-top: 1px;
+}
+
+.corridor-filter-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 1px 0;
+  width: 100%;
+}
+.corridor-filter-chips::-webkit-scrollbar { display: none; }
+
+.corridor-tab {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: all var(--motion-micro);
+}
+
+.corridor-tab.active {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  border-color: var(--primary);
+}
+
+.corridor-amenities-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 2px 6px 2px;
+}
+
+.corridor-amenities-list::-webkit-scrollbar { display: none; }
+
+.corridor-amenity-card {
+  flex: 0 0 250px;
+  min-width: 250px;
+  scroll-snap-align: start;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: transform var(--motion-micro), border-color var(--motion-micro);
+}
+
+.corridor-amenity-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.corridor-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.corridor-card-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface);
+  line-height: 1.3;
+}
+
+.corridor-card-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2.5px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.corridor-card-badge.stays {
+  background: rgba(8, 127, 117, 0.14);
+  color: #087F75;
+}
+
+.corridor-card-badge.food {
+  background: rgba(225, 29, 72, 0.12);
+  color: #E11D48;
+}
+
+.corridor-card-badge.fuel {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563EB;
+}
+
+.corridor-card-desc {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.35;
+}
+
+.corridor-card-dist {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.corridor-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.btn-add-corridor-stop {
+  flex: 1;
+  background: #2563EB;
+  color: #FFFFFF;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background var(--motion-micro);
+}
+
+.btn-add-corridor-stop:hover {
+  background: #1D4ED8;
+}
+
+.btn-view-corridor-map {
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border: 1px solid var(--outline-variant);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 8px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--motion-micro);
+}
+
+.btn-view-corridor-map:hover {
+  background: var(--surface-container-high);
+  border-color: var(--outline);
+}
+
+/* Quick Nav Start Button in Active Card Peek */
+.btn-quick-nav {
+  background: #2563EB;
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
+  transition: all var(--motion-micro);
+  white-space: nowrap;
+}
+
+.btn-quick-nav:hover {
+  background: #1D4ED8;
+  transform: translateY(-1px);
+}
+
+/* Fullscreen Turn-by-Turn Navigation Mode */
+body.navigation-in-progress .app-nav,
+body.navigation-in-progress .bottom-trip-card,
+body.navigation-in-progress .corridor-amenities-tray,
+body.navigation-in-progress .top-search-wrap,
+body.navigation-in-progress .fab-btn,
+body.navigation-in-progress .fab-locate-btn,
+body.navigation-in-progress .btn-layer-fab {
+  display: none !important;
+}
+
+/* ==========================================================================
+   INTERACTIVE ITINERARY AI CHATBOT & BUDGET ASSISTANT
+   ========================================================================== */
+.itinerary-ai-card {
+  margin: 12px 14px;
+  background: linear-gradient(135deg, rgba(59, 95, 204, 0.08) 0%, rgba(26, 115, 232, 0.03) 100%);
+  border: 1px solid rgba(59, 95, 204, 0.25);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+}
+
+.ai-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ai-avatar-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #F35526, #3B5FCC);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(59, 95, 204, 0.35);
+  flex-shrink: 0;
+}
+
+.ai-card-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+.ai-card-sub {
+  font-size: 11.5px;
+  color: var(--on-surface-variant);
+  margin-top: 1px;
+}
+
+.ai-prompt-bubble {
+  background: var(--surface-container);
+  border-radius: 12px 12px 12px 3px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.ai-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.input-field-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.input-field-compact label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+}
+
+.input-field-compact input {
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--on-surface);
+  outline: none;
+}
+
+.input-field-compact input:focus {
+  border-color: var(--primary);
+}
+
+.ai-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ai-pill-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ai-pill-chip {
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all var(--motion-micro);
+}
+
+.ai-pill-chip.active {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  border-color: var(--primary);
+  font-weight: 700;
+}
+
+.btn-ai-generate {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+}
+
+.spinner-ai {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--outline-variant);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   INTEGRATED ITINERARY VEHICLE & FUEL SPECIFICATIONS CARD
+   ========================================================================== */
+.itinerary-vehicle-card {
+  margin: 10px 14px 14px 14px;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 20px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+}
+
+.itinerary-vehicle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.vehicle-icon-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--secondary-container);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.chip-active-vehicle {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+/* ==========================================================================
+   DYNAMIC FLOATING BOTTOM TRIP CARD (Clean Zero-Overlap with Nav)
+   ========================================================================== */
+.bottom-trip-card {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-radius: 24px;
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.14);
+  border: 1px solid var(--outline-variant);
+  z-index: 600;
+  transition: max-height var(--motion-standard), box-shadow var(--motion-micro), background var(--motion-micro);
+  max-height: 155px;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.bottom-trip-card.expanded {
+  max-height: 520px;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.22);
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+}
+
+.bottom-trip-card:not(.expanded) .sheet-expanded-body {
+  display: none !important;
+}
+
+.sheet-expanded-body {
+  padding: 8px 14px 16px 14px;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.sheet-expanded-body::-webkit-scrollbar,
+.bottom-trip-card::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.sheet-expanded-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.sheet-expanded-title-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.sheet-expanded-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bottom-trip-card.minimized {
+  max-height: 46px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  align-items: center;
+}
+
+.sheet-enlarge-enclose-btn {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all var(--motion-micro);
+  white-space: nowrap;
+}
+
+.sheet-enlarge-enclose-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.sheet-enlarge-enclose-btn .toggle-chevron {
+  transition: transform var(--motion-standard);
+}
+
+.bottom-trip-card.expanded .sheet-enlarge-enclose-btn .toggle-chevron {
+  transform: rotate(180deg);
+}
+
+.bottom-trip-card.expanded .sheet-enlarge-enclose-btn .enlarge-label {
+  display: none;
+}
+
+.bottom-trip-card.expanded .sheet-enlarge-enclose-btn .enclose-label {
+  display: inline !important;
+}
+
+.btn-icon-enclose {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--motion-micro);
+  flex-shrink: 0;
+}
+
+.btn-icon-enclose:hover {
+  background: var(--surface-container-high);
+}
+
+.btn-card-toggle-enclose {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 180ms ease;
+}
+
+.btn-card-toggle-enclose:hover {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.trip-card-minimized {
+  display: flex;
+  justify-content: center;
+  padding: 2px 0;
+}
+
+.btn-pill-enlarge {
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: transform var(--motion-micro);
+}
+
+.btn-pill-enlarge:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+}
+
+.enlarge-chip-tag {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.bottom-trip-card .sheet-drag-handle {
+  width: 34px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--outline);
+  opacity: 0.35;
+  margin: 6px auto 4px auto;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.trip-card-empty {
+  padding: 4px 14px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.trip-card-empty-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.trip-card-empty-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.trip-card-empty-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.trip-ready-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(26, 115, 232, 0.15) 0%, rgba(37, 99, 235, 0.08) 100%);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trip-ready-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--on-surface);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trip-ready-sub {
+  font-size: 11.5px;
+  color: var(--on-surface-variant);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trip-card-empty-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.btn-trip-action {
+  height: 38px;
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 180ms ease;
+  border: 1px solid transparent;
+}
+
+.btn-trip-action.primary {
+  background: #2563EB;
+  color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.btn-trip-action.primary:hover {
+  background: #1D4ED8;
+  transform: translateY(-1px);
+}
+
+.btn-trip-action.secondary {
+  background: var(--surface-container);
+  color: var(--on-surface);
+  border-color: var(--outline-variant);
+}
+
+.btn-trip-action.secondary:hover {
+  background: var(--surface-container-high);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.trip-card-active {
+  display: flex;
+  flex-direction: column;
+}
+
+.trip-card-active .sheet-peek-content {
+  padding: 4px 14px 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.trip-route-bullet {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+
+/* FAB positioning when card is enclosed/minimized */
+.fab-locate-btn {
+  bottom: calc(148px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+
+/* --- Cancel Route and Direction Selection Controls --- */
+.dir-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.btn-cancel-route-action {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 14px;
+  background: var(--surface-container-high, #f1f5f9);
+  color: var(--on-surface-variant, #64748b);
+  border: 1px solid var(--outline-variant, #e2e8f0);
+  border-radius: var(--radius-pill);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all var(--motion-micro);
+}
+
+.btn-cancel-route-action:hover {
+  background: rgba(225, 29, 72, 0.1);
+  border-color: rgba(225, 29, 72, 0.3);
+  color: #E11D48;
+}
+
+.btn-trip-action.cancel-action {
+  grid-column: span 2;
+  background: var(--surface-container-high, #f8fafc);
+  color: #E11D48;
+  border: 1px solid rgba(225, 29, 72, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.btn-trip-action.cancel-action:hover {
+  background: rgba(225, 29, 72, 0.08);
+  border-color: #E11D48;
+  transform: translateY(-1px);
+}
+
+.btn-quick-cancel {
+  background: var(--surface-container-high, #f1f5f9);
+  color: #E11D48;
+  border: 1px solid rgba(225, 29, 72, 0.25);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all var(--motion-micro);
+  flex-shrink: 0;
+}
+
+.btn-quick-cancel:hover {
+  background: rgba(225, 29, 72, 0.12);
+  border-color: #E11D48;
+  transform: translateY(-1px);
+}
+
+.btn-small.danger {
+  background: var(--surface-container-high, #f1f5f9);
+  border-color: rgba(225, 29, 72, 0.3);
+  color: #E11D48;
+}
+
+.btn-small.danger:hover {
+  background: rgba(225, 29, 72, 0.1);
 }

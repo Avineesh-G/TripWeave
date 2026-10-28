@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal
 echo ============================================================
 echo [TripWeave] Production Release APK Build Pipeline
@@ -26,15 +26,15 @@ if %errorlevel% neq 0 (
 )
 
 if not exist releases mkdir releases
-copy /y app\build\outputs\apk\release\app-release.apk TripWeave-v1.3.0.apk
+copy /y app\build\outputs\apk\release\app-release.apk TripWeave-v1.6.0.apk
 copy /y app\build\outputs\apk\release\app-release.apk TripWeave.apk
-copy /y app\build\outputs\apk\release\app-release.apk releases\TripWeave-v1.3.0.apk
+copy /y app\build\outputs\apk\release\app-release.apk releases\TripWeave-v1.6.0.apk
 copy /y app\build\outputs\apk\release\app-release.apk releases\TripWeave.apk
 
 echo.
 echo ============================================================
 echo [TripWeave] Release Build Successful!
-echo Primary APK : TripWeave-v1.3.0.apk (and TripWeave.apk)
-echo Archive Copy: releases\TripWeave-v1.3.0.apk
+echo Primary APK : TripWeave-v1.6.0.apk (and TripWeave.apk)
+echo Archive Copy: releases\TripWeave-v1.6.0.apk
 echo ============================================================
 endlocal

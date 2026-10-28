@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
   
   <!-- Custom Styling -->
-  <script type="module" crossorigin src="/assets/index-FmgtiMtG.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DsDghT3f.css">
+  <script type="module" crossorigin src="/assets/index-DroHKLG8.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DKP-OaCi.css">
 </head>
 <body class="theme-light">
   <!-- Mobile Aspect Ratio Container -->
@@ -22,13 +22,22 @@
     <div id="screen-privacy-terms" class="privacy-screen hidden">
       <div class="privacy-card">
         
-        <!-- Privacy Header -->
+        <!-- Privacy Header with Responsive Back Button -->
         <div class="privacy-header">
-          <div class="privacy-badge">
-            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-            <span>Privacy & Terms</span>
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <button id="btn-back-from-terms" type="button" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: var(--radius-pill); cursor: pointer;" title="Back to previous screen">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              <span>Back</span>
+            </button>
+            <div class="privacy-badge">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+              <span>Privacy &amp; Terms</span>
+            </div>
           </div>
           <h2 class="privacy-title">Welcome to TripWeave</h2>
           <p class="privacy-subtitle">Please review our transparency commitments, data protections, and terms before continuing.</p>
@@ -195,6 +204,13 @@
             <span id="google-signin-btn-label">Sign in with Google</span>
           </button>
 
+          <button id="btn-guest-signin" class="btn-guest-signin" title="Continue as Explorer">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+            </svg>
+            <span>Continue as Explorer</span>
+          </button>
         </div>
 
         <!-- Footer with Link to Review Terms & Privacy -->
@@ -215,11 +231,11 @@
     <main class="main-content">
       
       <!-- SCREEN 1: MAP HOME -->
-      <section id="screen-map" class="screen-view active">
+      <section id="screen-map" class="screen-view active card-is-enlarged">
         <!-- Leaflet Map full-bleed -->
         <div id="leaflet-map" class="map-viewport"></div>
 
-        <!-- In-App Turn-by-Turn Navigation HUD (Google Maps Style) -->
+        <!-- In-App Turn-by-Turn Navigation HUD (Google Maps Driving Experience) -->
         <div id="nav-hud-top" class="nav-hud-top hidden">
           <div class="nav-maneuver-icon-box" id="nav-maneuver-icon">
             <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -228,45 +244,98 @@
             </svg>
           </div>
           <div class="nav-maneuver-text">
-            <div class="nav-maneuver-dist" id="nav-maneuver-dist">In 1.2 km</div>
-            <div class="nav-maneuver-instruction" id="nav-maneuver-instruction">Head north toward highway</div>
+            <div class="nav-maneuver-dist" id="nav-maneuver-dist">In 800 m</div>
+            <div class="nav-maneuver-instruction" id="nav-maneuver-instruction">Head straight onto National Highway</div>
+            <div class="nav-maneuver-street" id="nav-maneuver-street">Corridor Route</div>
           </div>
+          <button id="btn-nav-voice" class="btn-nav-control-icon" type="button" title="Mute / Unmute Voice Guidance" aria-label="Toggle Voice Guidance">
+            <svg class="icon-xs voice-active-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+            <svg class="icon-xs voice-muted-svg hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+          </button>
         </div>
 
         <div id="nav-hud-bottom" class="nav-hud-bottom hidden">
-          <div class="nav-bottom-stats">
-            <span class="nav-bottom-eta" id="nav-bottom-eta">-- min</span>
-            <span class="nav-bottom-sub" id="nav-bottom-sub">-- km remaining</span>
+          <!-- Tier 1: Primary ETA, Speed, Distance & Exit -->
+          <div class="nav-hud-row-primary">
+            <div class="nav-bottom-stats">
+              <div class="nav-eta-line">
+                <span class="nav-bottom-eta" id="nav-bottom-eta">-- min</span>
+                <span class="nav-speed-badge" id="nav-speed-badge">60 km/h</span>
+              </div>
+              <span class="nav-bottom-sub" id="nav-bottom-sub">-- km remaining</span>
+            </div>
+
+            <button class="btn-nav-exit" id="btn-nav-exit" type="button" title="Exit Navigation" aria-label="Exit Navigation">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              <span>Exit</span>
+            </button>
           </div>
-          <div class="nav-hud-actions">
-            <button class="btn-nav-step" id="btn-nav-prev-step" title="Previous Maneuver">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6"></polyline>
+
+          <!-- Tier 2: Real-time Controls & Maneuver Stepper -->
+          <div class="nav-hud-row-controls nav-hud-actions">
+            <!-- Simulated Drive Toggle Button for Live Verification -->
+            <button class="btn-nav-simulate" id="btn-nav-simulate" type="button" title="Simulate Real-Time Drive along route">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
+              <span id="btn-nav-simulate-label">Simulate Drive</span>
             </button>
-            <button class="btn-nav-step" id="btn-nav-next-step" title="Next Maneuver">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-            </button>
-            <button class="btn-nav-exit" id="btn-nav-exit" title="Exit Navigation">Exit</button>
+
+            <div class="nav-hud-stepper">
+              <button class="btn-nav-step" id="btn-nav-recenter" type="button" title="Re-center camera on vehicle" aria-label="Re-center camera">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="7"></circle>
+                  <line x1="12" y1="2" x2="12" y2="5"></line>
+                  <line x1="12" y1="19" x2="12" y2="22"></line>
+                  <line x1="2" y1="12" x2="5" y2="12"></line>
+                  <line x1="19" y1="12" x2="22" y2="12"></line>
+                </svg>
+              </button>
+              <button class="btn-nav-step" id="btn-nav-prev-step" type="button" title="Previous Maneuver" aria-label="Previous maneuver step">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+              <button class="btn-nav-step" id="btn-nav-next-step" type="button" title="Next Maneuver" aria-label="Next maneuver step">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
 
         <!-- Floating Top Area (Moved Up to Very Top) -->
-        <div class="map-floating-overlay">
-          <!-- Top Floating Search Pill with Actions & Google Auth Avatar -->
-          <div style="position: relative;">
-            <div class="map-search-bar">
+        <div class="map-floating-overlay">          <!-- Top Floating Search Pill with Actions & Google Auth Avatar -->
+          <div style="position: relative;" id="top-search-wrap" class="top-search-wrap">
+            <div class="map-search-bar" id="map-search-bar">
               <svg class="icon-sm" style="color: var(--on-surface-variant); flex-shrink: 0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
               <input type="text" id="place-search-input" placeholder="Search places in India..." autocomplete="off" />
 
+              <!-- Quick Directions Button -->
+              <button id="btn-toggle-directions" class="search-action-btn" title="Highway Route & Directions" type="button">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                </svg>
+              </button>
+
               <!-- Quick Share Button -->
-              <button id="btn-open-share" class="search-action-btn" title="Share & Export Trip">
+              <button id="btn-open-share" class="search-action-btn" title="Share & Export Trip" type="button">
                 <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="18" cy="5" r="3"></circle>
                   <circle cx="6" cy="12" r="3"></circle>
@@ -277,7 +346,7 @@
               </button>
 
               <!-- Google Auth Avatar Button -->
-              <button class="map-avatar-btn" id="account-avatar-btn" title="Google Account & Settings">
+              <button class="map-avatar-btn" id="account-avatar-btn" title="Google Account & Settings" type="button">
                 <span>A</span>
               </button>
             </div>
@@ -285,7 +354,63 @@
             <!-- Live Suggestions Dropdown -->
             <div id="search-suggestions-dropdown" class="search-dropdown-box hidden"></div>
 
-
+            <!-- Highway Route & Directions Box (Seamlessly Merges into Search Bar) -->
+            <div id="map-directions-box" class="map-directions-box hidden">
+              <div class="dir-box-header">
+                <button id="btn-back-directions" class="dir-back-btn" title="Back to Search" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                  </svg>
+                </button>
+                <div class="dir-title-badge">
+                  <svg class="icon-xs" style="color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                  </svg>
+                  <strong style="font-size: 13px; color: var(--on-surface);">Highway Route &amp; Amenities</strong>
+                </div>
+                <button id="btn-close-directions" class="dir-close-btn" title="Close" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+              <div class="dir-inputs-container">
+                <div class="dir-connector-track"></div>
+                <div class="dir-input-line">
+                  <span class="dir-dot start"></span>
+                  <input type="text" id="dir-input-origin" placeholder="Starting point (or 'Current Location')" autocomplete="off" />
+                  <button id="btn-use-my-location" class="dir-loc-btn" title="Use current GPS location" type="button">
+                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div class="dir-input-line">
+                  <span class="dir-dot end"></span>
+                  <input type="text" id="dir-input-dest" placeholder="Enter destination in India" autocomplete="off" />
+                  <button id="btn-swap-locations" class="dir-swap-btn" title="Swap locations" type="button">
+                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                      <polyline points="17 14 12 9 7 14"></polyline>
+                      <line x1="12" y1="9" x2="12" y2="21"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="dir-actions-row">
+                <button id="btn-cancel-directions-box" class="btn-cancel-route-action" type="button" title="Cancel route selection">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  <span>Cancel</span>
+                </button>
+                <button id="btn-calculate-route" class="btn-primary btn-calc-route" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                  </svg>
+                  <span>Find Route &amp; Corridor Stops</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Chip Row with Icons -->
@@ -477,46 +602,154 @@
           </div>
         </div>
 
-        <!-- Add Stop FAB -->
-        <button id="fab-add-stop" class="fab-btn" title="Add Stop">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          <span id="fab-add-stop-label">Add Stop</span>
-        </button>
 
-        <!-- Pull-Up Bottom Sheet -->
-        <div id="map-peek-sheet" class="bottom-peek-sheet">
-          <div class="sheet-drag-handle" id="sheet-drag-handle"></div>
-          
-          <div class="sheet-peek-content" id="sheet-summary-peek">
-            <div class="peek-left">
-              <span class="peek-title" id="peek-next-stop-title">No Stops Added</span>
-              <span class="peek-subtitle" id="peek-stats-subtitle">0 stops • 0 km • 0 travelers</span>
+
+        <!-- Dynamic Floating Bottom Trip Card & Sheet -->
+        <div id="map-peek-sheet" class="bottom-trip-card">
+          <div class="sheet-drag-handle" id="sheet-drag-handle" title="Drag or tap to Enlarge / Enclose"></div>
+
+          <!-- Empty State: Beautiful Road Trip Quick Start Banner -->
+          <div id="trip-card-empty-state" class="trip-card-empty">
+            <div class="trip-card-empty-header">
+              <div class="trip-card-empty-left">
+                <div class="trip-ready-badge">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+                  </svg>
+                </div>
+                <div class="trip-card-empty-text">
+                  <div class="trip-ready-title">Where are you traveling?</div>
+                  <div class="trip-ready-sub">Set route or explore highway stops</div>
+                </div>
+              </div>
+              <button id="btn-empty-card-toggle" class="btn-card-toggle-enclose" title="Enclose / Minimize card" type="button">
+                <span>Enclose</span>
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
             </div>
-            <div class="peek-right">
-              <span class="peek-cost" id="peek-total-cost">₹0</span>
-              <span class="peek-budget-caption" id="peek-budget-caption">of ₹0 budget</span>
+
+            <div id="trip-card-empty-actions-default" class="trip-card-empty-actions">
+              <button id="btn-quick-plan-route" class="btn-trip-action primary" type="button">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                <span>Get Route</span>
+              </button>
+              <button id="btn-quick-plan-ai" class="btn-trip-action secondary" type="button">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                <span>AI Planner</span>
+              </button>
+            </div>
+            <div id="trip-card-empty-actions-selecting" class="trip-card-empty-actions hidden">
+              <button id="btn-cancel-selecting-route" class="btn-trip-action cancel-action" type="button" title="Cancel route selection">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <span>Cancel Route Selection</span>
+              </button>
             </div>
           </div>
 
-          <div class="sheet-expanded-body" id="sheet-expanded-body">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <strong style="font-size: 14px; color: var(--on-surface);">Itinerary Sequence</strong>
-              <div style="display: flex; gap: 8px;">
-                <button class="btn-small primary" id="btn-start-navigation" style="display: inline-flex; align-items: center; gap: 4px; background: #2563EB; color: #FFFFFF;" title="Turn-by-turn Navigation">
-                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- Minimal Floating Pill when Empty State is Enclosed -->
+          <div id="trip-card-minimized-state" class="trip-card-minimized hidden">
+            <button id="btn-enlarge-empty-card" class="btn-pill-enlarge" type="button">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+              <span>Plan Road Trip</span>
+              <span class="enlarge-chip-tag">Enlarge</span>
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </button>
+          </div>
+
+          <!-- Active State: Dynamic Route & Stop Sequence with Enlarge / Enclose Control -->
+          <div id="trip-card-active-state" class="trip-card-active hidden">
+            <div class="sheet-peek-content" id="sheet-summary-peek">
+              <div class="peek-left">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span class="trip-route-bullet"></span>
+                  <span class="peek-title" id="peek-next-stop-title">Next: Stop Name</span>
+                </div>
+                <span class="peek-subtitle" id="peek-stats-subtitle">0 stops • 0 km • 0 travelers</span>
+              </div>
+              <div class="peek-right" style="display: flex; align-items: center; gap: 8px;">
+                <div style="text-align: right;">
+                  <span class="peek-cost" id="peek-total-cost">₹0</span>
+                  <span class="peek-budget-caption" id="peek-budget-caption">of ₹0 budget</span>
+                </div>
+                <!-- Cancel / Clear Route Button on active card -->
+                <button id="btn-cancel-active-route" class="btn-quick-cancel" title="Cancel Route / Destination" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                  <span>Cancel</span>
+                </button>
+                <!-- Quick Start Navigation Button right on peek sheet -->
+                <button id="btn-quick-start-nav" class="btn-quick-nav" title="Start Turn-by-Turn Navigation" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
                   </svg>
-                  <span>Navigate</span>
+                  <span>Start</span>
                 </button>
-                <button class="btn-small secondary" id="btn-sheet-add-stop" title="Add Stop to Itinerary">+ Add Stop</button>
-                <button class="btn-small primary" id="btn-open-full-itinerary">Full Itinerary</button>
+                <!-- Dedicated Enlarge / Enclose Button near the Floating Nav -->
+                <button id="btn-toggle-sheet" class="sheet-enlarge-enclose-btn" type="button" title="Enlarge or Enclose details">
+                  <span class="enlarge-label">Enlarge</span>
+                  <span class="enclose-label hidden">Enclose</span>
+                  <svg class="toggle-chevron icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                  </svg>
+                </button>
               </div>
             </div>
-            <div id="sheet-stops-compact-list" style="display: flex; flex-direction: column; gap: 8px;">
-              <!-- Populated dynamically -->
+
+            <div class="sheet-expanded-body" id="sheet-expanded-body">
+              <div class="sheet-expanded-header-row">
+                <div class="sheet-expanded-title-col">
+                  <strong style="font-size: 13.5px; color: var(--on-surface);">Itinerary Sequence</strong>
+                  <span style="font-size: 11px; color: var(--on-surface-variant);">Stop timeline &amp; highway halts</span>
+                </div>
+                <div class="sheet-expanded-actions-row">
+                  <button class="btn-small danger" id="btn-cancel-active-route-expanded" title="Cancel Route" type="button">
+                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Cancel Route</span>
+                  </button>
+                  <button class="btn-small secondary" id="btn-sheet-add-stop" title="Add Stop to Itinerary" type="button">
+                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span>Add Stop</span>
+                  </button>
+                  <button class="btn-small primary" id="btn-open-full-itinerary" type="button">
+                    <span>Full View</span>
+                  </button>
+                </div>
+              </div>
+              <div id="sheet-stops-compact-list" style="display: flex; flex-direction: column; gap: 6px;">
+                <!-- Populated dynamically -->
+              </div>
+
+              <!-- Integrated Highway Corridor Stops (Hotels, Dhabas & Fuel along the Journey) -->
+              <div id="corridor-amenities-tray" class="corridor-amenities-tray hidden">
+                <div class="corridor-tray-header">
+                  <div class="corridor-tray-top-bar">
+                    <div class="corridor-tray-title-group">
+                      <div class="corridor-tray-title" id="corridor-tray-title">Hotels &amp; Dining on Route</div>
+                      <div class="corridor-tray-sub" id="corridor-tray-sub">Curated corridor stops for your journey</div>
+                    </div>
+                  </div>
+                  <div class="corridor-filter-chips" id="corridor-tray-tabs">
+                    <button class="corridor-tab active" data-ctab="all" type="button">All</button>
+                    <button class="corridor-tab" data-ctab="stays" type="button">
+                      <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"></path></svg>
+                      <span>Hotels</span>
+                    </button>
+                    <button class="corridor-tab" data-ctab="food" type="button">
+                      <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                      <span>Dhabas</span>
+                    </button>
+                    <button class="corridor-tab" data-ctab="fuel" type="button">
+                      <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>
+                      <span>Fuel</span>
+                    </button>
+                  </div>
+                </div>
+                <div id="corridor-amenities-list" class="corridor-amenities-list">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -550,26 +783,153 @@
           </div>
         </div>
 
-                <!-- AI Highway Itinerary Planner Banner -->
-        <div class="ai-planner-hero">
-          <div class="ai-hero-top">
-            <div class="ai-hero-badge">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              <span>Autonomous AI Engine</span>
+                <!-- Interactive AI Road Trip & Budget Assistant -->
+        <div class="itinerary-ai-card" id="itinerary-ai-card">
+          <div class="ai-card-header">
+            <div class="ai-avatar-badge">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
             </div>
-            <span style="font-size: 11px; opacity: 0.9;">Groq Llama 3.3</span>
+            <div>
+              <div class="ai-card-title">AI Road Trip &amp; Budget Planner</div>
+              <div class="ai-card-sub">Scientific breaks, verified hotels &amp; itemized budget</div>
+            </div>
           </div>
-          <div>
-            <div class="ai-hero-title">Smart Highway Road Trip Planner</div>
-            <div class="ai-hero-desc">Calculates research-backed breaks, verified highway dhabas, EV chargers, and fuel stops along your route corridor.</div>
+
+          <div class="ai-chat-body" id="ai-chat-body">
+            <div class="ai-prompt-bubble">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+              <span>Tell us your route, group size and budget plan:</span>
+            </div>
+
+            <div class="ai-grid-2">
+              <div class="input-field-compact">
+                <label for="ai-chat-origin">Starting City</label>
+                <input type="text" id="ai-chat-origin" placeholder="e.g. Hyderabad, Delhi, Bangalore" />
+              </div>
+              <div class="input-field-compact">
+                <label for="ai-chat-dest">Destination</label>
+                <input type="text" id="ai-chat-dest" placeholder="e.g. Hampi, Coorg, Goa, Jaipur" />
+              </div>
+            </div>
+
+            <div class="ai-grid-2" style="margin-top: 6px;">
+              <div class="input-field-compact">
+                <label for="ai-chat-members">Travelers (People)</label>
+                <input type="number" id="ai-chat-members" value="4" min="1" max="15" />
+              </div>
+              <div class="input-field-compact">
+                <label for="ai-chat-budget">Target Budget (₹ Total)</label>
+                <input type="number" id="ai-chat-budget" value="15000" step="1000" />
+              </div>
+            </div>
+
+            <div style="margin-top: 8px;">
+              <span class="ai-section-label">Hotel Comfort Tier Wish:</span>
+              <div class="ai-pill-row" id="ai-comfort-chips">
+                <button class="ai-pill-chip" data-comfort="budget" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                  <span>Budget Homestay</span>
+                </button>
+                <button class="ai-pill-chip active" data-comfort="comfort" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"></path></svg>
+                  <span>3-Star Comfort</span>
+                </button>
+                <button class="ai-pill-chip" data-comfort="luxury" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                  <span>Luxury Resort</span>
+                </button>
+              </div>
+            </div>
+
+            <div style="margin-top: 8px;">
+              <span class="ai-section-label">Dining Preference:</span>
+              <div class="ai-pill-row" id="ai-dining-chips">
+                <button class="ai-pill-chip active" data-dining="dhabas" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                  <span>Highway Dhabas</span>
+                </button>
+                <button class="ai-pill-chip" data-dining="pureveg" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path></svg>
+                  <span>Pure Veg / Coffee</span>
+                </button>
+                <button class="ai-pill-chip" data-dining="family" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+                  <span>Family Multi-Cuisine</span>
+                </button>
+              </div>
+            </div>
+
+            <button id="btn-generate-ai-plan" class="btn-primary btn-ai-generate" type="button">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              <span>Calculate Road Trip &amp; Budget</span>
+            </button>
           </div>
-          <button id="btn-open-ai-planner" class="ai-hero-btn">
-            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            <span>Plan Road Trip with AI</span>
-          </button>
+
+          <!-- Loading State -->
+          <div id="ai-chat-loading" class="hidden" style="padding: 24px 16px; text-align: center;">
+            <div class="spinner-ai"></div>
+            <div style="font-weight: 700; font-size: 13.5px; margin-top: 10px; color: var(--on-surface);">Groq AI is analyzing highway corridor &amp; matching verified hotels...</div>
+            <div style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 4px;">Optimizing fatigue stops, stay pricing &amp; food budget</div>
+          </div>
+
+          <!-- Result Preview & Apply -->
+          <div id="ai-chat-result" class="hidden" style="margin-top: 10px;">
+            <!-- Rendered dynamically -->
+          </div>
         </div>
 
-<div class="timeline-container" id="timeline-list">
+        <!-- Vehicle Details (Integrated in Itinerary Interface) -->
+        <div class="itinerary-vehicle-card" id="itinerary-vehicle-card">
+          <div class="itinerary-vehicle-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="vehicle-icon-badge">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.7 2 10.9 2 11v5c0 .6.4 1 1 1h2"></path>
+                  <circle cx="7" cy="17" r="2"></circle>
+                  <path d="M9 17h6"></path>
+                  <circle cx="17" cy="17" r="2"></circle>
+                </svg>
+              </div>
+              <div>
+                <strong style="font-size: 13.5px; color: var(--on-surface);">Vehicle Details</strong>
+                <div style="font-size: 11px; color: var(--on-surface-variant);">Highway mileage &amp; fuel price for itinerary calculations</div>
+              </div>
+            </div>
+            <span class="chip-active-vehicle">Active Vehicle</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+            <div class="input-field" style="margin: 0;">
+              <label for="setting-vehicle-input">Vehicle Name &amp; Model (Type Manually)</label>
+              <input type="text" id="setting-vehicle-input" list="vehicle-common-suggestions" placeholder="e.g. Hyundai Creta Diesel, Nexon EV, Swift" value="Hyundai Creta Diesel" />
+              <datalist id="vehicle-common-suggestions">
+                <option value="Hyundai Creta Diesel"></option>
+                <option value="Tata Nexon EV"></option>
+                <option value="Mahindra Scorpio-N"></option>
+                <option value="Toyota Fortuner Diesel"></option>
+                <option value="Maruti Suzuki Swift Petrol"></option>
+                <option value="Hyundai i20 Petrol"></option>
+                <option value="Honda City Petrol"></option>
+                <option value="MG ZS EV"></option>
+                <option value="Royal Enfield Himalayan 450"></option>
+                <option value="KTM 390 Adventure"></option>
+              </datalist>
+            </div>
+
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
+              <div class="input-field" style="margin: 0;">
+                <label for="setting-mileage-input">Mileage (km / L)</label>
+                <input type="number" id="setting-mileage-input" value="16.0" step="0.5" />
+              </div>
+              <div class="input-field" style="margin: 0;">
+                <label for="setting-fuel-price-input">Fuel Price (₹ / L)</label>
+                <input type="number" id="setting-fuel-price-input" value="102.8" step="0.5" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline-container" id="timeline-list">
           <!-- Populated dynamically -->
         </div>
       </section>
@@ -718,6 +1078,18 @@
 
           <!-- SECTION B: SETTINGS & PREFERENCES -->
           <div id="more-section-settings" class="tab-content-section hidden">
+            <!-- User Google Account & Profile Card -->
+            <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); padding: 14px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px;">
+              <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                <div id="settings-avatar-badge" style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;">A</div>
+                <div style="min-width: 0;">
+                  <strong id="settings-user-name" style="font-size: 14px; color: var(--on-surface); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Google Explorer</strong>
+                  <span id="settings-user-email" style="font-size: 12px; color: var(--on-surface-variant); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">account@tripweave.app</span>
+                </div>
+              </div>
+              <button id="btn-open-account-from-settings" class="btn-small secondary" type="button" style="flex-shrink: 0; font-weight: 700;">Manage</button>
+            </div>
+
             <!-- Groq API Configuration Card -->
             <div class="groq-config-card">
               <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -745,40 +1117,6 @@
               </div>
             </div>
 
-            <!-- Vehicle & Trip Assumptions -->
-            <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 12px;">
-              <strong style="font-size: 14px; color: var(--on-surface);">Vehicle &amp; Travel Profile</strong>
-              <div class="input-field" style="margin: 0;">
-                <label for="setting-vehicle-input">Vehicle Name &amp; Model (Type Manually)</label>
-                <input type="text" id="setting-vehicle-input" list="vehicle-common-suggestions" placeholder="e.g. Hyundai Creta Diesel, Nexon EV, Swift" value="Hyundai Creta Diesel" />
-                <datalist id="vehicle-common-suggestions">
-                  <option value="Hyundai Creta Diesel"></option>
-                  <option value="Tata Nexon EV"></option>
-                  <option value="Mahindra Scorpio-N"></option>
-                  <option value="Toyota Fortuner Diesel"></option>
-                  <option value="Maruti Suzuki Swift Petrol"></option>
-                  <option value="Hyundai i20 Petrol"></option>
-                  <option value="Honda City Petrol"></option>
-                  <option value="MG ZS EV"></option>
-                  <option value="Royal Enfield Himalayan 450"></option>
-                  <option value="KTM 390 Adventure"></option>
-                </datalist>
-              </div>
-              <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
-                <div class="input-field" style="margin: 0;">
-                  <label for="setting-mileage-input">Mileage (km / L)</label>
-                  <input type="number" id="setting-mileage-input" value="16.0" step="0.5" />
-                </div>
-                <div class="input-field" style="margin: 0;">
-                  <label for="setting-fuel-price-input">Fuel Price (₹ / L)</label>
-                  <input type="number" id="setting-fuel-price-input" value="102.8" step="0.5" />
-                </div>
-              </div>
-              <div class="input-field" style="margin: 0;">
-                <label for="setting-travelers-input">Default Passengers</label>
-                <input type="number" id="setting-travelers-input" value="4" min="1" max="12" />
-              </div>
-            </div>
 
             <!-- Appearance & Theme Toggle -->
             <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); padding: 14px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between;">
@@ -797,7 +1135,7 @@
             <!-- Single APK Engine & OTA Update Card -->
             <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); padding: 14px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between;">
               <div>
-                <strong style="font-size: 13.5px; color: var(--on-surface);">TripWeave v1.5.1</strong>
+                <strong style="font-size: 13.5px; color: var(--on-surface);">TripWeave v1.6.0</strong>
                 <div style="font-size: 11.5px; color: var(--on-surface-variant);">Permanent Single APK Engine</div>
               </div>
               <button id="btn-check-update" class="btn-small secondary">Check Update</button>
@@ -823,12 +1161,15 @@
 
       <button class="nav-tab" data-tab="itinerary" id="nav-tab-itinerary">
         <div class="nav-icon-pill">
-          <!-- Mode Of Travel / Route Loop Pin Icon -->
+          <!-- Tactic Route Itinerary Icon -->
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10.8 20 C7.5 17.5 4.5 14 4.5 9.5 A7.5 7.5 0 0 1 18 5.2"></path>
-            <polyline points="13 3 18.5 5 16.5 10.5"></polyline>
-            <path d="M10.8 20 c1.2.9 2.6.6 3.2-.4s0-2.4-1.5-2.8"></path>
-            <circle cx="12.5" cy="16.2" r="2.2" fill="currentColor"></circle>
+            <line x1="4.5" y1="4.5" x2="8.5" y2="8.5"></line>
+            <line x1="8.5" y1="4.5" x2="4.5" y2="8.5"></line>
+            <line x1="15.5" y1="15.5" x2="19.5" y2="19.5"></line>
+            <line x1="19.5" y1="15.5" x2="15.5" y2="19.5"></line>
+            <circle cx="6" cy="18" r="2"></circle>
+            <path d="M8 18h2a3.5 3.5 0 0 0 3.5-3.5v-5A3.5 3.5 0 0 1 17 6h1.5"></path>
+            <polyline points="14.5 6 18.5 6 18.5 10"></polyline>
           </svg>
         </div>
         <span class="nav-label" id="tab-label-itinerary">Itinerary</span>
@@ -871,78 +1212,7 @@
       </button>
     </nav>
 
-    
-    <!-- MODAL: GOOGLE ACCOUNT & APP SETTINGS (Google Maps Native Style) -->
-    <div id="modal-google-account" class="modal-backdrop hidden">
-      <div class="modal-card" style="max-width: 340px; border-radius: 24px; padding: 0; overflow: hidden;">
-        <!-- Header with Close Button -->
-        <div style="padding: 14px 16px 8px 16px; display: flex; align-items: center; justify-content: space-between;">
-          <button class="modal-close-btn" id="modal-account-close-btn" title="Close">
-            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-          <div style="font-size: 14px; font-weight: 700; color: var(--on-surface);">TripWeave Account</div>
-          <div style="width: 28px;"></div>
-        </div>
 
-        <div class="modal-body" style="padding: 12px 18px 20px 18px; gap: 14px;">
-          <!-- User Profile Card -->
-          <div style="background: var(--surface-container); border: 1px solid var(--outline-variant); border-radius: 18px; padding: 14px; display: flex; align-items: center; gap: 12px;">
-            <div id="account-avatar-wrapper" style="width: 44px; height: 44px; border-radius: 50%; background: #1A73E8; color: #FFFFFF; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;">
-              <img id="account-avatar-img" src="" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
-              <span id="account-avatar-initial">A</span>
-            </div>
-            <div style="flex: 1; min-width: 0;">
-              <div id="account-user-name" style="font-size: 14px; font-weight: 700; color: var(--on-surface);">Google Explorer</div>
-              <div id="account-user-email" style="font-size: 12px; color: var(--on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">explorer@gmail.com</div>
-              <span id="account-cloud-status" style="display: inline-block; font-size: 10px; font-weight: 700; color: #1A73E8; background: rgba(26, 115, 232, 0.12); padding: 2px 7px; border-radius: 10px; margin-top: 4px;">Cloud Firestore Active</span>
-            </div>
-          </div>
-
-          <!-- Quick Action Buttons -->
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button id="theme-toggle-btn" class="account-menu-item" style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; gap: 10px; background: var(--surface-container-low); border: 1px solid var(--outline-variant); cursor: pointer;">
-              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="9"></circle>
-                <path d="M12 3a9 9 0 0 1 0 18v-18z" fill="currentColor"></path>
-              </svg>
-              <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">Toggle Dark / Light Mode</span>
-            </button>
-
-            
-
-            
-            <!-- In-App Version & Update Check -->
-            <div style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--surface-container-low); border: 1px solid var(--outline-variant);">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                <div style="display: flex; flex-direction: column;">
-                  <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">App Version</span>
-                  <span style="font-size: 11px; color: var(--on-surface-variant);" id="app-version-badge">TripWeave v1.5.1</span>
-                </div>
-              </div>
-              <button id="btn-check-update" class="btn-small" style="font-size: 11px; padding: 4px 10px; font-weight: 700; color: #1A73E8; border-color: #1A73E8; cursor: pointer;">Check Update</button>
-            </div>
-
-            <!-- Sign Out Button -->
-            <button id="btn-account-signout" class="account-signout-btn" style="margin-top: 6px; width: 100%; padding: 10px 14px; border-radius: 12px; background: rgba(234, 67, 53, 0.08); border: 1px solid rgba(234, 67, 53, 0.25); color: #EA4335; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 180ms ease;">
-              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-              <span>Sign Out of Google</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
 
     
     <!-- MODAL: APP UPDATE AVAILABLE (In-App OTA Update System) -->
@@ -970,7 +1240,7 @@
         <div class="modal-body" style="gap: 12px;">
           <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-              <strong id="update-modal-version" style="font-size: 15px; color: var(--on-surface);">TripWeave v1.5.1</strong>
+              <strong id="update-modal-version" style="font-size: 15px; color: var(--on-surface);">TripWeave v1.6.0</strong>
               <span style="font-size: 11px; font-weight: 700; color: #1A73E8; background: rgba(26,115,232,0.12); padding: 2px 8px; border-radius: 9999px;">Latest</span>
             </div>
             <p style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.4; margin: 0;">A new updated release is available with enhanced performance, crisp 2x Retina maps, native Google sign-in, and student planning.</p>
@@ -1025,74 +1295,6 @@
         </div>
         <div class="modal-footer">
           <button class="btn-secondary" id="modal-warnings-dismiss-btn">Dismiss</button>
-        </div>
-      </div>
-    </div>
-
-    
-      </div>
-    </div>
-
-    
-
-          <!-- 2. Confidence Chips -->
-          <div class="gallery-section">
-            <div class="gallery-section-title">2. Confidence Chips (Vector Icons)</div>
-            <div class="gallery-grid">
-              <span class="confidence-chip official">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                <span>Official</span>
-              </span>
-
-              <span class="confidence-chip calculated">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                <span>Calculated</span>
-              </span>
-
-              <span class="confidence-chip demo">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                <span>Demo Mode</span>
-              </span>
-            </div>
-          </div>
-
-          <!-- 3. Scenario Switch -->
-          <div class="gallery-section">
-            <div class="gallery-section-title">3. Scenario Switch</div>
-            <div class="scenario-switch">
-              <button class="scenario-btn">Low</button>
-              <button class="scenario-btn active">Typical</button>
-              <button class="scenario-btn">High</button>
-            </div>
-          </div>
-
-          <!-- 4. Warning Cards -->
-          <div class="gallery-section">
-            <div class="gallery-section-title">4. Warning Cards</div>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <div class="warning-card">
-                <div class="warning-title">
-                  <svg class="icon-sm" style="color: var(--caution);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
-                  <span>Buffer Advisory</span>
-                </div>
-                <div class="warning-desc">Arrival window at Abbey Falls has less than 15m parking buffer.</div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1168,9 +1370,6 @@
       </div>
     </div>
 
-  </div>
-
-  
     <!-- MODAL: CREATE TRIP 5-STEP STEPPER (Spec 5.3) -->
     <div id="modal-create-trip" class="modal-backdrop hidden">
       <div class="modal-card" style="max-height: 90vh;">
@@ -1312,6 +1511,101 @@
     </div>
 
     
+
+    <!-- MODAL: ACCOUNT & SETTINGS -->
+    <div id="modal-account-settings" class="modal-backdrop hidden">
+      <div class="modal-card" style="max-width: 370px; border-radius: 24px; padding: 0; overflow: hidden;">
+        <!-- Header with Back & Close Buttons -->
+        <div style="padding: 14px 16px 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--outline-variant);">
+          <button class="modal-close-btn" id="modal-account-back-btn" title="Back to previous screen" type="button" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-pill); cursor: pointer; color: var(--on-surface);">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span style="font-size: 13px; font-weight: 700;">Back</span>
+          </button>
+          <div style="font-size: 14px; font-weight: 800; color: var(--on-surface);">Account &amp; Profile</div>
+          <button class="modal-close-btn" id="modal-account-close-btn" title="Close" type="button" style="cursor: pointer; padding: 4px;">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="modal-body" style="padding: 14px 16px; gap: 12px;">
+          <!-- User Profile Card -->
+          <div style="background: var(--surface-container); border: 1px solid var(--outline-variant); border-radius: 18px; padding: 14px; display: flex; align-items: center; gap: 12px;">
+            <div id="account-modal-avatar-badge" style="width: 44px; height: 44px; border-radius: 50%; background: var(--primary); color: #FFFFFF; font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden;">A</div>
+            <div style="flex: 1; min-width: 0;">
+              <div id="account-modal-name" style="font-size: 14.5px; font-weight: 700; color: var(--on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Google Explorer</div>
+              <div id="account-modal-email" style="font-size: 12px; color: var(--on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">explorer@gmail.com</div>
+              <span id="account-modal-status" style="display: inline-block; font-size: 10px; font-weight: 700; color: var(--primary); background: rgba(59, 95, 204, 0.12); padding: 2px 8px; border-radius: 10px; margin-top: 4px;">Google Verified</span>
+            </div>
+          </div>
+
+          <!-- Account Details & Actions -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Dark/Light Theme -->
+            <button id="modal-account-theme-btn" class="account-menu-item" type="button" style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--surface-container-low); border: 1px solid var(--outline-variant); cursor: pointer;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M12 3a9 9 0 0 1 0 18v-18z" fill="currentColor"></path>
+                </svg>
+                <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">Appearance Theme</span>
+              </div>
+              <span style="font-size: 11px; color: var(--on-surface-variant); font-weight: 600;">Switch Mode</span>
+            </button>
+
+            <!-- Privacy & Terms Button -->
+            <button id="btn-account-terms" class="account-menu-item" type="button" style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--surface-container-low); border: 1px solid var(--outline-variant); cursor: pointer;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                <span style="font-size: 13px; font-weight: 600; color: var(--on-surface);">Privacy Policy &amp; Terms</span>
+              </div>
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+
+            <!-- In-App Version & Sync Info -->
+            <div style="padding: 10px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--surface-container-low); border: 1px solid var(--outline-variant);">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 14 14"></polyline>
+                </svg>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 12.5px; font-weight: 600; color: var(--on-surface);">Cloud Sync &amp; Engine</span>
+                  <span style="font-size: 11px; color: var(--on-surface-variant);" id="account-modal-version">Firestore Live • TripWeave v1.6.0</span>
+                </div>
+              </div>
+              <button id="modal-account-check-update" class="btn-small" type="button" style="font-size: 11px; padding: 4px 10px; font-weight: 700; color: var(--primary); border-color: var(--primary); cursor: pointer;">Updates</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Actions: Sign Out & Back/Done -->
+        <div class="modal-footer" style="padding: 12px 16px; display: flex; gap: 8px; border-top: 1px solid var(--outline-variant); background: var(--surface);">
+          <button id="btn-account-signout" class="account-signout-btn" type="button" style="padding: 9px 14px; border-radius: 12px; background: rgba(234, 67, 53, 0.08); border: 1px solid rgba(234, 67, 53, 0.25); color: #EA4335; font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            <span>Sign Out</span>
+          </button>
+          <button id="modal-account-done-btn" class="btn-primary" type="button" style="flex: 1; padding: 9px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Back to Map</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Floating Toast Notification -->
     <div id="app-toast" class="toast-pill hidden">

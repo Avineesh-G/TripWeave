@@ -1,4820 +1,647 @@
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-
-export function calculateHaversineKm(lat1, lon1, lat2, lon2) {
-  if (lat1 === undefined || lon1 === undefined || lat2 === undefined || lon2 === undefined) return 0;
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-export function resizeMap() {
-  if (!mapInstance) return;
-  try {
-    if (typeof mapInstance.invalidateSize === 'function') {
-      mapInstance.invalidateSize(true);
-    }
-  } catch (e) {
-    console.warn('Map resize error:', e);
-  }
-}
-
-const GOOGLE_TILE_PROVIDERS = {
-  roadmap: {
-    url: 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&scale=2',
-    subdomains: ['0', '1', '2', '3'],
-    maxZoom: 20,
-    tileSize: 256,
-    zoomOffset: 0,
-    attribution: 'Google Maps'
-  },
-  satellite: {
-    url: 'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&scale=2',
-    subdomains: ['0', '1', '2', '3'],
-    maxZoom: 20,
-    tileSize: 256,
-    zoomOffset: 0,
-    attribution: 'Google Satellite'
-  },
-  terrain: {
-    url: 'https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&scale=2',
-    subdomains: ['0', '1', '2', '3'],
-    maxZoom: 20,
-    tileSize: 256,
-    zoomOffset: 0,
-    attribution: 'Google Terrain'
-  }
-};
-
-let currentTileLayer = null;
-
-function createCleanTileLayer(layerKey = 'roadmap') {
-  const conf = GOOGLE_TILE_PROVIDERS[layerKey] || GOOGLE_TILE_PROVIDERS.roadmap;
-  const layer = L.tileLayer(conf.url, {
-    subdomains: conf.subdomains,
-    maxZoom: conf.maxZoom,
-    tileSize: conf.tileSize || 256,
-    zoomOffset: conf.zoomOffset !== undefined ? conf.zoomOffset : 0,
-    detectRetina: false,
-    attribution: conf.attribution,
-    crossOrigin: true,
-    keepBuffer: 8,
-    updateWhenIdle: false,
-    updateWhenZooming: true
-  });
-
-  layer.on('tileerror', function(error, tile) {
-    if (tile && !tile._fallbackApplied && error.coords) {
-      tile._fallbackApplied = true;
-      tile.src = `https://a.basemaps.cartocdn.com/rastertiles/voyager/${error.coords.z}/${error.coords.x}/${error.coords.y}@2x.png`;
-    }
-  });
-
-  return layer;
-}
-
-let currentGoogleTileLayer = null;
-// Immediately clear any legacy mock data from browser storage
-try {
-  localStorage.removeItem('tripweave_state');
-} catch (e) {}
-
-// Purge any legacy mock data from browser storage immediately
-try {
-  const cached = localStorage.getItem('tripweave_state');
-  if (cached && (cached.includes('coorg') || cached.includes('blr') || cached.includes('hampi'))) {
-    localStorage.removeItem('tripweave_state');
-  }
-} catch (e) {}
-
-
-// Verified Indian Tourist Places Operating Hours (100% Free Built-in Engine)
-const VERIFIED_INDIAN_HOURS = {
-  'mysore palace': { open: 600, close: 1050, name: '10:00 AM - 05:30 PM' },
-  'abbey falls': { open: 540, close: 1020, name: '09:00 AM - 05:00 PM' },
-  'namdroling': { open: 540, close: 1080, name: '09:00 AM - 06:00 PM' },
-  'golden temple': { open: 540, close: 1080, name: '09:00 AM - 06:00 PM' },
-  'raja': { open: 330, close: 1200, name: '05:30 AM - 08:00 PM' },
-  'dubare': { open: 540, close: 990, name: '09:00 AM - 04:30 PM' },
-  'virupaksha': { open: 360, close: 1080, name: '06:00 AM - 06:00 PM' },
-  'hampi': { open: 360, close: 1080, name: '06:00 AM - 06:00 PM' },
-  'amer fort': { open: 480, close: 1050, name: '08:00 AM - 05:30 PM' },
-  'hawa mahal': { open: 540, close: 1020, name: '09:00 AM - 05:00 PM' },
-  'shore temple': { open: 360, close: 1080, name: '06:00 AM - 06:00 PM' },
-  'mahabalipuram': { open: 360, close: 1080, name: '06:00 AM - 06:00 PM' }
-};
-
-function getPlaceHours(name) {
-  if (!name) return null;
-  const lower = name.toLowerCase();
-  for (const [key, val] of Object.entries(VERIFIED_INDIAN_HOURS)) {
-    if (lower.includes(key)) return val;
-  }
-  return { open: 540, close: 1080, name: '09:00 AM - 06:00 PM (Standard)' };
-}
-
-// 1-Tap "Plan Accordingly" Auto-Fix Function
-window.autoPlanDeparture = function(stopId, arrivalMins, closeMins) {
-  const trip = getActiveTrip();
-  // Calculate minutes needed so user arrives with at least 45 minutes visit buffer before closing
-  const shiftNeeded = Math.max(30, (arrivalMins - closeMins) + 45);
-  const currentDeparture = trip.departureTimeMinutes || 480; // default 08:00 AM
-  const newDeparture = Math.max(300, currentDeparture - shiftNeeded); // do not depart earlier than 05:00 AM
-
-  trip.departureTimeMinutes = newDeparture;
-  Storage.save(state);
-  
-  // Refresh and recompute
-  refreshApp();
-};
-
-
 // ==========================================================================
-// OPTION A: LIVE OSRM ROUTING & PHOTON PLACES API
+// TripWeave — Re-Engineered Modular Application Entry Point
 // ==========================================================================
 
-// Cache for live OSRM routes to prevent duplicate requests
-const routeCache = new Map();
+import { state } from './state.js';
+import { ICONS } from './icons.js';
+import {
+  initMap,
+  resizeMap,
+  switchMapLayer,
+  setupLocationListeners,
+  renderRoutePolyline
+} from './services/map.service.js';
+import {
+  calculateTripSchedule,
+  formatMinutes
+} from './services/scheduler.service.js';
+import {
+  calculateTripBudget,
+  buildItemizedExpenses
+} from './services/budget.service.js';
+import {
+  checkAppUpdates,
+  getInstalledVersionCode,
+  getInstalledVersionName
+} from './services/updater.service.js';
+import {
+  isTermsAccepted,
+  setTermsAccepted,
+  loginWithGoogle,
+  logoutUser,
+  getCurrentUser,
+  listenAuth,
+  saveTripToCloud
+} from './services/auth.service.js';
+import { generateWhatsAppSummary, exportTripAsJSON } from './services/export.service.js';
+import { getAIHistoryPlans, deleteAIHistoryPlan } from './services/ai.service.js';
 
-async function fetchLiveOsrmRoute(stops) {
-  if (!stops || stops.length < 2) return null;
-  const coords = stops.map(s => `${s.longitude},${s.latitude}`).join(';');
-  if (routeCache.has(coords)) return routeCache.get(coords);
+import { setupNavigationUI } from './ui/navigation.ui.js';
+import { setupSheetUI, updateSheetState } from './ui/sheet.ui.js';
+import { setupDirectionsUI } from './ui/directions.ui.js';
+import { setupTimelineUI } from './ui/timeline.ui.js';
+import { setupBudgetUI } from './ui/budget.ui.js';
+import {
+  showToast,
+  setupUpdateModal,
+  showUpdateModal,
+  setupShareModal,
+  setupAddStopModal
+} from './ui/modals.ui.js';
+import { setupAuthUI } from './ui/auth.ui.js';
 
-  try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=true`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-      const route = data.routes[0];
-      const steps = (route.legs || []).flatMap(leg => leg.steps || []);
-      const result = {
-        polylineLatlngs: route.geometry.coordinates.map(c => [c[1], c[0]]),
-        distanceKm: route.distance / 1000,
-        durationMinutes: Math.round(route.duration / 60),
-        steps: steps
-      };
-      routeCache.set(coords, result);
-      return result;
-    }
-  } catch (err) {
-    console.warn('OSRM live routing fallback to local calculation:', err);
-  }
-  return null;
-}
+// Expose icons and toasts globally for inline templates
+window.ICONS = ICONS;
+window.showToast = showToast;
 
-// Dynamic Real Place Photo Resolver via Wikipedia PageImages API
-const wikiPhotoCache = new Map();
+// --------------------------------------------------------------------------
+// Application Core Orchestrator
+// --------------------------------------------------------------------------
 
-async function fetchRealPlacePhoto(placeName, categoryHint = '') {
-  if (!placeName) return null;
-  const cleanTitle = placeName.split(',')[0].replace(/\b(Stop|Destination|Start|Highway|Expressway|Dhaba|Hotel|Restaurant)\b/gi, '').trim();
-  const cacheKey = (cleanTitle || placeName).toLowerCase();
-
-  if (wikiPhotoCache.has(cacheKey)) {
-    return wikiPhotoCache.get(cacheKey);
-  }
-
-  // 1. Direct Wikipedia Query with Search Generator (handles near-matches & landmarks)
-  try {
-    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanTitle || placeName)}&gsrlimit=1&prop=pageimages&pithumbsize=1000&format=json&origin=*`;
-    const res = await fetch(searchUrl);
-    if (res.ok) {
-      const data = await res.json();
-      const pages = data.query?.pages;
-      if (pages) {
-        const firstPage = Object.values(pages)[0];
-        if (firstPage?.thumbnail?.source) {
-          const photo = firstPage.thumbnail.source;
-          wikiPhotoCache.set(cacheKey, photo);
-          return photo;
-        }
-      }
-    }
-  } catch (e) {}
-
-  // 2. Wikimedia Commons Photo Search
-  try {
-    const commonsUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(cleanTitle || placeName)}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=1000&format=json&origin=*`;
-    const res = await fetch(commonsUrl);
-    if (res.ok) {
-      const data = await res.json();
-      const pages = data.query?.pages;
-      if (pages) {
-        const firstPage = Object.values(pages)[0];
-        const imgUrl = firstPage?.imageinfo?.[0]?.thumburl || firstPage?.imageinfo?.[0]?.url;
-        if (imgUrl) {
-          wikiPhotoCache.set(cacheKey, imgUrl);
-          return imgUrl;
-        }
-      }
-    }
-  } catch (e) {}
-
-  // 3. Category Contextual High-Resolution Verified Fallback
-  const lower = (placeName + ' ' + categoryHint).toLowerCase();
-  let fallback = 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?w=1000&auto=format&fit=crop';
-  if (lower.includes('dhaba') || lower.includes('food') || lower.includes('restaurant') || lower.includes('breakfast') || lower.includes('lunch') || lower.includes('dinner')) {
-    fallback = 'https://images.unsplash.com/photo-1613292443284-8d10ef9383fe?w=1000&auto=format&fit=crop';
-  } else if (lower.includes('ev') || lower.includes('charger') || lower.includes('power')) {
-    fallback = 'https://images.unsplash.com/photo-1593941707882-a5bba14938c7?w=1000&auto=format&fit=crop';
-  } else if (lower.includes('temple') || lower.includes('spiritual') || lower.includes('ashram')) {
-    fallback = 'https://images.unsplash.com/photo-1548013146-72479768bada?w=1000&auto=format&fit=crop';
-  } else if (lower.includes('lake') || lower.includes('water') || lower.includes('falls') || lower.includes('beach')) {
-    fallback = 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&auto=format&fit=crop';
-  } else if (lower.includes('fort') || lower.includes('palace') || lower.includes('heritage') || lower.includes('monument')) {
-    fallback = 'https://images.unsplash.com/photo-1599661046289-e31897846e41?w=1000&auto=format&fit=crop';
-  }
-
-  wikiPhotoCache.set(cacheKey, fallback);
-  return fallback;
-}
-
-// Geocode Place String using local cache + Photon API
-async function geocodePlace(placeString) {
-  if (!placeString) return null;
-  const q = placeString.trim();
-  const lower = q.toLowerCase();
-
-  for (const [key, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
-    if (lower.includes(key) || lower.includes(hub.cityName.toLowerCase())) {
-      return { name: hub.cityName, lat: hub.lat, lng: hub.lng };
-    }
-  }
-
-  for (const item of LOCAL_INDIAN_DESTINATIONS) {
-    if (lower.includes(item.name.toLowerCase())) {
-      return { name: item.name, lat: item.lat, lng: item.lng };
-    }
-  }
-
-  try {
-    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.features && data.features.length > 0) {
-        const f = data.features[0];
-        const [lng, lat] = f.geometry.coordinates;
-        const name = f.properties.name || q;
-        return { name, lat, lng };
-      }
-    }
-  } catch (err) {
-    console.warn('Geocoding fallback error:', err);
-  }
-
-  return { name: q, lat: 12.9716, lng: 77.5946 };
-}
-
-// ==========================================================================
-// IN-APP TURN-BY-TURN NAVIGATION ENGINE (Google Maps Style)
-// ==========================================================================
-let isNavigating = false;
-let currentNavStepIndex = 0;
-let activeNavSteps = [];
-let currentNavRoute = null;
-
-function getManeuverSvg(type, modifier) {
-  const mod = (modifier || '').toLowerCase();
-  const t = (type || '').toLowerCase();
-  if (t === 'arrive') {
-    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>`;
-  }
-  if (mod.includes('left')) {
-    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>`;
-  }
-  if (mod.includes('right')) {
-    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></svg>`;
-  }
-  if (mod.includes('uturn')) {
-    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>`;
-  }
-  if (t.includes('roundabout')) {
-    return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"></circle><polyline points="12 9 15 12 12 15"></polyline></svg>`;
-  }
-  return `<svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
-}
-
-function getManeuverInstruction(step) {
-  if (!step) return 'Continue on route';
-  const name = step.name ? ` onto ${step.name}` : '';
-  const type = step.maneuver?.type || 'depart';
-  const modifier = step.maneuver?.modifier || '';
-
-  if (type === 'arrive') return 'Arrive at destination';
-  if (type === 'depart') return `Head ${modifier || 'forward'}${name}`;
-  if (type === 'turn') return `Turn ${modifier || 'ahead'}${name}`;
-  if (type === 'roundabout') return `Take roundabout exit${name}`;
-  if (type === 'merge') return `Merge${name}`;
-  if (type === 'fork') return `Keep ${modifier || 'straight'}${name}`;
-  return `Continue straight${name}`;
-}
-
-function startInAppNavigation(navRoute) {
-  if (!navRoute || !navRoute.steps || navRoute.steps.length === 0) {
-    showToast('No turn-by-turn route available. Add stops first.');
-    return;
-  }
-  currentNavRoute = navRoute;
-  activeNavSteps = navRoute.steps;
-  currentNavStepIndex = 0;
-  isNavigating = true;
-
-  const topHud = document.getElementById('nav-hud-top');
-  const bottomHud = document.getElementById('nav-hud-bottom');
-  const mapScreen = document.getElementById('screen-map');
-
-  if (topHud) topHud.classList.remove('hidden');
-  if (bottomHud) bottomHud.classList.remove('hidden');
-  if (mapScreen) mapScreen.classList.add('in-navigation-mode');
-
-  updateNavHud();
-  showToast('In-app turn-by-turn navigation started');
-  switchTab('map');
-}
-
-function updateNavHud() {
-  if (!isNavigating || !activeNavSteps || activeNavSteps.length === 0) return;
-  const step = activeNavSteps[currentNavStepIndex];
-  if (!step) return;
-
-  const iconBox = document.getElementById('nav-maneuver-icon');
-  const distEl = document.getElementById('nav-maneuver-dist');
-  const instEl = document.getElementById('nav-maneuver-instruction');
-  const etaEl = document.getElementById('nav-bottom-eta');
-  const subEl = document.getElementById('nav-bottom-sub');
-
-  if (iconBox) iconBox.innerHTML = getManeuverSvg(step.maneuver?.type, step.maneuver?.modifier);
-  if (distEl) {
-    const d = step.distance || 0;
-    distEl.textContent = d < 1000 ? `In ${Math.round(d)} m` : `In ${(d / 1000).toFixed(1)} km`;
-  }
-  if (instEl) instEl.textContent = getManeuverInstruction(step);
-
-  const remainingSteps = activeNavSteps.slice(currentNavStepIndex);
-  const remainingDistanceM = remainingSteps.reduce((acc, s) => acc + (s.distance || 0), 0);
-  const remainingDurationSec = remainingSteps.reduce((acc, s) => acc + (s.duration || 0), 0);
-
-  const remMins = Math.max(1, Math.round(remainingDurationSec / 60));
-  const remKm = (remainingDistanceM / 1000).toFixed(1);
-
-  if (etaEl) etaEl.textContent = `${remMins} min`;
-  if (subEl) subEl.textContent = `${remKm} km remaining • Step ${currentNavStepIndex + 1} of ${activeNavSteps.length}`;
-
-  if (step.maneuver?.location && mapInstance) {
-    const [lon, lat] = step.maneuver.location;
-    mapInstance.setView([lat, lon], 17);
-  }
-}
-
-function exitInAppNavigation() {
-  isNavigating = false;
-  currentNavRoute = null;
-  activeNavSteps = [];
-  const topHud = document.getElementById('nav-hud-top');
-  const bottomHud = document.getElementById('nav-hud-bottom');
-  const mapScreen = document.getElementById('screen-map');
-
-  if (topHud) topHud.classList.add('hidden');
-  if (bottomHud) bottomHud.classList.add('hidden');
-  if (mapScreen) mapScreen.classList.remove('in-navigation-mode');
-
-  if (mapInstance) {
-    resizeMap();
-    const plan = computePlan();
-    updateMapRoute(plan);
-  }
-  showToast('Navigation exited');
-}
-
-// ==========================================================================
-// ROUTE & CORRIDOR STOPS PROPOSAL (Traveler Approval Flow)
-// ==========================================================================
-let pendingProposalData = null;
-let currentProposalFilter = 'all';
-
-async function generateAndShowTripProposal(tripState) {
-  showToast('Computing fastest route & corridor stops...');
-
-  const modal = document.getElementById('modal-trip-proposal');
-  const createModal = document.getElementById('modal-create-trip');
-  if (createModal) createModal.classList.add('hidden');
-
-  const origGeo = await geocodePlace(tripState.origin);
-  const destGeo = await geocodePlace(tripState.destination);
-
-  const dummyStops = [
-    { latitude: origGeo.lat, longitude: origGeo.lng, name: origGeo.name },
-    { latitude: destGeo.lat, longitude: destGeo.lng, name: destGeo.name }
-  ];
-
-  const route = await fetchLiveOsrmRoute(dummyStops);
-  const distanceKm = route ? route.distanceKm : calculateHaversineKm(origGeo.lat, origGeo.lng, destGeo.lat, destGeo.lng);
-  const baseDriveMinutes = route ? route.durationMinutes : Math.round((distanceKm / 55) * 60);
-
-  const titleEl = document.getElementById('proposal-route-title');
-  const distEl = document.getElementById('proposal-distance');
-  const durEl = document.getElementById('proposal-duration');
-  const countEl = document.getElementById('proposal-stops-count');
-  const fuelEl = document.getElementById('proposal-fuel');
-  const stopsListEl = document.getElementById('proposal-stops-list');
-
-  if (titleEl) titleEl.textContent = `${origGeo.name} ➔ ${destGeo.name}`;
-  if (distEl) distEl.textContent = `${Math.round(distanceKm)} km`;
-
-  const poly = route && route.polylineLatlngs && route.polylineLatlngs.length > 5 ? route.polylineLatlngs : null;
-  const pLen = poly ? poly.length : 0;
-
-  const getPt = (fraction) => {
-    if (poly && pLen > 0) return poly[Math.floor(pLen * fraction)];
-    return [
-      origGeo.lat + (destGeo.lat - origGeo.lat) * fraction,
-      origGeo.lng + (destGeo.lng - origGeo.lng) * fraction
-    ];
-  };
-
-  const pt1 = getPt(0.22);
-  const pt2 = getPt(0.42);
-  const pt3 = getPt(0.58);
-  const pt4 = getPt(0.74);
-  const pt5 = getPt(0.88);
-
-  // Curated corridor stops with EV charging, dhabas, veg food, scenic viewpoints & heritage sights
-  const corridorStops = [
-    {
-      id: 'corridor-ev-fuel-1',
-      name: `${origGeo.name.split(',')[0]} Expressway EV Fast-Charging & Fuel Plaza`,
-      category: 'fuel',
-      badgeText: 'EV 60kW + Fuel',
-      detourText: '0.2 km off NH',
-      durationMinutes: 25,
-      bufferMinutes: 10,
-      latitude: pt1[0],
-      longitude: pt1[1],
-      description: '60kW CCS2 DC Fast Chargers, petrol/diesel pumps & cafe'
-    },
-    {
-      id: 'corridor-dhaba-2',
-      name: 'Grand Highway Dhaba & Family Garden Restaurant',
-      category: 'food',
-      badgeText: 'Highway Dhaba',
-      detourText: 'On Highway',
-      durationMinutes: 45,
-      bufferMinutes: 15,
-      latitude: pt2[0],
-      longitude: pt2[1],
-      description: 'Hot tandoori clay oven, regional thali, lassi & outdoor seating'
-    },
-    {
-      id: 'corridor-scenic-3',
-      name: `${destGeo.name.split(',')[0]} Panoramic Valley Overlook & Viewpoint`,
-      category: 'monuments',
-      badgeText: 'Scenic Viewpoint',
-      detourText: '1.2 km detour',
-      durationMinutes: 35,
-      bufferMinutes: 10,
-      latitude: pt3[0],
-      longitude: pt3[1],
-      description: 'Hill photography point, valley panorama & fresh mountain air'
-    },
-    {
-      id: 'corridor-dining-4',
-      name: 'Pure Vegetarian Highway Food Court & Coffee House',
-      category: 'food',
-      badgeText: 'Pure Veg',
-      detourText: '0.4 km off NH',
-      durationMinutes: 30,
-      bufferMinutes: 10,
-      latitude: pt4[0],
-      longitude: pt4[1],
-      description: 'South Indian dosas, filter coffee, North Indian meals & clean restrooms'
-    },
-    {
-      id: 'corridor-monument-5',
-      name: `Ancient Hill Fort & Heritage Monument`,
-      category: 'monuments',
-      badgeText: 'Heritage Sight',
-      detourText: '2.1 km detour',
-      durationMinutes: 45,
-      bufferMinutes: 15,
-      latitude: pt5[0],
-      longitude: pt5[1],
-      description: 'Historical architecture, scenic ramparts & stone pillared halls'
-    }
-  ];
-
-  pendingProposalData = {
-    tripState,
-    origGeo,
-    destGeo,
-    route,
-    distanceKm,
-    baseDriveMinutes,
-    corridorStops,
-    checkedStopIds: new Set(corridorStops.map(s => s.id))
-  };
-
-  function updateProposalLiveMetrics() {
-    const checked = corridorStops.filter(s => pendingProposalData.checkedStopIds.has(s.id));
-    const visitMins = checked.reduce((acc, s) => acc + s.durationMinutes, 0);
-    const totalMinutes = baseDriveMinutes + visitMins;
-
-    const estFuel = Math.round((distanceKm / (tripState.mileage || 15)) * 102.8);
-    const estFood = checked.filter(s => s.category === 'food').length * (tripState.groupSize || 2) * 280;
-    const totalEstCost = estFuel + estFood;
-
-    if (durEl) {
-      durEl.textContent = `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m total`;
-    }
-    if (countEl) {
-      countEl.textContent = `${checked.length} of ${corridorStops.length} stops selected`;
-    }
-    if (fuelEl) {
-      fuelEl.textContent = `Est. ₹${totalEstCost.toLocaleString('en-IN')}`;
-    }
-  }
-
-  function renderProposalStops() {
-    if (!stopsListEl) return;
-    const filtered = currentProposalFilter === 'all'
-      ? corridorStops
-      : corridorStops.filter(s => s.category === currentProposalFilter);
-
-    if (filtered.length === 0) {
-      stopsListEl.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--on-surface-variant); font-size: 12px;">No stops match this filter.</div>';
-      return;
-    }
-
-    stopsListEl.innerHTML = filtered.map(s => {
-      const isChecked = pendingProposalData.checkedStopIds.has(s.id);
-      return `
-        <div class="corridor-stop-card ${isChecked ? 'selected' : ''}" data-cat="${s.category}">
-          <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; flex: 1; min-width: 0;">
-            <input type="checkbox" class="corridor-stop-chk" data-stop-id="${s.id}" ${isChecked ? 'checked' : ''} style="width: 18px; height: 18px; accent-color: var(--primary); margin-top: 2px; flex-shrink: 0;" />
-            <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <span style="font-size: 13.5px; font-weight: 700; color: var(--on-surface);">${s.name}</span>
-                <span class="corridor-detour-tag ${s.category === 'fuel' ? 'corridor-ev-tag' : ''}">${s.detourText}</span>
-              </div>
-              <div style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 3px; line-height: 1.4;">
-                ${s.description}
-              </div>
-              <div style="font-size: 11px; font-weight: 600; color: var(--primary); margin-top: 4px;">
-                ${s.durationMinutes} mins visit • ${s.badgeText}
-              </div>
-            </div>
-          </label>
-        </div>
-      `;
-    }).join('');
-
-    stopsListEl.querySelectorAll('.corridor-stop-chk').forEach(chk => {
-      chk.onchange = () => {
-        const sid = chk.getAttribute('data-stop-id');
-        if (chk.checked) {
-          pendingProposalData.checkedStopIds.add(sid);
-          chk.closest('.corridor-stop-card')?.classList.add('selected');
-        } else {
-          pendingProposalData.checkedStopIds.delete(sid);
-          chk.closest('.corridor-stop-card')?.classList.remove('selected');
-        }
-        updateProposalLiveMetrics();
-      };
-    });
-  }
-
-  // Setup proposal filter tabs
-  const filterTabs = document.getElementById('proposal-filter-tabs');
-  if (filterTabs) {
-    filterTabs.querySelectorAll('.proposal-filter-chip').forEach(tab => {
-      tab.onclick = () => {
-        filterTabs.querySelectorAll('.proposal-filter-chip').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        currentProposalFilter = tab.getAttribute('data-pfilter') || 'all';
-        renderProposalStops();
-      };
-    });
-  }
-
-  renderProposalStops();
-  updateProposalLiveMetrics();
-
-  if (modal) modal.classList.remove('hidden');
-}
-
-function approveAndSaveTripProposal() {
-  if (!pendingProposalData) return;
-  const { tripState, origGeo, destGeo, corridorStops, checkedStopIds } = pendingProposalData;
-
-  const newTripId = `trip-${Date.now()}`;
-  const totalBudget = tripState.budgetType === 'total' 
-    ? (tripState.budgetAmount || 0)
-    : ((tripState.budgetAmount || 0) * (tripState.groupSize || 1));
-
-  const newTrip = {
-    id: newTripId,
-    title: `${origGeo.name.split(',')[0]} to ${destGeo.name.split(',')[0]}`,
-    destinationName: destGeo.name,
-    departureTimeMinutes: tripState.departureMinutes || 360,
-    totalBudget: totalBudget || 0,
-    groupSize: tripState.groupSize || 2,
-    vehicleMileageKmPerLitre: tripState.mileage || 15.0,
+function computeActivePlan() {
+  const trip = state.getActiveTrip() || {
+    id: 'default-trip',
+    title: 'My Road Trip',
+    origin: 'Starting City',
+    destination: 'Destination',
+    departureDate: new Date().toISOString().split('T')[0],
+    departureTimeMinutes: 480,
+    groupSize: 4,
+    vehicleModel: 'Hyundai Creta Diesel',
+    vehicleMileageKmPerLitre: 16,
     fuelPricePerLitre: 102.8,
-    isArchived: false
+    totalBudget: 25000
   };
 
-  const selectedStops = [];
+  const stops = state.getActiveStops();
+  const expenses = state.getActiveExpenses();
 
-  // Stop 1: Origin
-  selectedStops.push({
-    id: `stop-${Date.now()}-orig`,
-    tripId: newTripId,
-    name: origGeo.name,
-    latitude: origGeo.lat,
-    longitude: origGeo.lng,
-    orderIndex: 0,
-    durationMinutes: 15,
-    bufferMinutes: 10,
-    isOvernight: false,
-    openingHourMinutes: 0,
-    closingHourMinutes: 1440
-  });
-
-  // Approved corridor stops in sequential route order
-  corridorStops.forEach(cs => {
-    if (checkedStopIds.has(cs.id)) {
-      selectedStops.push({
-        id: `stop-${Date.now()}-${cs.id}`,
-        tripId: newTripId,
-        name: cs.name,
-        latitude: cs.latitude,
-        longitude: cs.longitude,
-        orderIndex: selectedStops.length,
-        durationMinutes: cs.durationMinutes,
-        bufferMinutes: cs.bufferMinutes,
-        isOvernight: false,
-        openingHourMinutes: 360,
-        closingHourMinutes: 1380
-      });
-    }
-  });
-
-  // Final Stop: Destination
-  selectedStops.push({
-    id: `stop-${Date.now()}-dest`,
-    tripId: newTripId,
-    name: destGeo.name,
-    latitude: destGeo.lat,
-    longitude: destGeo.lng,
-    orderIndex: selectedStops.length,
-    durationMinutes: 120,
-    bufferMinutes: 20,
-    isOvernight: false,
-    openingHourMinutes: 360,
-    closingHourMinutes: 1260
-  });
-
-  state.trips.unshift(newTrip);
-  state.activeTripId = newTripId;
-  state.stopsMap[newTripId] = selectedStops;
-  state.expensesMap[newTripId] = [];
-
-  Storage.save(state);
-
-  const modal = document.getElementById('modal-trip-proposal');
-  if (modal) modal.classList.add('hidden');
-
-  switchTab('map');
-  refreshApp();
-  showToast('Trip route & approved corridor stops saved!');
-}
-
-// Live Places Search with Debounce & Instant Indian Attractions Cache
-let searchDebounceTimer = null;
-
-function setupLivePlaceSearch() {
-  const searchInput = document.getElementById('place-search-input');
-  const dropdown = document.getElementById('search-suggestions-dropdown');
-  if (!searchInput || !dropdown) return;
-
-  // Local Indian Attractions Cache for instant suggestions
-  const LOCAL_INDIAN_DESTINATIONS = [
-    { name: 'Hyderabad', sub: 'Telangana, India', lat: 17.3850, lng: 78.4867 },
-    { name: 'Charminar', sub: 'Old City, Hyderabad, Telangana, India', lat: 17.3616, lng: 78.4747 },
-    { name: 'Golconda Fort', sub: 'Ibrahim Bagh, Hyderabad, Telangana, India', lat: 17.3833, lng: 78.4011 },
-    { name: 'Hussain Sagar Lake', sub: 'Tank Bund, Hyderabad, Telangana, India', lat: 17.4239, lng: 78.4738 },
-    { name: 'Paradise Biryani', sub: 'Secunderabad, Hyderabad, Telangana, India', lat: 17.4416, lng: 78.4983 },
-    { name: 'Bawarchi Restaurant', sub: 'RTC X Roads, Hyderabad, Telangana, India', lat: 17.4048, lng: 78.4981 },
-    { name: 'Karachi Bakery', sub: 'Mozamjahi Market, Hyderabad, Telangana, India', lat: 17.3822, lng: 78.4735 },
-    { name: 'KBR National Park', sub: 'Jubilee Hills, Hyderabad, Telangana, India', lat: 17.4244, lng: 78.4238 },
-    { name: 'Mysore Palace', sub: 'Mysuru, Karnataka, India', lat: 12.3052, lng: 76.6552 },
-    { name: 'Abbey Falls', sub: 'Madikeri, Coorg, Karnataka, India', lat: 12.4516, lng: 75.7187 },
-    { name: 'Raja\'s Seat', sub: 'Madikeri, Coorg, Karnataka, India', lat: 12.4214, lng: 75.7368 },
-    { name: 'Bylakuppe Golden Temple', sub: 'Kushalnagar, Karnataka, India', lat: 12.4334, lng: 75.9647 },
-    { name: 'Virupaksha Temple', sub: 'Hampi, Bellary, Karnataka, India', lat: 15.3353, lng: 76.4600 },
-    { name: 'Amer Fort', sub: 'Jaipur, Rajasthan, India', lat: 26.9855, lng: 75.8513 },
-    { name: 'Hawa Mahal', sub: 'Jaipur, Rajasthan, India', lat: 26.9239, lng: 75.8267 },
-    { name: 'Shore Temple', sub: 'Mahabalipuram, Tamil Nadu, India', lat: 12.6163, lng: 80.1983 },
-    { name: 'Ooty Botanical Gardens', sub: 'Nilgiris, Tamil Nadu, India', lat: 11.4167, lng: 76.7110 },
-    { name: 'Channapatna Craft Park', sub: 'Ramanagara, Karnataka, India', lat: 12.6518, lng: 77.2089 }
-  ];
-
-  searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const firstItem = dropdown.querySelector('.search-suggestion-item');
-      if (firstItem) {
-        firstItem.click();
-        return;
-      }
-      const q = searchInput.value.trim().toLowerCase();
-      if (q.includes('hyderabad') || q.includes('hyd')) {
-        dropdown.classList.add('hidden');
-        handleMapPlaceSelection(17.3850, 78.4867, 'Hyderabad');
-        return;
-      }
-      for (const [key, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
-        if (q.includes(key) || q.includes(hub.cityName.toLowerCase())) {
-          dropdown.classList.add('hidden');
-          handleMapPlaceSelection(hub.lat, hub.lng, hub.cityName);
-          return;
-        }
-      }
-    }
-  });
-
-  function renderSuggestions(items) {
-    if (items.length === 0) {
-      dropdown.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--on-surface-variant); text-align: center;">No matching places found</div>';
-      dropdown.classList.remove('hidden');
-      return;
-    }
-
-    dropdown.innerHTML = items.slice(0, 6).map(item => `
-      <div class="search-suggestion-item" data-name="${item.name}" data-lat="${item.lat}" data-lng="${item.lng}">
-        <div class="suggestion-text">
-          <div class="suggestion-name">${item.name}</div>
-          <div class="suggestion-sub">${item.sub}</div>
-        </div>
-        <button class="btn-small primary" style="padding: 4px 10px; font-size: 11px; white-space: nowrap;">+ Add</button>
-      </div>
-    `).join('');
-
-    dropdown.classList.remove('hidden');
-
-    dropdown.querySelectorAll('.search-suggestion-item').forEach(el => {
-      el.onclick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        const name = el.getAttribute('data-name');
-        const lat = parseFloat(el.getAttribute('data-lat'));
-        const lng = parseFloat(el.getAttribute('data-lng'));
-
-        dropdown.classList.add('hidden');
-        searchInput.value = '';
-
-        if (e.target.closest('.btn-small')) {
-          if (!state.activeTripId || !state.trips || state.trips.length === 0) {
-            const newTripId = `trip-${Date.now()}`;
-            state.trips = [{
-              id: newTripId,
-              title: `Road Trip to ${name}`,
-              destinationName: name,
-              departureTimeMinutes: 0,
-              totalBudget: 0,
-              groupSize: 0,
-              vehicleMileageKmPerLitre: 0,
-              fuelPricePerLitre: 0,
-              isArchived: false
-            }];
-            state.activeTripId = newTripId;
-            state.stopsMap[newTripId] = [];
-            state.expensesMap[newTripId] = [];
-          }
-          const stops = state.stopsMap[state.activeTripId] || [];
-          const newStop = {
-            id: `stop-${Date.now()}`,
-            tripId: state.activeTripId,
-            name,
-            latitude: lat,
-            longitude: lng,
-            orderIndex: stops.length,
-            durationMinutes: 60,
-            bufferMinutes: 15,
-            isOvernight: false,
-            openingHourMinutes: 540,
-            closingHourMinutes: 1080
-          };
-          stops.push(newStop);
-          state.stopsMap[state.activeTripId] = stops;
-          Storage.save(state);
-          refreshApp();
-          showToast(`Added ${name} to itinerary!`);
-        }
-
-        handleMapPlaceSelection(lat, lng, name);
-      };
-    });
+  const scheduleResult = calculateTripSchedule(trip, stops);
+  let totalKm = scheduleResult.stops.reduce((acc, s) => acc + (s.distanceFromPreviousKm || 0), 0);
+  if (state.activeRoute && state.activeRoute.distanceKm && stops.length <= 2) {
+    totalKm = Math.round(state.activeRoute.distanceKm * 10) / 10;
   }
+  const budgetResult = calculateTripBudget(trip, expenses, totalKm, state.currentScenario);
 
-  searchInput.addEventListener('input', (e) => {
-    const query = e.target.value.trim().toLowerCase();
-    clearTimeout(searchDebounceTimer);
-
-    if (query.length < 2) {
-      dropdown.innerHTML = '';
-      dropdown.classList.add('hidden');
-      return;
-    }
-
-    // 1. Instant local matches rendered immediately without waiting!
-    const localMatches = LOCAL_INDIAN_DESTINATIONS.filter(d => 
-      d.name.toLowerCase().includes(query) || d.sub.toLowerCase().includes(query)
-    );
-
-    if (localMatches.length > 0) {
-      renderSuggestions(localMatches);
-    } else {
-      dropdown.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--on-surface-variant); text-align: center;">Searching places across India...</div>';
-      dropdown.classList.remove('hidden');
-    }
-
-    // 2. Fetch live network results to augment
-    searchDebounceTimer = setTimeout(async () => {
-      try {
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`;
-        const res = await fetch(url);
-        let items = [...localMatches];
-
-        if (res.ok) {
-          const data = await res.json();
-          const features = data.features || [];
-          features.forEach(f => {
-            const p = f.properties;
-            const name = p.name || 'Place in India';
-            const sub = [p.city, p.state, p.country].filter(Boolean).join(', ');
-            const coords = f.geometry.coordinates; // [lng, lat]
-            if (!items.some(i => i.name.toLowerCase() === name.toLowerCase())) {
-              items.push({ name, sub, lat: coords[1], lng: coords[0] });
-            }
-          });
-        }
-
-        renderSuggestions(items);
-      } catch (err) {
-        console.warn('Place search fallback:', err);
-        if (localMatches.length > 0) {
-          dropdown.innerHTML = localMatches.map(item => `
-            <div class="search-suggestion-item" data-name="${item.name}" data-lat="${item.lat}" data-lng="${item.lng}">
-              <div class="suggestion-text">
-                <div class="suggestion-name">${item.name}</div>
-                <div class="suggestion-sub">${item.sub}</div>
-              </div>
-              <button class="btn-small primary" style="padding: 4px 10px; font-size: 11px;">+ Add</button>
-            </div>
-          `).join('');
-          dropdown.classList.remove('hidden');
-        } else {
-          dropdown.innerHTML = '<div style="padding: 12px; font-size: 12px; color: var(--on-surface-variant); text-align: center;">Network busy. Try again.</div>';
-        }
-      }
-    }, 280);
-  });
-
-  // Close dropdown on click outside
-  document.addEventListener('click', (e) => {
-    if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
-      dropdown.classList.add('hidden');
-    }
-  });
-}
-
-import { ScheduleEngine, BudgetEngine, FeasibilityEvaluator } from './engines.js';
-import { TRANSLATIONS, SAMPLE_TRIPS, Storage } from './data.js';
-import { 
-  loginWithGoogle, 
-  logoutUser, 
-  subscribeAuthState, 
-  getCurrentUser, 
-  syncTripToCloud, 
-  removeTripFromCloud, 
-  subscribeCloudTrips, 
-  isFirebaseConfigured 
-} from './firebase.js';
-
-// Application State
-let state = Storage.load();
-let currentTab = 'map';
-let currentScenario = 'typical';
-let mapInstance = null; // google.maps.Map
-let mapMarkers = []; // Array of google.maps.Marker
-let routePolyline = null; // google.maps.Polyline
-let routeHalo = null; // google.maps.Polyline
-let userLocation = null;
-let userMarker = null; // google.maps.Marker
-let userAccuracyCircle = null; // google.maps.Circle
-let selectedPlaceMarker = null; // google.maps.Marker
-let currentSelectedPlace = null;
-let selectedAccuracy = 'precise';
-let currentCategoryFilter = 'all';
-let nearbyExploreMarkers = [];
-
-// Helpers
-function getActiveTrip() {
-  return state.trips.find(t => t.id === state.activeTripId) || state.trips[0];
-}
-
-function getActiveStops() {
-  return state.stopsMap[state.activeTripId] || [];
-}
-
-function getActiveExpenses() {
-  return state.expensesMap[state.activeTripId] || [];
-}
-
-function formatMinutes(minutes) {
-  if (minutes === undefined || minutes === null) return '--:--';
-  const norm = ((minutes % 1440) + 1440) % 1440;
-  const h = Math.floor(norm / 60);
-  const m = norm % 60;
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
-  return `${h12.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
-}
-
-// Recalculate plan deterministically (Zero Mock Data & Null Safe)
-function computePlan() {
-  const trip = getActiveTrip() || {
-    id: 'trip-initial',
-    title: 'New Trip',
-    destinationName: null,
-    departureTimeMinutes: 0,
-    totalBudget: 0,
-    groupSize: 0,
-    vehicleMileageKmPerLitre: 0,
-    fuelPricePerLitre: 0,
-    isArchived: false
+  return {
+    trip,
+    stops,
+    expenses,
+    scheduleResult,
+    budgetResult,
+    totalDistanceKm: totalKm
   };
-  const stops = getActiveStops();
-  const expenses = getActiveExpenses();
-
-  const scheduleResult = stops.length > 0
-    ? ScheduleEngine.calculateSchedule(trip, stops)
-    : { stops: [], warnings: [], totalDurationMinutes: 0 };
-
-  const totalDistanceKm = scheduleResult.stops && scheduleResult.stops.length > 0
-    ? scheduleResult.stops.reduce((sum, s) => sum + (s.distanceFromPreviousKm || 0), 0)
-    : 0;
-
-  const budgetResult = (stops.length > 0 || expenses.length > 0)
-    ? BudgetEngine.calculateBudget(trip, expenses, totalDistanceKm)
-    : { totalCost: 0, remainingBudget: 0, budgetUsedPercent: 0, fuelCost: 0, tollCost: 0, stayCost: 0, foodCost: 0, activityCost: 0, categories: [] };
-
-  const feasibilityReport = stops.length > 0
-    ? FeasibilityEvaluator.evaluate(trip, scheduleResult, budgetResult)
-    : { overallFeasibility: 'FEASIBLE', timeUsedPercent: 0, budgetUsedPercent: 0, warnings: [] };
-
-  return { trip, stops, expenses, scheduleResult, budgetResult, feasibilityReport, totalDistanceKm };
 }
 
-// Feasibility Ring & Pill Updater (Spec 2 & 6)
-function updateFeasibilityUI(feasibilityReport) {
-  const labelEl = document.getElementById('feasibility-label-text');
-  const pillEl = document.getElementById('feasibility-pill-btn');
-  const timeCircle = document.getElementById('ring-time-circle');
-  const budgetCircle = document.getElementById('ring-budget-circle');
+let timelineController = null;
+let budgetController = null;
+let sheetController = null;
+let directionsController = null;
+let shareModalController = null;
+let addStopModalController = null;
 
-  const t = TRANSLATIONS[state.lang] || TRANSLATIONS.en;
+function refreshAppUI() {
+  const plan = computeActivePlan();
 
-  let labelText = t.feasible || 'Feasible';
-  pillEl.className = 'feasibility-pill';
+  // 1. Update Map floating card & peek sheet
+  updateSheetState(plan);
 
-  if (feasibilityReport.overallFeasibility === 'INFEASIBLE') {
-    labelText = t.infeasible || 'Not Feasible';
-    pillEl.classList.add('infeasible');
-    pillEl.style.border = '1.5px solid var(--error)';
-  } else if (feasibilityReport.overallFeasibility === 'TIGHT') {
-    labelText = t.tight || 'Tight';
-    pillEl.classList.add('tight');
-    pillEl.style.border = '1.5px solid var(--caution)';
-  } else {
-    pillEl.style.border = '1.5px solid var(--outline-variant)';
+  // 2. Update Timeline in Itinerary tab
+  if (timelineController) {
+    timelineController.renderTimeline(plan.scheduleResult, plan.stops);
   }
 
-  labelEl.textContent = labelText;
-
-  // Animate SVG rings
-  const budgetDash = 88 - (Math.min(100, feasibilityReport.budgetUsedPercent) / 100) * 88;
-  const timeDash = 63 - (Math.min(100, feasibilityReport.timeUsedPercent) / 100) * 63;
-  if (budgetCircle) budgetCircle.style.strokeDashoffset = budgetDash;
-  if (timeCircle) timeCircle.style.strokeDashoffset = timeDash;
-
-  if (budgetCircle) {
-    if (feasibilityReport.budgetUsedPercent > 100) {
-      budgetCircle.style.stroke = 'var(--error)';
-    } else if (feasibilityReport.budgetUsedPercent > 85) {
-      budgetCircle.style.stroke = 'var(--caution)';
-    } else {
-      budgetCircle.style.stroke = 'var(--success)';
-    }
+  // 3. Update Budget in Budget tab
+  if (budgetController) {
+    budgetController.renderBudget(plan.budgetResult, plan.trip);
   }
-}
 
-function updateHeaderUI(plan) {
+  // 4. Update Header Title
   const headerTripTitle = document.getElementById('header-trip-title');
   if (headerTripTitle) {
-    headerTripTitle.textContent = plan.trip ? plan.trip.title : 'No Active Trip';
+    headerTripTitle.textContent = plan.trip.title || 'TripWeave';
   }
 
-  const nextStop = plan.stops && plan.stops.length > 0 ? plan.stops[0] : null;
-  const peekNextStopTitle = document.getElementById('peek-next-stop-title');
-  if (peekNextStopTitle) {
-    peekNextStopTitle.textContent = nextStop ? `Next: ${nextStop.name}` : 'No Stops Added';
+  // 5. Update Saved Trips History list & User Trips
+  renderSavedTripsHistory();
+  renderUserTripsList();
+
+  // 6. Sync Vehicle Details Card (in Itinerary Tab)
+  const inMileage = document.getElementById('setting-mileage-input');
+  const inFuel = document.getElementById('setting-fuel-price-input');
+  const inVehicle = document.getElementById('setting-vehicle-input');
+  if (inMileage && plan.trip.vehicleMileageKmPerLitre && document.activeElement !== inMileage) {
+    inMileage.value = plan.trip.vehicleMileageKmPerLitre;
   }
-
-  const peekStatsSubtitle = document.getElementById('peek-stats-subtitle');
-  if (peekStatsSubtitle) {
-    peekStatsSubtitle.textContent = plan.stops && plan.stops.length > 0
-      ? `${plan.stops.length} stops • ${Math.round(plan.totalDistanceKm)} km • ${plan.trip ? plan.trip.groupSize : 0} travelers`
-      : '0 stops • 0 km • 0 travelers';
+  if (inFuel && plan.trip.fuelPricePerLitre && document.activeElement !== inFuel) {
+    inFuel.value = plan.trip.fuelPricePerLitre;
   }
-
-  let mult = 1.0;
-  if (currentScenario === 'low') mult = 0.88;
-  if (currentScenario === 'high') mult = 1.18;
-
-  const cost = plan.stops && plan.stops.length > 0 ? Math.round(plan.budgetResult.totalCost * mult) : 0;
-  const peekTotalCost = document.getElementById('peek-total-cost');
-  if (peekTotalCost) {
-    peekTotalCost.textContent = `₹${cost.toLocaleString('en-IN')}`;
-  }
-
-  const peekBudgetCaption = document.getElementById('peek-budget-caption');
-  if (peekBudgetCaption) {
-    const budgetVal = plan.trip && plan.trip.totalBudget ? Math.round(plan.trip.totalBudget) : 0;
-    peekBudgetCaption.textContent = `of ₹${budgetVal.toLocaleString('en-IN')} budget`;
-  }
-
-  const sheetList = document.getElementById('sheet-stops-compact-list');
-  if (sheetList) {
-    if (!plan.stops || plan.stops.length === 0) {
-      sheetList.innerHTML = '<div style="font-size: 12px; color: var(--on-surface-variant); padding: 8px 0; text-align: center;">No stops added yet. Tap anywhere on the map or search to add stops.</div>';
-    } else {
-      sheetList.innerHTML = plan.stops.map((s, idx) => `
-        <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--outline-variant);">
-          <span><strong>${idx + 1}.</strong> ${s.name}</span>
-          <span style="color: var(--on-surface-variant);">${s.durationMinutes}m</span>
-        </div>
-      `).join('');
-    }
+  if (inVehicle && plan.trip.vehicleModel && document.activeElement !== inVehicle) {
+    inVehicle.value = plan.trip.vehicleModel;
   }
 }
 
-function updateItineraryView(plan) {
-  const container = document.getElementById('timeline-list');
-  if (!container) return;
+// --------------------------------------------------------------------------
+// Saved AI Itineraries & User Trips
+// --------------------------------------------------------------------------
 
-  container.innerHTML = '';
+function renderSavedTripsHistory() {
+  const listEl = document.getElementById('history-cards-container');
+  const emptyEl = document.getElementById('history-empty-state');
+  const badgeEl = document.getElementById('history-count-badge');
+  if (!listEl) return;
 
-  if (!plan.stops || plan.stops.length === 0) {
-    container.innerHTML = `
-      <div style="padding: 36px 16px; text-align: center; background: var(--surface-container-low); border: 1px dashed var(--outline-variant); border-radius: 16px; margin: 16px 0;">
-        <div style="font-size: 15px; font-weight: 700; color: var(--on-surface);">Your Itinerary is Empty</div>
-        <p style="font-size: 12.5px; color: var(--on-surface-variant); margin: 6px 0 16px 0; line-height: 1.5;">Search places in the top bar or tap the button below to add your first destination.</p>
-        <button class="btn-primary" onclick="openStopModal()" style="padding: 9px 20px; font-size: 13px;">+ Add First Stop</button>
-      </div>
-    `;
+  const history = getAIHistoryPlans();
+  if (badgeEl) badgeEl.textContent = String(history.length);
+
+  if (history.length === 0) {
+    if (emptyEl) emptyEl.style.display = 'block';
+    listEl.innerHTML = '';
     return;
   }
 
-  plan.scheduleResult.stops.forEach((scheduled, index) => {
-    const itemWrapper = document.createElement('div');
-    itemWrapper.className = 'timeline-item-wrapper';
+  if (emptyEl) emptyEl.style.display = 'none';
 
-    const hoursInfo = getPlaceHours(scheduled.stop.name);
-    const openMins = scheduled.stop.openingHours ? scheduled.stop.openingHours.openMinutes : (hoursInfo ? hoursInfo.open : 540);
-    const closeMins = scheduled.stop.openingHours ? scheduled.stop.openingHours.closeMinutes : (hoursInfo ? hoursInfo.close : 1080);
-    const hoursLabel = scheduled.stop.openingHours && scheduled.stop.openingHours.isOpen24Hours 
-      ? 'Open 24 Hours' 
-      : `${formatMinutes(openMins)} – ${formatMinutes(closeMins)}`;
-
-    let closingBanner = '';
-    let warningBadge = '';
-
-    if (scheduled.openingStatus === 'CLOSED_ON_ARRIVAL') {
-      warningBadge = `<span class="confidence-chip error">${ICONS.warning}<span>Closed on Arrival</span></span>`;
-      closingBanner = `
-        <div style="background: var(--error-container); color: var(--error); padding: 8px 10px; border-radius: var(--radius-sm); font-size: 11px; margin-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <div>
-            <strong>Closed upon arrival!</strong> Arriving at ${formatMinutes(scheduled.arrivalMinutes)} (closes at ${formatMinutes(closeMins)})
-          </div>
-          <button class="btn-small primary" style="padding: 4px 8px; font-size: 10px; white-space: nowrap;" onclick="autoPlanDeparture('${scheduled.stop.id}', ${scheduled.arrivalMinutes}, ${closeMins})">Plan Accordingly</button>
-        </div>
-      `;
-    } else if (scheduled.openingStatus === 'TIGHT_CLOSING') {
-      warningBadge = `<span class="confidence-chip tight">${ICONS.clock}<span>Closing Soon</span></span>`;
-      closingBanner = `
-        <div style="background: var(--caution-container); color: var(--caution); padding: 8px 10px; border-radius: var(--radius-sm); font-size: 11px; margin-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <div>
-            <strong>Closing soon:</strong> Only ${Math.max(10, closeMins - scheduled.arrivalMinutes)}m before ${formatMinutes(closeMins)} closing
-          </div>
-          <button class="btn-small" style="padding: 4px 8px; font-size: 10px; white-space: nowrap;" onclick="autoPlanDeparture('${scheduled.stop.id}', ${scheduled.arrivalMinutes}, ${closeMins})">Adjust</button>
-        </div>
-      `;
-    } else {
-      warningBadge = `<span class="confidence-chip official">${ICONS.check}<span>Open on Arrival</span></span>`;
-    }
-
-    const overnightBadge = scheduled.stop.isOvernight 
-      ? `<span class="confidence-chip" style="background: var(--secondary-container); color: var(--primary);">${ICONS.moon}<span>Overnight Rest</span></span>` 
-      : '';
-
-    itemWrapper.innerHTML = `
-      <div class="timeline-spine-col">
-        <div class="timeline-dot">${index + 1}</div>
-        ${index < plan.scheduleResult.stops.length - 1 ? '<div class="timeline-spine-line"></div>' : ''}
-      </div>
-      <div class="timeline-content-col">
-        <div class="timeline-card" data-stop-id="${scheduled.stop.id}">
-          <div class="timeline-card-header">
-            <div>
-              <div class="stop-title">${scheduled.stop.name}</div>
-              <div class="stop-times">${formatMinutes(scheduled.arrivalMinutes)} — ${formatMinutes(scheduled.departureMinutes)} (${scheduled.stop.durationMinutes}m visit)</div>
-              ${scheduled.stop.breakEstimate ? `<div class="break-duration-tag" style="margin-top: 4px;">${scheduled.stop.breakEstimate}</div>` : ''}
-              ${scheduled.stop.recommendedFood ? `<div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px;">Dining: ${scheduled.stop.recommendedFood}</div>` : ''}
-              ${scheduled.stop.mapsUrl ? `<div style="margin-top: 5px;"><a href="${scheduled.stop.mapsUrl}" target="_blank" class="restaurant-map-link">View in Google Maps</a></div>` : ''}
-            </div>
-            <div style="display: flex; gap: 4px;">
-              <button class="btn-small edit-stop-btn" data-id="${scheduled.stop.id}">Edit</button>
-              ${index > 0 && index < plan.scheduleResult.stops.length - 1 ? `<button class="btn-small delete-stop-btn" data-id="${scheduled.stop.id}" style="color: var(--error);">✕</button>` : ''}
-            </div>
-          </div>
-          <div class="stop-meta-row">
-            ${warningBadge}
-            ${overnightBadge}
-            <span class="confidence-chip calculated">${ICONS.clock}<span>Hours: ${hoursLabel}</span></span>
-          </div>
-          ${closingBanner}
-        </div>
-      </div>
-    `;
-
-    container.appendChild(itemWrapper);
-
-    // Connector between stops
-    if (index < plan.scheduleResult.stops.length - 1) {
-      const nextScheduled = plan.scheduleResult.stops[index + 1];
-      const conn = document.createElement('div');
-      conn.className = 'travel-connector';
-      conn.innerHTML = `
-        ${ICONS.car}
-        <span>${Math.round(nextScheduled.distanceFromPreviousKm)} km</span>
-        <span>•</span>
-        <span>${nextScheduled.travelDurationFromPreviousMinutes} mins drive</span>
-      `;
-      container.appendChild(conn);
-    }
-  });
-
-  // Attach delete & edit listeners
-  container.querySelectorAll('.delete-stop-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute('data-id');
-      const stops = state.stopsMap[state.activeTripId];
-      state.stopsMap[state.activeTripId] = stops.filter(s => s.id !== id);
-      Storage.save(state);
-      refreshApp();
-    };
-  });
-
-  container.querySelectorAll('.edit-stop-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      const id = btn.getAttribute('data-id');
-      const stop = state.stopsMap[state.activeTripId].find(s => s.id === id);
-      if (stop) openStopModal(stop);
-    };
-  });
-}
-
-function updateBudgetView(plan) {
-  let mult = 1.0;
-  if (currentScenario === 'low') mult = 0.88;
-  if (currentScenario === 'high') mult = 1.18;
-
-  const totalCost = plan.stops && plan.stops.length > 0 ? Math.round(plan.budgetResult.totalCost * mult) : 0;
-  const groupSize = plan.trip && plan.trip.groupSize > 0 ? plan.trip.groupSize : 0;
-  const totalBudget = plan.trip && plan.trip.totalBudget > 0 ? plan.trip.totalBudget : 0;
-  const perPerson = groupSize > 0 ? Math.round(totalCost / groupSize) : 0;
-  const remaining = Math.max(0, Math.round(totalBudget - totalCost));
-  const budgetPct = totalBudget > 0 ? Math.min(100, (totalCost / totalBudget) * 100) : 0;
-
-  const heroAmountEl = document.getElementById('budget-hero-amount');
-  if (heroAmountEl) heroAmountEl.textContent = `₹${totalCost.toLocaleString('en-IN')}`;
-
-  const perPersonEl = document.getElementById('budget-per-person-text');
-  if (perPersonEl) perPersonEl.textContent = `₹${perPerson.toLocaleString('en-IN')} / person • ${groupSize} travelers`;
-
-  const remainingEl = document.getElementById('budget-remaining-text');
-  if (remainingEl) remainingEl.textContent = `₹${remaining.toLocaleString('en-IN')} Remaining`;
-
-  const fill = document.getElementById('budget-meter-fill');
-  if (fill) {
-    fill.style.width = `${budgetPct}%`;
-    fill.className = 'budget-progress-fill';
-    if (budgetPct > 100) fill.classList.add('error');
-    else if (budgetPct > 85) fill.classList.add('caution');
-  }
-
-  // Contingency
-  const contingencyVal = Math.round(totalCost * 0.10);
-  const contingencyEl = document.getElementById('budget-contingency-val');
-  if (contingencyEl) contingencyEl.textContent = `₹${contingencyVal.toLocaleString('en-IN')}`;
-
-  // Category cards
-  const container = document.getElementById('category-cards-list');
-  if (!container) return;
-
-  if (!plan.stops || plan.stops.length === 0) {
-    container.innerHTML = `
-      <div style="padding: 32px 16px; text-align: center; color: var(--on-surface-variant); font-size: 13px;">
-        <div style="font-weight: 700; color: var(--on-surface); margin-bottom: 4px;">No Expenses</div>
-        Add stops to compute highway tolls, fuel, stays, and food costs.
-      </div>
-    `;
-    return;
-  }
-
-  const categories = [
-    { key: 'fuel', iconHtml: ICONS.fuel, name: 'Fuel Expenditure', amount: Math.round(plan.budgetResult.fuelCost * mult), note: `${Math.round(plan.totalDistanceKm)} km @ ₹${plan.trip.fuelPrice || 102.8}/L (${plan.trip.mileage || 15} km/L)` },
-    { key: 'tolls', iconHtml: ICONS.tolls, name: 'FASTag Highway Tolls', amount: Math.round(plan.budgetResult.tollCost * mult), note: 'Fastag NHAI toll plaza charges' },
-    { key: 'stays', iconHtml: ICONS.stays, name: 'Accommodations & Homestays', amount: Math.round(plan.budgetResult.stayCost * mult), note: 'Verified estate stays & resorts' },
-    { key: 'food', iconHtml: ICONS.food, name: 'Meals & Highway Food', amount: Math.round(plan.budgetResult.foodCost * mult), note: `3 meals/day for ${plan.trip.groupSize || 1} travelers` },
-    { key: 'activities', iconHtml: ICONS.activities, name: 'Entry Tickets & Safari', amount: Math.round(plan.budgetResult.activityCost * mult), note: 'Official temple & park entrance fees' }
-  ];
-
-  container.innerHTML = categories.map(cat => `
-    <div class="budget-category-row">
-      <div class="budget-cat-left">
-        <div class="budget-cat-icon-box">${cat.iconHtml}</div>
+  listEl.innerHTML = history.map(item => `
+    <div class="ai-history-card" style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 16px; padding: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div>
-          <div class="budget-cat-name">${cat.name}</div>
-          <div style="font-size: 11px; color: var(--on-surface-variant);">${cat.note}</div>
+          <div style="font-weight: 800; font-size: 14px; color: var(--on-surface);">${item.origin || 'Trip'} → ${item.destination || 'Destination'}</div>
+          <div style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 3px;">${item.totalDistanceKm || 0} km • ~${item.totalDrivingHours || 0} hrs drive</div>
         </div>
+        <button class="btn-small" onclick="window.removeAIHistoryPlan('${item.id}')" style="color: var(--error); padding: 4px 8px; border-radius: 50%;" title="Delete">${ICONS.close}</button>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span class="confidence-chip official">${ICONS.check}<span>Official</span></span>
-        <div class="budget-cat-amount">₹${cat.amount.toLocaleString('en-IN')}</div>
+      <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+        <span class="chip active" style="font-size: 10px; padding: 2px 8px;">${item.members || 4} Travelers</span>
+        <span class="chip" style="font-size: 10px; padding: 2px 8px;">₹${(item.totalCost || 0).toLocaleString('en-IN')} Est.</span>
+        <span class="chip" style="font-size: 10px; padding: 2px 8px;">${item.comfort || 'Standard'}</span>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button class="btn-primary" onclick="window.loadAIHistoryPlan('${item.id}')" style="flex: 1; padding: 8px 12px; font-size: 12px; font-weight: 700;">Load onto Map</button>
       </div>
     </div>
   `).join('');
 }
 
-function updateWarningsModal(plan) {
-  const container = document.getElementById('warnings-list-body');
-  if (!container) return;
-
-  container.innerHTML = '';
-  const warningsList = plan.feasibilityReport.warnings || [];
-
-  if (warningsList.length === 0) {
-    container.innerHTML = `
-      <div style="text-align: center; padding: 24px; color: var(--success);">
-        <div style="width: 44px; height: 44px; margin: 0 auto 10px auto; border-radius: 50%; background: var(--success-container); display: flex; align-items: center; justify-content: center; color: var(--success);">
-          <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        </div>
-        <strong>Itinerary is Fully Feasible</strong>
-        <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 4px;">All stop arrivals occur within visiting hours, and travel buffers are satisfied.</p>
-      </div>
-    `;
-    return;
-  }
-
-  warningsList.forEach(w => {
-    const card = document.createElement('div');
-    const isConflict = w.severity === 'HARD_CONFLICT';
-    card.className = `warning-card ${isConflict ? 'conflict' : (w.severity === 'INFO' ? 'info' : '')}`;
-    card.innerHTML = `
-      <div class="warning-title">
-        <svg class="icon-sm" style="color: ${isConflict ? 'var(--error)' : 'var(--caution)'};" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-          <line x1="12" y1="9" x2="12" y2="13"></line>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
-        <span>${w.title}</span>
-      </div>
-      <div class="warning-desc">Automated check by FeasibilityEvaluator. Adjust schedule or buffers to clear.</div>
-      ${isConflict ? `
-        <div class="warning-actions">
-          <button class="btn-small primary" onclick="shiftDeparture(30)">Shift Departure -30m</button>
-        </div>
-      ` : ''}
-    `;
-    container.appendChild(card);
-  });
-}
-
-// Official Google Maps Clean Tile Engine: 60/120 FPS GPU Hardware-Accelerated (Zero Lag, Zero Blank Tiles)
-function initMap() {
-  if (mapInstance) return;
-  const mapEl = document.getElementById('leaflet-map');
-  if (!mapEl) return;
-
-  mapInstance = L.map('leaflet-map', {
-    center: [20.5937, 78.9629],
-    zoom: 5,
-    zoomControl: false,
-    attributionControl: false,
-    preferCanvas: true,
-    fadeAnimation: true,
-    zoomAnimation: true,
-    markerZoomAnimation: true
-  });
-
-  currentTileLayer = createCleanTileLayer('roadmap');
-  currentTileLayer.addTo(mapInstance);
-
-  mapInstance.on('click', async (e) => {
-    if (e.latlng) {
-      await handleMapPlaceSelection(e.latlng.lat, e.latlng.lng);
-    }
-  });
-
-  let idleTimer = null;
-  mapInstance.on('moveend', () => {
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      renderPlacesAroundSearchArea(currentCategoryFilter);
-    }, 200);
-  });
-
-  window.addEventListener('resize', resizeMap);
-  window.addEventListener('orientationchange', () => {
-    setTimeout(resizeMap, 200);
-  });
-
-  if (typeof ResizeObserver !== 'undefined' && mapEl) {
-    const ro = new ResizeObserver(() => {
-      resizeMap();
-    });
-    ro.observe(mapEl);
-  }
-
-  setTimeout(() => {
-    resizeMap();
-    renderPlacesAroundSearchArea('all');
-  }, 50);
-  setTimeout(() => resizeMap(), 200);
-  setTimeout(() => resizeMap(), 500);
-}
-
-function renderPlacesAroundSearchArea(catFilter = 'all') {
-  if (!mapInstance) return;
-  currentCategoryFilter = catFilter;
-
-  nearbyExploreMarkers.forEach(m => {
-    try { mapInstance.removeLayer(m); } catch (e) {}
-  });
-  nearbyExploreMarkers = [];
-
-  const centerLatLng = mapInstance.getCenter();
-  if (!centerLatLng) return;
-  const centerLat = centerLatLng.lat;
-  const centerLng = centerLatLng.lng;
-
-  let candidatePlaces = [];
-  let nearestHub = null;
-  let minDistance = Infinity;
-
-  for (const [key, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
-    const d = calculateHaversineKm(centerLat, centerLng, hub.lat, hub.lng);
-    if (d < minDistance) {
-      minDistance = d;
-      nearestHub = hub;
-    }
-  }
-
-  if (nearestHub && minDistance <= 250) {
-    candidatePlaces = nearestHub.places || [];
-  } else {
-    for (const [key, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
-      if (hub.places && hub.places.length > 0) {
-        candidatePlaces.push(hub.places[0]);
-        if (hub.places.length > 1) candidatePlaces.push(hub.places[1]);
-      }
-    }
-  }
-
-  let filtered = candidatePlaces;
-  if (catFilter && catFilter !== 'all') {
-    if (catFilter === 'attractions' || catFilter === 'monuments') {
-      filtered = candidatePlaces.filter(p => p.category === 'monuments' || p.category === 'attractions' || p.category === 'parks');
-    } else if (catFilter === 'food') {
-      filtered = candidatePlaces.filter(p => p.category === 'food');
-    } else if (catFilter === 'fuel') {
-      filtered = candidatePlaces.filter(p => p.category === 'fuel');
-    } else if (catFilter === 'stays') {
-      filtered = candidatePlaces.filter(p => p.category === 'stays');
-    }
-  }
-
-  const CAT_COLORS = {
-    monuments: '#D97706',
-    parks: '#16A34A',
-    food: '#E11D48',
-    fuel: '#2563EB',
-    stays: '#087F75'
-  };
-
-  filtered.forEach(place => {
-    const pinColor = CAT_COLORS[place.category] || '#D97706';
-    const exploreIcon = L.divIcon({
-      className: 'explore-pin-container',
-      html: `
-        <div style="background: ${pinColor}; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
-          <div style="width: 7px; height: 7px; border-radius: 50%; background: #FFFFFF; transform: rotate(45deg);"></div>
-        </div>
-      `,
-      iconSize: [26, 26],
-      iconAnchor: [13, 26]
-    });
-
-    const marker = L.marker([place.lat, place.lng], {
-      icon: exploreIcon,
-      title: place.name,
-      zIndexOffset: 500
-    }).addTo(mapInstance);
-
-    marker.on('click', async () => {
-      await handleMapPlaceSelection(place.lat, place.lng, place.name);
-    });
-
-    nearbyExploreMarkers.push(marker);
-  });
-}
-
-function setupCategoryChips() {
-  const chips = document.querySelectorAll('.filter-chips-row .chip[data-cat]');
-  chips.forEach(chip => {
-    chip.onclick = () => {
-      const cat = chip.getAttribute('data-cat');
-      const wasActive = chip.classList.contains('active');
-      chips.forEach(c => c.classList.remove('active'));
-      if (!wasActive) {
-        chip.classList.add('active');
-        renderPlacesAroundSearchArea(cat);
-      } else {
-        renderPlacesAroundSearchArea('all');
-      }
-    };
-  });
-}
-
-async function updateMapRoute(plan) {
-  if (!mapInstance) return;
-
-  mapMarkers.forEach(m => {
-    try { mapInstance.removeLayer(m); } catch (e) {}
-  });
-  mapMarkers = [];
-  if (routePolyline) { try { mapInstance.removeLayer(routePolyline); } catch (e) {} routePolyline = null; }
-  if (routeHalo) { try { mapInstance.removeLayer(routeHalo); } catch (e) {} routeHalo = null; }
-
-  if (!plan.stops || plan.stops.length === 0) {
-    mapInstance.setView([20.5937, 78.9629], 5);
-    return;
-  }
-
-  const bounds = L.latLngBounds();
-
-  // Render Stop Markers
-  plan.stops.forEach((s, idx) => {
-    const isOrigin = idx === 0;
-    const isDest = idx === plan.stops.length - 1;
-    const latlng = [s.latitude, s.longitude];
-    bounds.extend(latlng);
-
-    const pinBg = isOrigin ? '#3B5FCC' : (isDest ? '#1B6E3E' : '#2563EB');
-    const stopIcon = L.divIcon({
-      className: 'stop-pin-container',
-      html: `
-        <div style="background: ${pinBg}; width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid #FFFFFF; box-shadow: 0 3px 8px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-weight: 700; font-size: 11px; font-family: var(--font-body);">
-          ${idx + 1}
-        </div>
-      `,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14]
-    });
-
-    const marker = L.marker(latlng, { icon: stopIcon, zIndexOffset: 1000 + idx }).addTo(mapInstance);
-    marker.bindPopup(`
-      <div style="padding: 4px; font-family: var(--font-body); font-size: 12px; color: #1E293B;">
-        <strong>${idx + 1}. ${s.name}</strong><br>
-        <span style="color: #64748B;">${s.durationMinutes}m visit • ${s.bufferMinutes || 15}m buffer</span>
-      </div>
-    `);
-    mapMarkers.push(marker);
-  });
-
-  // Fetch Live OSRM Road Polyline
-  const liveRoute = await fetchLiveOsrmRoute(plan.stops);
-  const polylineCoords = (liveRoute && liveRoute.polylineLatlngs && liveRoute.polylineLatlngs.length > 0)
-    ? liveRoute.polylineLatlngs
-    : plan.stops.map(s => [s.latitude, s.longitude]);
-
-  polylineCoords.forEach(c => bounds.extend(c));
-
-  routeHalo = L.polyline(polylineCoords, {
-    color: '#FFFFFF',
-    weight: 8,
-    opacity: 0.9,
-    lineCap: 'round',
-    lineJoin: 'round'
-  }).addTo(mapInstance);
-
-  routePolyline = L.polyline(polylineCoords, {
-    color: '#2563EB',
-    weight: 5,
-    opacity: 1.0,
-    lineCap: 'round',
-    lineJoin: 'round'
-  }).addTo(mapInstance);
-
-  mapInstance.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
-}
-
-// Navigation Tab Switcher
-function switchTab(tabName) {
-  if (tabName === 'settings') tabName = 'more';
-  currentTab = tabName;
-  document.querySelectorAll('.screen-view').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-
-  const targetScreen = document.getElementById(`screen-${tabName}`);
-  const targetTab = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
-  if (targetScreen) targetScreen.classList.add('active');
-  if (targetTab) targetTab.classList.add('active');
-
-  if (tabName === 'more') {
-    renderAIPlanHistory();
-  }
-
-  if (tabName === 'map' && mapInstance) {
-    setTimeout(() => resizeMap(), 50); setTimeout(() => resizeMap(), 250);
-  }
-}
-
-// Stop Modal (Duration Stepper)
-let activeEditingStopId = null;
-
-function openStopModal(stop = null) {
-  const modal = document.getElementById('modal-add-stop');
-  modal.classList.remove('hidden');
-
-  if (stop) {
-    activeEditingStopId = stop.id;
-    document.getElementById('stop-modal-title').textContent = 'Edit Stop Details';
-    document.getElementById('stop-name-input').value = stop.name;
-    document.getElementById('stop-duration-input').value = stop.durationMinutes;
-    document.getElementById('stop-buffer-input').value = stop.bufferMinutes;
-    document.getElementById('stop-overnight-input').checked = !!stop.isOvernight;
-  } else {
-    activeEditingStopId = null;
-    document.getElementById('stop-modal-title').textContent = 'Add Stop to Route';
-    document.getElementById('stop-name-input').value = '';
-    document.getElementById('stop-duration-input').value = 60;
-    document.getElementById('stop-buffer-input').value = 15;
-    document.getElementById('stop-overnight-input').checked = false;
-  }
-}
-
-function saveStopModal() {
-  const name = document.getElementById('stop-name-input').value.trim() || 'Custom Stop';
-  const duration = parseInt(document.getElementById('stop-duration-input').value, 10) || 60;
-  const buffer = parseInt(document.getElementById('stop-buffer-input').value, 10) || 15;
-  const isOvernight = document.getElementById('stop-overnight-input').checked;
-
-  const stops = state.stopsMap[state.activeTripId];
-
-  if (activeEditingStopId) {
-    const existing = stops.find(s => s.id === activeEditingStopId);
-    if (existing) {
-      existing.name = name;
-      existing.durationMinutes = duration;
-      existing.bufferMinutes = buffer;
-      existing.isOvernight = isOvernight;
-    }
-  } else {
-    const lastStop = stops[stops.length - 1] || { latitude: 12.97, longitude: 77.59 };
-    const newStop = {
-      id: `stop-${Date.now()}`,
-      tripId: state.activeTripId,
-      name,
-      latitude: lastStop.latitude + (Math.random() - 0.5) * 0.1,
-      longitude: lastStop.longitude + (Math.random() - 0.5) * 0.1,
-      orderIndex: stops.length,
-      durationMinutes: duration,
-      bufferMinutes: buffer,
-      isOvernight,
-      openingHourMinutes: 540,
-      closingHourMinutes: 1080
-    };
-    stops.push(newStop);
-  }
-
-  Storage.save(state);
-  document.getElementById('modal-add-stop').classList.add('hidden');
-  refreshApp();
-}
-
-// Global Refresh
-
-function updateTripsView() {
+function renderUserTripsList() {
   const container = document.getElementById('user-trips-list');
   if (!container) return;
 
-  if (!state.trips || state.trips.length === 0) {
+  const trips = state.trips || [];
+  if (trips.length === 0) {
     container.innerHTML = `
-      <div style="padding: 24px; text-align: center; color: var(--on-surface-variant); font-size: 13px;">
-        No saved trips yet. Tap "+ New" above to create your first road trip.
+      <div style="padding: 32px 16px; text-align: center; color: var(--on-surface-variant); font-size: 13px;">
+        No trips planned yet. Tap "+ New" above to start your journey!
       </div>
     `;
     return;
   }
 
-  container.innerHTML = state.trips.map(trip => {
-    const stops = state.stopsMap[trip.id] || [];
-    const isActive = trip.id === state.activeTripId;
+  container.innerHTML = trips.map(t => {
+    const isActive = t.id === state.activeTripId;
     return `
-      <div class="trip-card-item timeline-card" data-trip-id="${trip.id}" style="cursor: pointer; position: relative; ${isActive ? 'border-color: var(--primary); background: var(--surface-container);' : ''}">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <div style="flex: 1; min-width: 0; padding-right: 8px;">
-            <strong style="font-size: 14px; color: var(--on-surface); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${trip.title}</strong>
-            <div style="font-size: 12px; color: var(--on-surface-variant); margin-top: 2px;">
-              ${stops.length} stops • ${trip.groupSize || 1} travelers
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            ${isActive ? '<span class="chip active" style="font-size: 10px; padding: 2px 8px;">Active</span>' : ''}
-            <button class="trip-delete-btn" data-delete-trip="${trip.id}" title="Delete Trip" style="background: none; border: none; padding: 6px; cursor: pointer; color: var(--error); border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  container.querySelectorAll('.trip-card-item').forEach(card => {
-    const tripId = card.getAttribute('data-trip-id');
-    const deleteBtn = card.querySelector('.trip-delete-btn');
-
-    let pressTimer = null;
-    let isLongPress = false;
-
-    const startPress = () => {
-      isLongPress = false;
-      card.classList.add('long-pressing');
-      pressTimer = setTimeout(() => {
-        isLongPress = true;
-        card.classList.remove('long-pressing');
-        if (navigator.vibrate) navigator.vibrate(50);
-        confirmAndDeleteTrip(tripId);
-      }, 600);
-    };
-
-    const cancelPress = () => {
-      card.classList.remove('long-pressing');
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    };
-
-    card.addEventListener('touchstart', startPress, { passive: true });
-    card.addEventListener('touchend', cancelPress);
-    card.addEventListener('touchcancel', cancelPress);
-    card.addEventListener('mousedown', startPress);
-    card.addEventListener('mouseup', cancelPress);
-    card.addEventListener('mouseleave', cancelPress);
-
-    card.addEventListener('click', (e) => {
-      if (isLongPress) {
-        isLongPress = false;
-        return;
-      }
-      if (e.target.closest('.trip-delete-btn')) {
-        e.stopPropagation();
-        confirmAndDeleteTrip(tripId);
-        return;
-      }
-      selectTrip(tripId);
-    });
-
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        confirmAndDeleteTrip(tripId);
-      });
-    }
-  });
-}
-
-function confirmAndDeleteTrip(tripId) {
-  const trip = (state.trips || []).find(t => t.id === tripId);
-  const title = trip ? trip.title : 'this trip';
-  if (!confirm(`Delete "${title}"? This will remove all associated itinerary stops and expenses.`)) {
-    return;
-  }
-  deleteTripById(tripId);
-}
-
-function deleteTripById(tripId) {
-  state.trips = (state.trips || []).filter(t => t.id !== tripId);
-  delete state.stopsMap[tripId];
-  delete state.expensesMap[tripId];
-
-  const user = getCurrentUser();
-  if (user && user.uid) {
-    removeTripFromCloud(user.uid, tripId);
-  }
-
-  if (state.activeTripId === tripId) {
-    state.activeTripId = state.trips.length > 0 ? state.trips[0].id : null;
-  }
-
-  Storage.save(state);
-  refreshApp();
-  showToast('Trip deleted');
-}
-
-window.selectTrip = function(tripId) {
-  state.activeTripId = tripId;
-  Storage.save(state);
-  switchTab('map');
-  refreshApp();
-};
-
-function refreshApp() {
-  updateTripsView();
-  const plan = computePlan();
-  updateHeaderUI(plan);
-  updateItineraryView(plan);
-  updateBudgetView(plan);
-  updateWarningsModal(plan);
-  updateMapRoute(plan);
-}
-
-// Global Shift Departure Helper
-window.shiftDeparture = function(mins) {
-  const trip = getActiveTrip();
-  trip.departureTimeMinutes = Math.max(0, (trip.departureTimeMinutes || 360) - mins);
-  Storage.save(state);
-  document.getElementById('modal-warnings-center').classList.add('hidden');
-  refreshApp();
-};
-
-// Setup Event Listeners
-
-// ==========================================================================
-// EXPORT & SHARE ENGINE (WhatsApp, PDF Road Book, Offline Backup)
-// ==========================================================================
-
-function showToast(message) {
-  const toast = document.getElementById('app-toast');
-  const textEl = document.getElementById('toast-text');
-  if (!toast || !textEl) return;
-  textEl.textContent = message;
-  toast.classList.remove('hidden');
-  setTimeout(() => {
-    toast.classList.add('hidden');
-  }, 2600);
-}
-
-function generateWhatsAppSummary(trip, stops, schedule, expenses) {
-  if (!trip || !stops || stops.length === 0) return '';
-
-  const depTimeStr = formatMinutes(trip.departureTimeMinutes || 480);
-  const totalCost = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
-  const perPersonCost = trip.groupSize > 0 ? Math.round(totalCost / trip.groupSize) : totalCost;
-
-  let lines = [];
-  lines.push(`🚗 *Road Trip Itinerary: ${trip.title}*`);
-  lines.push(`📍 ${stops.length} Stops • ${trip.groupSize || 4} Travelers • Departs at ${depTimeStr}`);
-  lines.push(`---------------------------------`);
-  lines.push(`🗓️ *TIMELINE & VISITS:*`);
-
-  (schedule || []).forEach((item, idx) => {
-    const isFirst = idx === 0;
-    const isLast = idx === (schedule.length - 1);
-    const arrStr = formatMinutes(item.arrivalTimeMinutes);
-    const depStr = formatMinutes(item.departureTimeMinutes);
-    const hours = getPlaceHours(item.stop.name);
-    const hoursNote = hours ? ` · [Open: ${hours.name}]` : '';
-
-    if (isFirst) {
-      lines.push(`${idx + 1}. *${item.stop.name}* (Departure ${depStr})`);
-    } else if (isLast && item.stop.isOvernight) {
-      lines.push(`${idx + 1}. *${item.stop.name}* (Arrival ${arrStr}) · 🌙 Overnight Stay`);
-    } else {
-      lines.push(`${idx + 1}. *${item.stop.name}* (Arr ${arrStr} ➔ Dep ${depStr}) [${item.stop.durationMinutes}m stop]${hoursNote}`);
-    }
-  });
-
-  lines.push(`---------------------------------`);
-  lines.push(`💰 *ESTIMATED BUDGET:*`);
-  lines.push(`Total: ₹${totalCost.toLocaleString('en-IN')} (₹${perPersonCost.toLocaleString('en-IN')}/person)`);
-
-  const fuelExp = expenses.find(e => e.category === 'FUEL') || { amount: 4200 };
-  const tollExp = expenses.find(e => e.category === 'TOLL') || { amount: 380 };
-  const stayExp = expenses.find(e => e.category === 'STAY') || { amount: 4800 };
-  const foodExp = expenses.find(e => e.category === 'FOOD') || { amount: 2400 };
-
-  lines.push(`• Fuel: ₹${fuelExp.amount.toLocaleString('en-IN')} | Tolls: ₹${tollExp.amount.toLocaleString('en-IN')}`);
-  lines.push(`• Stays: ₹${stayExp.amount.toLocaleString('en-IN')} | Food: ₹${foodExp.amount.toLocaleString('en-IN')}`);
-
-  lines.push(`---------------------------------`);
-  lines.push(`⚠️ *ROAD & SAFETY ADVISORIES:*`);
-  lines.push(`• Daylight ghat driving recommended on winding sections.`);
-  lines.push(`• Keep FASTag active with sufficient balance.`);
-  lines.push(`• Emergency Assistance: NHAI 1033 | National 112`);
-  lines.push(`---------------------------------`);
-  lines.push(`✨ Planned with *TripWeave* (100% Free Deterministic Planner)`);
-
-  return lines.join('\n');
-}
-
-function openShareModal() {
-  const plan = computePlan();
-  const trip = plan.trip;
-  const stops = plan.stops;
-  const schedule = plan.schedule;
-  const expenses = plan.expenses;
-
-  const modal = document.getElementById('modal-share-trip');
-  const titleEl = document.getElementById('share-trip-title');
-  const metaEl = document.getElementById('share-trip-meta');
-  const chipEl = document.getElementById('share-feasibility-chip');
-  const textarea = document.getElementById('share-whatsapp-text');
-
-  if (titleEl) titleEl.textContent = trip.title;
-  if (metaEl) {
-    const estKm = Math.round((stops.length - 1) * 65);
-    metaEl.textContent = `${stops.length} stops • ~${estKm} km • ${trip.groupSize || 4} travelers`;
-  }
-  if (chipEl) {
-    const isFeasible = plan.feasibility.status === 'FEASIBLE';
-    chipEl.textContent = isFeasible ? 'Feasible' : 'Conflicts Detected';
-    chipEl.className = `chip ${isFeasible ? 'success' : 'caution'}`;
-  }
-
-  const waText = generateWhatsAppSummary(trip, stops, schedule, expenses);
-  if (textarea) textarea.value = waText;
-
-  if (modal) modal.classList.remove('hidden');
-}
-
-function copyShareText() {
-  const textarea = document.getElementById('share-whatsapp-text');
-  if (!textarea) return;
-  const text = textarea.value;
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => {
-      showToast('Itinerary copied to clipboard!');
-    }).catch(() => {
-      fallbackCopyText(text);
-    });
-  } else {
-    fallbackCopyText(text);
-  }
-}
-
-function fallbackCopyText(text) {
-  const textarea = document.getElementById('share-whatsapp-text');
-  textarea.select();
-  document.execCommand('copy');
-  showToast('Itinerary copied to clipboard!');
-}
-
-function openWhatsApp() {
-  const textarea = document.getElementById('share-whatsapp-text');
-  if (!textarea) return;
-  const text = textarea.value;
-  const encoded = encodeURIComponent(text);
-  const waUrl = `https://api.whatsapp.com/send?text=${encoded}`;
-  window.open(waUrl, '_blank');
-}
-
-function exportPrintRoadBook() {
-  // Ensure Itinerary is active for rendering full road tables
-  switchTab('itinerary');
-  const modal = document.getElementById('modal-share-trip');
-  if (modal) modal.classList.add('hidden');
-  
-  setTimeout(() => {
-    window.print();
-  }, 300);
-}
-
-function exportTripJson() {
-  const plan = computePlan();
-  const exportData = {
-    tripweaveVersion: '3.0',
-    exportedAt: new Date().toISOString(),
-    trip: plan.trip,
-    stops: plan.stops,
-    expenses: plan.expenses,
-    schedule: plan.schedule
-  };
-
-  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportData, null, 2));
-  const dlAnchor = document.createElement('a');
-  dlAnchor.setAttribute('href', dataStr);
-  dlAnchor.setAttribute('download', `tripweave-${plan.trip.id || 'itinerary'}.json`);
-  document.body.appendChild(dlAnchor);
-  dlAnchor.click();
-  dlAnchor.remove();
-
-  showToast('Exported Trip JSON successfully!');
-}
-
-function setupEvents() {
-  // Selected Place Sheet Action Buttons
-  const btnClosePlace = document.getElementById('btn-close-place-card');
-  if (btnClosePlace) {
-    btnClosePlace.onclick = () => {
-      const sheet = document.getElementById('selected-place-sheet');
-      if (sheet) sheet.classList.add('hidden');
-      if (selectedPlaceMarker) {
-        try { mapInstance.removeLayer(selectedPlaceMarker); } catch (e) {}
-        selectedPlaceMarker = null;
-      }
-      currentSelectedPlace = null;
-    };
-  }
-
-  const btnAddSelected = document.getElementById('btn-add-selected-stop');
-  if (btnAddSelected) {
-    btnAddSelected.onclick = () => {
-      if (!currentSelectedPlace) return;
-      const sName = currentSelectedPlace.name;
-      const sLat = currentSelectedPlace.latitude;
-      const sLng = currentSelectedPlace.longitude;
-
-      if (!state.activeTripId || !state.trips || state.trips.length === 0) {
-        const newTripId = `trip-${Date.now()}`;
-        const newTrip = {
-          id: newTripId,
-          title: `Road Trip to ${sName.split(',')[0]}`,
-          destinationName: sName,
-          departureTimeMinutes: 0,
-          totalBudget: 0,
-          groupSize: 0,
-          vehicleMileageKmPerLitre: 0,
-          fuelPricePerLitre: 0,
-          isArchived: false
-        };
-        state.trips = [newTrip];
-        state.activeTripId = newTripId;
-        state.stopsMap[newTripId] = [];
-        state.expensesMap[newTripId] = [];
-      }
-
-      const stops = state.stopsMap[state.activeTripId] || [];
-      const newStop = {
-        id: `stop-${Date.now()}`,
-        tripId: state.activeTripId,
-        name: sName,
-        latitude: sLat,
-        longitude: sLng,
-        orderIndex: stops.length,
-        durationMinutes: 60,
-        bufferMinutes: 15,
-        isOvernight: false,
-        openingHourMinutes: 540,
-        closingHourMinutes: 1080
-      };
-      stops.push(newStop);
-      state.stopsMap[state.activeTripId] = stops;
-      Storage.save(state);
-      refreshApp();
-      showToast(`Added ${sName} to itinerary!`);
-    };
-  }
-
-  const btnSetDest = document.getElementById('btn-set-destination');
-  if (btnSetDest) {
-    btnSetDest.onclick = () => {
-      if (!currentSelectedPlace) return;
-      const activeTrip = getActiveTrip();
-      if (activeTrip) {
-        activeTrip.destinationName = currentSelectedPlace.name;
-        Storage.save(state);
-        refreshApp();
-        showToast(`Destination set to ${currentSelectedPlace.name}!`);
-      }
-    };
-  }
-
-  setupNearbyTabsListener();
-
-  // Google Maps Layer Toggle Listener
-  const chipLayers = document.getElementById('chip-google-layers');
-  const layerLabel = document.getElementById('map-layer-label');
-  let currentLayerIndex = 0;
-  const layersList = [
-    { id: 'roadmap', label: 'Google Maps' },
-    { id: 'satellite', label: 'Google Satellite' },
-    { id: 'terrain', label: 'Google Terrain' }
-  ];
-
-  if (chipLayers) {
-    chipLayers.onclick = () => {
-      currentLayerIndex = (currentLayerIndex + 1) % layersList.length;
-      const current = layersList[currentLayerIndex];
-      if (layerLabel) layerLabel.textContent = current.label;
-      window.switchGoogleMapLayer(current.id);
-    };
-  }
-  // Google Account Modal Controller (Google Maps Native Style)
-  const accountBtn = document.getElementById('account-avatar-btn');
-  const accountModal = document.getElementById('modal-google-account');
-  const accountCloseBtn = document.getElementById('modal-account-close-btn');
-
-  if (accountBtn && accountModal) {
-    accountBtn.onclick = (e) => {
-      e.stopPropagation();
-      accountModal.classList.remove('hidden');
-    };
-  }
-
-  if (accountCloseBtn && accountModal) {
-    accountCloseBtn.onclick = () => {
-      accountModal.classList.add('hidden');
-    };
-  }
-
-  if (accountModal) {
-    accountModal.onclick = (e) => {
-      if (e.target === accountModal) {
-        accountModal.classList.add('hidden');
-      }
-    };
-  }
-
-  // Share & Export Listeners
-  const btnOpenShare = document.getElementById('btn-open-share');
-  if (btnOpenShare) btnOpenShare.onclick = openShareModal;
-
-  const btnShareItin = document.getElementById('btn-share-itinerary');
-  if (btnShareItin) btnShareItin.onclick = openShareModal;
-
-  const shareCloseBtn = document.getElementById('modal-share-close-btn');
-  if (shareCloseBtn) shareCloseBtn.onclick = () => document.getElementById('modal-share-trip').classList.add('hidden');
-
-  const shareDoneBtn = document.getElementById('modal-share-done-btn');
-  if (shareDoneBtn) shareDoneBtn.onclick = () => document.getElementById('modal-share-trip').classList.add('hidden');
-
-  const btnWaSend = document.getElementById('btn-share-whatsapp-send');
-  if (btnWaSend) btnWaSend.onclick = openWhatsApp;
-
-  const btnCopyText = document.getElementById('btn-share-copy-text');
-  if (btnCopyText) btnCopyText.onclick = copyShareText;
-
-  const btnExportPdf = document.getElementById('btn-export-pdf');
-  if (btnExportPdf) btnExportPdf.onclick = exportPrintRoadBook;
-
-  const btnExportJson = document.getElementById('btn-export-json');
-  if (btnExportJson) btnExportJson.onclick = exportTripJson;
-
-  // Navigation tabs
-  document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.onclick = () => switchTab(tab.getAttribute('data-tab'));
-  });
-
-  // Pull-up Bottom Sheet Toggle with Collision Prevention
-  const dragHandle = document.getElementById('sheet-drag-handle');
-  const peekSheet = document.getElementById('map-peek-sheet');
-  const summaryPeek = document.getElementById('sheet-summary-peek');
-  const mapScreen = document.getElementById('screen-map');
-
-  function toggleSheetExpanded() {
-    if (!peekSheet) return;
-    const isExpanded = peekSheet.classList.toggle('expanded');
-    if (mapScreen) {
-      mapScreen.classList.toggle('sheet-is-expanded', isExpanded);
-    }
-  }
-
-  if (dragHandle) {
-    dragHandle.onclick = (e) => {
-      e.stopPropagation();
-      toggleSheetExpanded();
-    };
-  }
-  if (summaryPeek) {
-    summaryPeek.onclick = () => toggleSheetExpanded();
-  }
-
-  const btnSheetAddStop = document.getElementById('btn-sheet-add-stop');
-  if (btnSheetAddStop) {
-    btnSheetAddStop.onclick = () => openStopModal();
-  }
-
-  const openFullItinBtn = document.getElementById('btn-open-full-itinerary');
-  if (openFullItinBtn) {
-    openFullItinBtn.onclick = () => {
-      if (peekSheet) peekSheet.classList.remove('expanded');
-      if (mapScreen) mapScreen.classList.remove('sheet-is-expanded');
-      switchTab('itinerary');
-    };
-  }
-
-  // Feasibility Pill opens Warnings Center
-  document.getElementById('feasibility-pill-btn').onclick = () => {
-    document.getElementById('modal-warnings-center').classList.remove('hidden');
-  };
-  document.getElementById('modal-warnings-close-btn').onclick = () => {
-    document.getElementById('modal-warnings-center').classList.add('hidden');
-  };
-  document.getElementById('modal-warnings-dismiss-btn').onclick = () => {
-    document.getElementById('modal-warnings-center').classList.add('hidden');
-  };
-
-  // Scenario Buttons
-  document.querySelectorAll('.scenario-btn').forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentScenario = btn.getAttribute('data-scenario');
-      refreshApp();
-    };
-  });
-
-  // Navigation HUD Controls
-  const btnNavNext = document.getElementById('btn-nav-next-step');
-  if (btnNavNext) {
-    btnNavNext.onclick = () => {
-      if (currentNavStepIndex < activeNavSteps.length - 1) {
-        currentNavStepIndex++;
-        updateNavHud();
-      } else {
-        showToast('You have arrived at your destination!');
-      }
-    };
-  }
-
-  const btnNavPrev = document.getElementById('btn-nav-prev-step');
-  if (btnNavPrev) {
-    btnNavPrev.onclick = () => {
-      if (currentNavStepIndex > 0) {
-        currentNavStepIndex--;
-        updateNavHud();
-      }
-    };
-  }
-
-  const btnNavExit = document.getElementById('btn-nav-exit');
-  if (btnNavExit) {
-    btnNavExit.onclick = () => exitInAppNavigation();
-  }
-
-  // Turn-by-Turn Navigation from Map Sheet
-  const btnStartNav = document.getElementById('btn-start-navigation');
-  if (btnStartNav) {
-    btnStartNav.onclick = async () => {
-      const plan = computePlan();
-      if (!plan.stops || plan.stops.length < 2) {
-        showToast('Add at least 2 stops to start navigation.');
-        return;
-      }
-      showToast('Calculating turn-by-turn route...');
-      const liveRoute = await fetchLiveOsrmRoute(plan.stops);
-      if (liveRoute && liveRoute.steps && liveRoute.steps.length > 0) {
-        startInAppNavigation(liveRoute);
-      } else {
-        showToast('Navigation route unavailable. Check network.');
-      }
-    };
-  }
-
-  // Turn-by-Turn Navigation from Selected Place Sheet
-  const btnNavSelected = document.getElementById('btn-navigate-to-selected');
-  if (btnNavSelected) {
-    btnNavSelected.onclick = async () => {
-      if (!currentSelectedPlace) return;
-      const startLat = userLocation ? userLocation.lat : 12.9716;
-      const startLng = userLocation ? userLocation.lng : 77.5946;
-      const dummyStops = [
-        { latitude: startLat, longitude: startLng, name: 'Current Location' },
-        { latitude: currentSelectedPlace.latitude, longitude: currentSelectedPlace.longitude, name: currentSelectedPlace.name }
-      ];
-      showToast(`Routing to ${currentSelectedPlace.name}...`);
-      const route = await fetchLiveOsrmRoute(dummyStops);
-      if (route && route.steps && route.steps.length > 0) {
-        const sheet = document.getElementById('selected-place-sheet');
-        if (sheet) sheet.classList.add('hidden');
-        startInAppNavigation(route);
-      } else {
-        showToast('Could not load navigation directions.');
-      }
-    };
-  }
-
-  // Copy GPS Coordinates Click
-  const btnCopyCoords = document.getElementById('btn-copy-coords');
-  if (btnCopyCoords) {
-    btnCopyCoords.onclick = (e) => {
-      e.stopPropagation();
-      if (currentSelectedPlace) {
-        const text = `${currentSelectedPlace.latitude.toFixed(5)}, ${currentSelectedPlace.longitude.toFixed(5)}`;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(() => {
-            showToast(`Coordinates copied: ${text}`);
-          }).catch(() => {
-            showToast(`Coordinates: ${text}`);
-          });
-        } else {
-          showToast(`Coordinates: ${text}`);
-        }
-      }
-    };
-  }
-
-  // Trip Proposal Modal Listeners
-  const btnPropApprove = document.getElementById('modal-proposal-approve-btn');
-  if (btnPropApprove) btnPropApprove.onclick = approveAndSaveTripProposal;
-
-  const btnPropCancel = document.getElementById('modal-proposal-cancel-btn');
-  if (btnPropCancel) btnPropCancel.onclick = () => {
-    const modal = document.getElementById('modal-trip-proposal');
-    if (modal) modal.classList.add('hidden');
-  };
-
-  const btnPropClose = document.getElementById('modal-proposal-close-btn');
-  if (btnPropClose) btnPropClose.onclick = () => {
-    const modal = document.getElementById('modal-trip-proposal');
-    if (modal) modal.classList.add('hidden');
-  };
-
-  // Theme Toggle
-  document.getElementById('theme-toggle-btn').onclick = () => {
-    document.body.classList.toggle('theme-dark');
-    document.body.classList.toggle('theme-light');
-  };
-
-  // Add Stop FAB & Modal
-  document.getElementById('fab-add-stop').onclick = () => openStopModal();
-  document.getElementById('add-stop-itinerary-btn').onclick = () => openStopModal();
-  document.getElementById('modal-stop-close-btn').onclick = () => document.getElementById('modal-add-stop').classList.add('hidden');
-  document.getElementById('modal-btn-cancel-stop').onclick = () => document.getElementById('modal-add-stop').classList.add('hidden');
-  document.getElementById('modal-btn-save-stop').onclick = saveStopModal;
-
-  // Duration Stepper Controls
-  const durInput = document.getElementById('stop-duration-input');
-  document.getElementById('btn-duration-minus').onclick = () => {
-    durInput.value = Math.max(15, parseInt(durInput.value, 10) - 15);
-  };
-  document.getElementById('btn-duration-plus').onclick = () => {
-    durInput.value = parseInt(durInput.value, 10) + 15;
-  };
-  document.getElementById('chip-dur-30').onclick = () => { durInput.value = 30; };
-  document.getElementById('chip-dur-60').onclick = () => { durInput.value = 60; };
-  document.getElementById('chip-dur-120').onclick = () => { durInput.value = 120; };
-
-  // Trip Switcher Curated Trips
-    // Create Trip Stepper Triggers
-  const btnCreateNewTrip = document.getElementById('btn-create-new-trip');
-  if (btnCreateNewTrip) btnCreateNewTrip.onclick = openCreateTripWizard;
-
-  const chipTripSwitcher = document.getElementById('chip-trip-switcher');
-  if (chipTripSwitcher) chipTripSwitcher.onclick = openCreateTripWizard;
-
-  const modalCreateCloseBtn = document.getElementById('modal-create-trip-close-btn');
-  if (modalCreateCloseBtn) modalCreateCloseBtn.onclick = () => document.getElementById('modal-create-trip').classList.add('hidden');
-
-  const createStepNextBtn = document.getElementById('create-step-next-btn');
-  if (createStepNextBtn) createStepNextBtn.onclick = handleCreateStepNext;
-
-  const createStepPrevBtn = document.getElementById('create-step-prev-btn');
-  if (createStepPrevBtn) createStepPrevBtn.onclick = handleCreateStepPrev;
-
-  const createTripBackBtn = document.getElementById('create-trip-back-btn');
-  if (createTripBackBtn) createTripBackBtn.onclick = handleCreateStepPrev;
-
-
-}
-
-// App Initialization
-
-// ==========================================================================
-// GOOGLE MAPS STYLE CURRENT LOCATION & BLUE DOT ENGINE
-// ==========================================================================
-
-let watchLocationId = null;
-
-function renderGoogleLocationDot(lat, lng, accuracy = 25) {
-  if (!mapInstance) return;
-
-  // STRICTLY REMOVE any giant accuracy circle: zero monster blue disc
-  if (userAccuracyCircle) {
-    try { mapInstance.removeLayer(userAccuracyCircle); } catch (e) {}
-    userAccuracyCircle = null;
-  }
-
-  if (userMarker) {
-    try { mapInstance.removeLayer(userMarker); } catch (e) {}
-    userMarker = null;
-  }
-
-  // Google Maps Native Retina Blue Dot
-  const googleBlueDotIcon = L.divIcon({
-    className: 'user-gps-container',
-    html: `
-      <div class="user-gps-marker">
-        <div class="user-gps-pulse"></div>
-        <div class="user-gps-core"></div>
-      </div>
-    `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-  });
-
-  userMarker = L.marker([lat, lng], {
-    icon: googleBlueDotIcon,
-    zIndexOffset: 2000,
-    interactive: false
-  }).addTo(mapInstance);
-}
-
-function acquireUserLocation(highAccuracy = true, shouldFlyTo = false) {
-  const locateBtn = document.getElementById('btn-locate-me');
-  if (locateBtn && shouldFlyTo) locateBtn.classList.add('locating');
-
-  const onLocationSuccess = async (lat, lng, accuracy = 15, isFallback = false, provider = 'gps') => {
-    // Accuracy guard: Prevent coarse cell tower/network updates (> 100m) from degrading a precise GPS fix (< 40m)
-    if (userLocation && userLocation.isRealGPS && userLocation.accuracy < 40 && accuracy > 100) {
-      return;
-    }
-
-    if (locateBtn) {
-      locateBtn.classList.remove('locating');
-      locateBtn.classList.add('active-located');
-    }
-
-    userLocation = { lat, lng, accuracy, isRealGPS: !isFallback, provider };
-
-    renderGoogleLocationDot(lat, lng, accuracy);
-
-    // Pan/fly to location if explicitly requested or locate button tapped
-    if (mapInstance && shouldFlyTo) {
-      mapInstance.setView([lat, lng], 16);
-    }
-
-    // Reverse geocode to show city toast on explicit user locate action
-    if (shouldFlyTo) {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en&lat=${lat}&lon=${lng}&zoom=14`);
-        if (res.ok) {
-          const data = await res.json();
-          const city = data.address?.city || data.address?.town || data.address?.suburb || 'Current Location';
-          showToast(`Located at ${city} (~100m)`);
-          return;
-        }
-      } catch (e) {}
-
-      showToast(`Location acquired (~100m)`);
-    }
-  };
-
-  // 1. Direct Native Android GPS Bridge check for hardware GPS accuracy
-  if (window.AndroidLocationBridge && typeof window.AndroidLocationBridge.getDeviceLocation === 'function') {
-    try {
-      const nativeLocJson = window.AndroidLocationBridge.getDeviceLocation();
-      if (nativeLocJson) {
-        const nativeLoc = JSON.parse(nativeLocJson);
-        if (nativeLoc.latitude && nativeLoc.longitude) {
-          onLocationSuccess(nativeLoc.latitude, nativeLoc.longitude, nativeLoc.accuracy || 10, false, nativeLoc.provider || 'native-gps');
-        }
-      }
-      if (typeof window.AndroidLocationBridge.requestLocationUpdate === 'function') {
-        window.AndroidLocationBridge.requestLocationUpdate();
-      }
-    } catch (e) {
-      console.warn('Native location bridge check:', e);
-    }
-  }
-
-  if (!navigator.geolocation) {
-    if (locateBtn) locateBtn.classList.remove('locating');
-    if (shouldFlyTo) showToast('Location services are not available on this device');
-    return;
-  }
-
-  // Clear existing watch if active
-  if (watchLocationId !== null) {
-    try {
-      navigator.geolocation.clearWatch(watchLocationId);
-    } catch (e) {}
-    watchLocationId = null;
-  }
-
-  // 2. High-accuracy real-time GPS acquisition with maximumAge: 0 (NO stale cache!)
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const { latitude, longitude, accuracy } = pos.coords;
-      onLocationSuccess(latitude, longitude, accuracy || 15, false, 'browser-gps');
-
-      // Continuous tracking with real-time fixes only
-      try {
-        watchLocationId = navigator.geolocation.watchPosition(
-          (watchPos) => {
-            const wCoords = watchPos.coords;
-            onLocationSuccess(wCoords.latitude, wCoords.longitude, wCoords.accuracy || 15, false, 'browser-watch');
-          },
-          (wErr) => console.warn('Location watch error:', wErr),
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 25000 }
-        );
-      } catch (e) {}
-    },
-    (err) => {
-      console.warn('High-accuracy GPS request timed out or was denied:', err);
-      if (locateBtn) locateBtn.classList.remove('locating');
-      if (shouldFlyTo) {
-        showToast('Could not acquire precise GPS. Please check location permissions.');
-      }
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 20000,
-      maximumAge: 0
-    }
-  );
-}
-
-function setupLocationPermission() {
-  const locateBtn = document.getElementById('btn-locate-me');
-  if (locateBtn) {
-    locateBtn.onclick = (e) => {
-      e.stopPropagation();
-      locateBtn.style.transform = 'scale(0.92)';
-      setTimeout(() => { locateBtn.style.transform = ''; }, 180);
-      // ALWAYS trigger fresh high-accuracy GPS re-acquisition and fly to user
-      acquireUserLocation(true, true);
-    };
-  }
-
-  // Native Android location bridge event listener
-  window.onNativeLocationUpdate = (locData) => {
-    if (!locData || !locData.latitude || !locData.longitude) return;
-    const { latitude, longitude, accuracy, provider } = locData;
-    if (userLocation && userLocation.isRealGPS && userLocation.accuracy < 40 && (accuracy || 20) > 100) return;
-    userLocation = { lat: latitude, lng: longitude, accuracy: 100, isRealGPS: true, provider: provider || 'native' };
-    renderGoogleLocationDot(latitude, longitude, 100);
-    const btn = document.getElementById('btn-locate-me');
-    if (btn) {
-      btn.classList.remove('locating');
-      btn.classList.add('active-located');
-    }
-  };
-
-  // Directly acquire location on app launch (native browser/Android prompt)
-  setTimeout(() => {
-    acquireUserLocation(true, false);
-  }, 300);
-}
-
-
-// ==========================================================================
-// GOOGLE AUTHENTICATION & CLOUD FIRESTORE INTEGRATION
-// ==========================================================================
-
-function isTermsAccepted() {
-  return localStorage.getItem('tripweave_terms_accepted') === 'true';
-}
-
-function applyAuthenticatedUser(user) {
-  const privacyScreen = document.getElementById('screen-privacy-terms');
-  const authGate = document.getElementById('screen-auth-gate');
-  const mainShell = document.getElementById('main-app-shell');
-
-  // If terms have not been accepted yet, new user must review and accept first!
-  if (!isTermsAccepted()) {
-    if (privacyScreen) privacyScreen.classList.remove('hidden');
-    if (authGate) authGate.classList.add('hidden');
-    if (mainShell) mainShell.classList.add('hidden');
-    return;
-  }
-
-  // Terms already accepted: never show privacy screen again during login or app usage
-  if (privacyScreen) privacyScreen.classList.add('hidden');
-
-  if (user) {
-    if (authGate) authGate.classList.add('hidden');
-    if (mainShell) mainShell.classList.remove('hidden');
-
-    // Update Top Avatar Button on Map
-    const avatarBtn = document.getElementById('account-avatar-btn');
-    if (avatarBtn) {
-      if (user.photoURL) {
-        avatarBtn.innerHTML = `<img src="${user.photoURL}" alt="${user.displayName || 'User'}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" />`;
-      } else {
-        const initial = (user.displayName || user.email || 'A').charAt(0).toUpperCase();
-        avatarBtn.innerHTML = `<span>${initial}</span>`;
-      }
-    }
-
-    // Update Account Modal Card
-    const modalName = document.getElementById('account-user-name');
-    const modalEmail = document.getElementById('account-user-email');
-    const modalAvatarImg = document.getElementById('account-avatar-img');
-    const modalAvatarInit = document.getElementById('account-avatar-initial');
-    const modalStatus = document.getElementById('account-cloud-status');
-
-    if (modalName) modalName.textContent = user.displayName || 'Google Explorer';
-    if (modalEmail) modalEmail.textContent = user.email || '';
-    if (user.photoURL && modalAvatarImg) {
-      modalAvatarImg.src = user.photoURL;
-      modalAvatarImg.style.display = 'block';
-      if (modalAvatarInit) modalAvatarInit.style.display = 'none';
-    } else {
-      if (modalAvatarImg) modalAvatarImg.style.display = 'none';
-      if (modalAvatarInit) {
-        modalAvatarInit.textContent = (user.displayName || user.email || 'A').charAt(0).toUpperCase();
-        modalAvatarInit.style.display = 'block';
-      }
-    }
-    if (modalStatus) {
-      modalStatus.textContent = isFirebaseConfigured ? 'Cloud Firestore (Production)' : 'Google Auth Preview';
-    }
-
-    // Force map initialization & sizing so Leaflet tiles render completely
-    if (!mapInstance) {
-      initMap();
-    }
-    if (mapInstance) {
-      resizeMap();
-      setTimeout(() => { if (mapInstance) resizeMap(); }, 50);
-      setTimeout(() => { if (mapInstance) resizeMap(); }, 180);
-      setTimeout(() => { if (mapInstance) resizeMap(); }, 450);
-    }
-    refreshApp();
-
-    // Subscribe to cloud trips for this user
-    subscribeCloudTrips(user.uid, (cloudData) => {
-      if (cloudData && Array.isArray(cloudData.trips) && cloudData.trips.length > 0) {
-        state.trips = cloudData.trips;
-        state.stopsMap = { ...state.stopsMap, ...cloudData.stopsMap };
-        state.expensesMap = { ...state.expensesMap, ...cloudData.expensesMap };
-        if (!state.activeTripId || !state.trips.some(t => t.id === state.activeTripId)) {
-          state.activeTripId = state.trips[0].id;
-        }
-        Storage.save(state);
-        refreshApp();
-      }
-    });
-
-  } else {
-    // User not signed in -> show Auth Gate, hide Main App Shell
-    if (authGate) authGate.classList.remove('hidden');
-    if (mainShell) mainShell.classList.add('hidden');
-  }
-}
-
-// Hook Storage.save to automatically replicate state changes to Cloud Firestore
-Storage.onSave = (currentState) => {
-  const user = getCurrentUser();
-  if (user && user.uid && currentState.activeTripId) {
-    const activeTrip = currentState.trips.find(t => t.id === currentState.activeTripId);
-    if (activeTrip) {
-      syncTripToCloud(
-        user.uid,
-        activeTrip,
-        currentState.stopsMap[activeTrip.id] || [],
-        currentState.expensesMap[activeTrip.id] || []
-      );
-    }
-  }
-};
-
-function setupPrivacyTermsAndAuthEvents() {
-  const privacyScreen = document.getElementById('screen-privacy-terms');
-  const chkAgree = document.getElementById('chk-privacy-agree');
-  const btnAccept = document.getElementById('btn-accept-privacy');
-  const btnAcceptLabel = document.getElementById('btn-accept-privacy-label');
-  const btnViewTerms = document.getElementById('btn-view-terms');
-
-  const googleBtn = document.getElementById('btn-google-signin');
-  const googleBtnLabel = document.getElementById('google-signin-btn-label');
-  
-  const signoutBtn = document.getElementById('btn-account-signout');
-
-  // Checkbox toggle enables/disables the Accept button
-  if (chkAgree && btnAccept) {
-    chkAgree.onchange = () => {
-      btnAccept.disabled = !chkAgree.checked;
-    };
-  }
-
-  // Accept button handler: stores acceptance once in localStorage
-  if (btnAccept) {
-    btnAccept.onclick = () => {
-      localStorage.setItem('tripweave_terms_accepted', 'true');
-      if (privacyScreen) privacyScreen.classList.add('hidden');
-
-      // Now route to appropriate screen
-      const current = getCurrentUser();
-      applyAuthenticatedUser(current);
-      showToast('Terms & Privacy Policy accepted');
-    };
-  }
-
-  // Review Privacy & Terms Link from Auth Gate footer
-  if (btnViewTerms) {
-    btnViewTerms.onclick = () => {
-      if (privacyScreen) {
-        if (chkAgree) chkAgree.checked = true;
-        if (btnAccept) btnAccept.disabled = false;
-        if (btnAcceptLabel) btnAcceptLabel.textContent = 'Close & Return';
-        privacyScreen.classList.remove('hidden');
-      }
-    };
-  }
-
-  // Google Sign-In button handler
-  if (googleBtn) {
-    googleBtn.onclick = async () => {
-      
-      if (googleBtnLabel) googleBtnLabel.textContent = 'Selecting Account...';
-      googleBtn.disabled = true;
-
-      try {
-        const res = await loginWithGoogle();
-
-        
-        if (googleBtnLabel) googleBtnLabel.textContent = 'Sign in with Google';
-        googleBtn.disabled = false;
-
-        if (res.success) {
-          applyAuthenticatedUser(res.user);
-          showToast(`Welcome, ${res.user.displayName || 'Explorer'}!`);
-        } else {
-          showToast(`Sign-in error: ${res.error || 'Failed'}`);
-        }
-      } catch (err) {
-        
-        if (googleBtnLabel) googleBtnLabel.textContent = 'Sign in with Google';
-        googleBtn.disabled = false;
-        console.error('Google login error:', err);
-      }
-    };
-  }
-
-  // Sign out button handler
-  if (signoutBtn) {
-    signoutBtn.onclick = async () => {
-      const modal = document.getElementById('modal-google-account');
-      if (modal) modal.classList.add('hidden');
-      await logoutUser();
-      applyAuthenticatedUser(null);
-      showToast('Signed out of Google account');
-    };
-  }
-
-  // Initialize screen state on launch
-  const initialUser = getCurrentUser();
-  applyAuthenticatedUser(initialUser);
-
-  // Subscribe to persistent auth state
-  subscribeAuthState((user) => {
-    applyAuthenticatedUser(user);
-  });
-}
-
-
-// ==========================================================================
-// IN-APP APK UPDATE CHECKER (v1.3.0 OTA Engine)
-// ==========================================================================
-const CURRENT_APP_VERSION = '1.5.0';
-const CURRENT_VERSION_CODE = 6;
-const LATEST_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk';
-
-async function checkForAppUpdates(manualTrigger = false) {
-  try {
-    const res = await fetch('https://raw.githubusercontent.com/Avineesh-G/TripWeave/main/version.json?t=' + Date.now());
-    if (res.ok) {
-      const data = await res.json();
-      if (data.versionCode > CURRENT_VERSION_CODE || (data.versionName && data.versionName !== CURRENT_APP_VERSION)) {
-        showUpdateModal(data);
-        return;
-      }
-    }
-  } catch (err) {
-    console.warn('[TripWeave] Update check info:', err);
-  }
-
-  if (manualTrigger) {
-    showUpdateModal({
-      versionName: CURRENT_APP_VERSION,
-      apkUrl: LATEST_APK_URL,
-      releaseNotes: [
-        'High-DPI 2x Retina Google Maps rendering for crystal clarity',
-        'Genuine Android Google Sign-In with device account chooser',
-        'Status bar & notification shade clearance (safe-area padding)',
-        'Student trip planning, student stays, and per-head budget models',
-        'Instant offline resilience with local storage and auto-sync'
-      ]
-    });
-  }
-}
-
-function showUpdateModal(info) {
-  const modal = document.getElementById('modal-app-update');
-  if (!modal) return;
-  const verEl = document.getElementById('update-modal-version');
-  if (verEl && info.versionName) verEl.textContent = `TripWeave v${info.versionName}`;
-
-  const notesList = document.getElementById('update-modal-notes');
-  if (notesList && Array.isArray(info.releaseNotes) && info.releaseNotes.length > 0) {
-    notesList.innerHTML = info.releaseNotes.map(n => '<li>' + n + '</li>').join('');
-  }
-
-  const installBtn = document.getElementById('btn-install-apk-update');
-  if (installBtn) {
-    installBtn.onclick = () => {
-      const apkUrl = info.apkUrl || LATEST_APK_URL;
-      if (typeof window !== 'undefined' && window.AndroidAuthBridge && typeof window.AndroidAuthBridge.downloadUpdate === 'function') {
-        window.AndroidAuthBridge.downloadUpdate(apkUrl);
-      } else {
-        window.open(apkUrl, '_blank');
-      }
-      modal.classList.add('hidden');
-      showToast('Downloading TripWeave update...');
-    };
-  }
-
-  modal.classList.remove('hidden');
-}
-
-function setupUpdateCheckerEvents() {
-  const btnCheck = document.getElementById('btn-check-update');
-  const btnClose = document.getElementById('modal-update-close-btn');
-  const btnLater = document.getElementById('modal-update-later-btn');
-  const modal = document.getElementById('modal-app-update');
-
-  if (btnCheck) {
-    btnCheck.onclick = (e) => {
-      e.stopPropagation();
-      const acctModal = document.getElementById('modal-google-account');
-      if (acctModal) acctModal.classList.add('hidden');
-      checkForAppUpdates(true);
-    };
-  }
-
-  if (btnClose && modal) {
-    btnClose.onclick = () => modal.classList.add('hidden');
-  }
-
-  if (btnLater && modal) {
-    btnLater.onclick = () => modal.classList.add('hidden');
-  }
-
-  if (modal) {
-    modal.onclick = (e) => {
-      if (e.target === modal) modal.classList.add('hidden');
-    };
-  }
-
-  // Automatic check once on launch
-  setTimeout(() => {
-    checkForAppUpdates(false);
-  }, 2500);
-}
-
-
-document.addEventListener('DOMContentLoaded', () => {
-  initMap();
-  setupEvents();
-  setupLivePlaceSearch();
-  setupCategoryChips();
-  setupLocationPermission();
-  setupPrivacyTermsAndAuthEvents();
-  setupUpdateCheckerEvents();
-  setupGroqAndAIPlannerEvents();
-  refreshApp();
-});
-
-
-// ==========================================================================
-// 5-STEP CREATE TRIP WIZARD (Spec 5.3)
-// ==========================================================================
-let createTripState = {
-  currentStep: 1,
-  origin: '',
-  destination: '',
-  departureMinutes: 0,
-  departureDate: '',
-  vehicleMode: 'car',
-  mileage: 0,
-  groupSize: 0,
-  budgetType: 'total',
-  budgetAmount: 0,
-  scenario: 'typical',
-  preferences: []
-};
-
-const PRESET_ROUTES = [];
-
-function openCreateTripWizard() {
-  createTripState.currentStep = 1;
-  document.getElementById('modal-create-trip').classList.remove('hidden');
-  renderCreateTripStep();
-}
-
-function renderCreateTripStep() {
-  const body = document.getElementById('create-trip-body');
-  const title = document.getElementById('create-trip-header-title');
-  const stepLabel = document.getElementById('create-trip-step-label');
-  const stepPct = document.getElementById('create-trip-step-pct');
-  const fill = document.getElementById('create-trip-progress-fill');
-  const prevBtn = document.getElementById('create-step-prev-btn');
-  const backHeaderBtn = document.getElementById('create-trip-back-btn');
-  const nextBtn = document.getElementById('create-step-next-btn');
-
-  const step = createTripState.currentStep;
-  fill.style.width = `${step * 20}%`;
-  stepPct.textContent = `${step * 20}%`;
-
-  if (step === 1) {
-    prevBtn.style.display = 'none';
-    backHeaderBtn.style.display = 'none';
-  } else {
-    prevBtn.style.display = 'inline-flex';
-    backHeaderBtn.style.display = 'inline-flex';
-  }
-
-  nextBtn.textContent = step === 5 ? 'Create Trip' : 'Next';
-
-  switch (step) {
-    case 1:
-      title.textContent = 'Step 1: Route & Destination';
-      stepLabel.textContent = 'Step 1 of 5: Route';
-      body.innerHTML = `
-        <div class="input-field">
-          <label>Origin (Starting Point)</label>
-          <input type="text" id="step-origin-input" value="${createTripState.origin}" placeholder="e.g. Bangalore, Delhi, Hyderabad" />
-        </div>
-        <div class="input-field">
-          <label>Destination</label>
-          <input type="text" id="step-dest-input" value="${createTripState.destination}" placeholder="e.g. Coorg, Hampi, Jaipur" />
-        </div>
+      <div class="user-trip-card" style="background: var(--surface); border: 1px solid ${isActive ? 'var(--primary)' : 'var(--outline-variant)'}; border-radius: 16px; padding: 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
         <div>
-          <label style="font-size: 11px; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase;">Quick Curated Indian Routes</label>
-          <div class="quick-routes-row">
-            ${PRESET_ROUTES.map((r, i) => `
-              <button class="quick-route-chip" data-route-idx="${i}">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                <span>${r.name}</span>
-              </button>
-            `).join('')}
-          </div>
+          <div style="font-weight: 800; font-size: 14px; color: var(--on-surface);">${t.title}</div>
+          <div style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 3px;">${t.origin || 'Start'} → ${t.destination || 'End'} • ${t.groupSize || 4} travelers</div>
+          <div style="font-size: 11px; color: var(--primary); font-weight: 700; margin-top: 2px;">Budget: ₹${(t.totalBudget || 25000).toLocaleString('en-IN')}</div>
         </div>
-      `;
-      // Listeners
-      body.querySelectorAll('.quick-route-chip').forEach(btn => {
-        btn.onclick = () => {
-          const idx = parseInt(btn.getAttribute('data-route-idx'), 10);
-          const r = PRESET_ROUTES[idx];
-          createTripState.origin = r.origin;
-          createTripState.destination = r.dest;
-          document.getElementById('step-origin-input').value = r.origin;
-          document.getElementById('step-dest-input').value = r.dest;
-        };
-      });
-      break;
-
-    case 2:
-      title.textContent = 'Step 2: Dates & Departure';
-      stepLabel.textContent = 'Step 2 of 5: Timing';
-      const hours = Math.floor(createTripState.departureMinutes / 60).toString().padStart(2, '0');
-      const mins = (createTripState.departureMinutes % 60).toString().padStart(2, '0');
-      body.innerHTML = `
-        <div class="input-field">
-          <label>Departure Date</label>
-          <input type="date" id="step-date-input" value="${createTripState.departureDate}" />
-        </div>
-        <div class="input-field">
-          <label>Departure Time</label>
-          <input type="time" id="step-time-input" value="${hours}:${mins}" />
-        </div>
-        <div style="background: var(--surface-container); border: 1px solid var(--outline-variant); border-radius: var(--radius-sm); padding: 12px; display: flex; align-items: flex-start; gap: 8px;">
-          <svg class="icon-sm" style="color: var(--caution); flex-shrink: 0; margin-top: 2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          <div style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.4;">
-            <strong>Daylight Driving Advisory:</strong> Departures between 05:30 AM and 07:00 AM ensure mountain and ghat passes are navigated in full daylight.
-          </div>
-        </div>
-      `;
-      break;
-
-    case 3:
-      title.textContent = 'Step 3: Vehicle & Group Size';
-      stepLabel.textContent = 'Step 3 of 5: Transport';
-      const vehicles = [
-        { id: 'suv', name: 'SUV / 4WD', sub: '14.0 km/L (Diesel/Petrol)', mileage: 14.0 },
-        { id: 'sedan', name: 'Sedan / Hatch', sub: '18.5 km/L (Efficient)', mileage: 18.5 },
-        { id: 'bike', name: 'Cruiser Bike', sub: '35.0 km/L (Single/Tandem)', mileage: 35.0 },
-        { id: 'van', name: 'Van / Tempo', sub: '11.0 km/L (Large Group)', mileage: 11.0 }
-      ];
-      body.innerHTML = `
-        <div style="font-size: 12px; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase;">Vehicle Mode</div>
-        <div class="stepper-option-grid">
-          ${vehicles.map(v => `
-            <div class="stepper-option-card ${createTripState.vehicleMode === v.id ? 'selected' : ''}" data-vehicle="${v.id}" data-mileage="${v.mileage}">
-              <div class="stepper-card-title">${v.name}</div>
-              <div class="stepper-card-sub">${v.sub}</div>
-            </div>
-          `).join('')}
-        </div>
-        <div class="input-field" style="margin-top: 6px;">
-          <label>Number of Travelers</label>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <button class="btn-small" id="step-group-minus" style="font-size: 15px; padding: 6px 14px;">−</button>
-            <span style="font-size: 16px; font-weight: 800; min-width: 32px; text-align: center;" id="step-group-val">${createTripState.groupSize}</span>
-            <button class="btn-small" id="step-group-plus" style="font-size: 15px; padding: 6px 14px;">+</button>
-          </div>
-        </div>
-      `;
-      // Vehicle listeners
-      body.querySelectorAll('.stepper-option-card').forEach(card => {
-        card.onclick = () => {
-          body.querySelectorAll('.stepper-option-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          createTripState.vehicleMode = card.getAttribute('data-vehicle');
-          createTripState.mileage = parseFloat(card.getAttribute('data-mileage'));
-        };
-      });
-      body.querySelector('#step-group-minus').onclick = () => {
-        createTripState.groupSize = Math.max(1, createTripState.groupSize - 1);
-        body.querySelector('#step-group-val').textContent = createTripState.groupSize;
-      };
-      body.querySelector('#step-group-plus').onclick = () => {
-        createTripState.groupSize = Math.min(20, createTripState.groupSize + 1);
-        body.querySelector('#step-group-val').textContent = createTripState.groupSize;
-      };
-      break;
-
-    case 4:
-      title.textContent = 'Step 4: Budget Allocation';
-      stepLabel.textContent = 'Step 4 of 5: Budget';
-      body.innerHTML = `
-        <div style="display: flex; background: var(--surface-container); border-radius: var(--radius-pill); padding: 3px; gap: 2px;">
-          <button class="scenario-btn ${createTripState.budgetType === 'total' ? 'active' : ''}" id="btn-budget-type-total">Total Budget</button>
-          <button class="scenario-btn ${createTripState.budgetType === 'per_person' ? 'active' : ''}" id="btn-budget-type-person">Per Person</button>
-        </div>
-        <div class="input-field">
-          <label id="step-budget-label">${createTripState.budgetType === 'total' ? 'Total Trip Budget (₹)' : 'Budget Per Person (₹)'}</label>
-          <input type="number" id="step-budget-amount" value="${createTripState.budgetAmount}" step="1000" />
-        </div>
-        <div style="font-size: 12px; color: var(--on-surface-variant);">
-          Includes deterministic calculations for fuel, FASTag tolls, homestays, meals, and a 10% contingency buffer.
-        </div>
-      `;
-      body.querySelector('#btn-budget-type-total').onclick = () => {
-        createTripState.budgetType = 'total';
-        renderCreateTripStep();
-      };
-      body.querySelector('#btn-budget-type-person').onclick = () => {
-        createTripState.budgetType = 'per_person';
-        renderCreateTripStep();
-      };
-      break;
-
-    case 5:
-      title.textContent = 'Step 5: Review & Preferences';
-      stepLabel.textContent = 'Step 5 of 5: Confirm';
-      const prefs = [
-        { id: 'scenic', label: 'Scenic Highway' },
-        { id: 'daylight', label: 'Avoid Night Ghats' },
-        { id: 'homestays', label: 'Verified Homestays' },
-        { id: 'veg', label: 'Vegetarian Highway Dhabas' }
-      ];
-      const estBudget = createTripState.budgetType === 'total' ? createTripState.budgetAmount : (createTripState.budgetAmount * createTripState.groupSize);
-      body.innerHTML = `
-        <div style="font-size: 12px; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase;">Route Preferences</div>
-        <div class="preference-chips-wrap">
-          ${prefs.map(p => `
-            <div class="preference-chip ${createTripState.preferences.includes(p.id) ? 'selected' : ''}" data-pref="${p.id}">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <span>${p.label}</span>
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="summary-preview-card" style="margin-top: 6px;">
-          <div style="font-size: 13px; font-weight: 800; color: var(--primary);">Trip Summary Plan</div>
-          <div class="summary-preview-row">
-            <span style="color: var(--on-surface-variant);">Journey:</span>
-            <strong>${createTripState.origin} ➔ ${createTripState.destination}</strong>
-          </div>
-          <div class="summary-preview-row">
-            <span style="color: var(--on-surface-variant);">Departure:</span>
-            <span>${createTripState.departureDate} at ${formatMinutes(createTripState.departureMinutes)}</span>
-          </div>
-          <div class="summary-preview-row">
-            <span style="color: var(--on-surface-variant);">Travelers:</span>
-            <span>${createTripState.groupSize} People (${createTripState.vehicleMode.toUpperCase()})</span>
-          </div>
-          <div class="summary-preview-row">
-            <span style="color: var(--on-surface-variant);">Budget Allocated:</span>
-            <strong style="color: var(--success);">₹${estBudget.toLocaleString('en-IN')}</strong>
-          </div>
-        </div>
-      `;
-      body.querySelectorAll('.preference-chip').forEach(chip => {
-        chip.onclick = () => {
-          const pref = chip.getAttribute('data-pref');
-          if (createTripState.preferences.includes(pref)) {
-            createTripState.preferences = createTripState.preferences.filter(p => p !== pref);
-            chip.classList.remove('selected');
-          } else {
-            createTripState.preferences.push(pref);
-            chip.classList.add('selected');
-          }
-        };
-      });
-      break;
-  }
-}
-
-function handleCreateStepNext() {
-  // Save current step data with mandatory validation
-  if (createTripState.currentStep === 1) {
-    const origInput = document.getElementById('step-origin-input');
-    const destInput = document.getElementById('step-dest-input');
-    const originVal = origInput ? origInput.value.trim() : '';
-    const destVal = destInput ? destInput.value.trim() : '';
-
-    if (!originVal || !destVal) {
-      if (origInput && !originVal) origInput.style.border = '2px solid var(--error)';
-      if (destInput && !destVal) destInput.style.border = '2px solid var(--error)';
-      showToast('Please enter both Origin and Destination to create your trip route.');
-      return;
-    }
-
-    if (origInput) origInput.style.border = '';
-    if (destInput) destInput.style.border = '';
-
-    createTripState.origin = originVal;
-    createTripState.destination = destVal;
-  } else if (createTripState.currentStep === 2) {
-    createTripState.departureDate = document.getElementById('step-date-input').value;
-    const timeVal = document.getElementById('step-time-input').value;
-    if (timeVal) {
-      const parts = timeVal.split(':');
-      createTripState.departureMinutes = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-    }
-  } else if (createTripState.currentStep === 4) {
-    createTripState.budgetAmount = parseFloat(document.getElementById('step-budget-amount').value) || 16000;
-  }
-
-  if (createTripState.currentStep < 5) {
-    createTripState.currentStep++;
-    renderCreateTripStep();
-  } else {
-    // Step 5: Show Route, Fastest Way & Corridor Stops Proposal for Traveler Approval
-    generateAndShowTripProposal(createTripState);
-  }
-}
-
-function handleCreateStepPrev() {
-  if (createTripState.currentStep > 1) {
-    createTripState.currentStep--;
-    renderCreateTripStep();
-  }
-}
-
-function finalizeTripCreation() {
-  const newTripId = `trip-${Date.now()}`;
-  const totalBudget = createTripState.budgetType === 'total' 
-    ? (createTripState.budgetAmount || 0)
-    : ((createTripState.budgetAmount || 0) * (createTripState.groupSize || 1));
-
-  const newTrip = {
-    id: newTripId,
-    title: createTripState.origin && createTripState.destination
-      ? `${createTripState.origin.split(',')[0]} to ${createTripState.destination.split(',')[0]}`
-      : (createTripState.origin || createTripState.destination || 'New Trip'),
-    destinationName: createTripState.destination || null,
-    departureTimeMinutes: createTripState.departureMinutes || 0,
-    totalBudget: totalBudget || 0,
-    groupSize: createTripState.groupSize || 0,
-    vehicleMileageKmPerLitre: createTripState.mileage || 0,
-    fuelPricePerLitre: 0,
-    isArchived: false
-  };
-
-  state.trips.unshift(newTrip);
-  state.activeTripId = newTripId;
-  state.stopsMap[newTripId] = [];
-  state.expensesMap[newTripId] = [];
-  Storage.save(state);
-
-  document.getElementById('modal-create-trip').classList.add('hidden');
-  switchTab('map');
-  refreshApp();
-  showToast('Trip created!');
-}
-
-
-// Google Maps Layer Switcher (Roadmap, Satellite Hybrid, Terrain)
-window.switchGoogleMapLayer = function(type) {
-  if (!mapInstance) return;
-  if (currentTileLayer) {
-    try { mapInstance.removeLayer(currentTileLayer); } catch (e) {}
-  }
-  currentTileLayer = createCleanTileLayer(type);
-  currentTileLayer.addTo(mapInstance);
-  showToast('Switched to Google Maps ' + type.charAt(0).toUpperCase() + type.slice(1));
-};
-
-// ==========================================================================
-// FAMOUS PLACES, FOOD, PARKS & MONUMENTS DISCOVERY ENGINE (Official India Hubs)
-// ==========================================================================
-
-const KNOWN_DESTINATION_PHOTOS = {
-  'hyderabad': 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=900&q=80',
-  'charminar': 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=900&q=80',
-  'golconda': 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=900&q=80',
-  'qutb shahi': 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80',
-  'chowmahalla': 'https://images.unsplash.com/photo-1609137144822-4416999a0980?auto=format&fit=crop&w=900&q=80',
-  'hussain sagar': 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
-  'paradise biryani': 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=900&q=80',
-  'bawarchi': 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80',
-  'karachi bakery': 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80',
-  'pista house': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80',
-  'ram ki bandi': 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=900&q=80',
-  'mysore palace': 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=900&q=80',
-  'abbey falls': 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=900&q=80',
-  'raja': 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
-  'namdroling': 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=900&q=80',
-  'virupaksha': 'https://images.unsplash.com/photo-1609137144822-4416999a0980?auto=format&fit=crop&w=900&q=80',
-  'amer fort': 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80',
-  'hawa mahal': 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80',
-  'bangalore': 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?auto=format&fit=crop&w=900&q=80',
-  'delhi': 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=900&q=80',
-  'jaipur': 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80'
-};
-
-const THEMATIC_PHOTOS = {
-  waterfall: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=900&q=80',
-  lake: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80',
-  temple: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=900&q=80',
-  fort: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=900&q=80',
-  hills: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
-  ghats: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=900&q=80',
-  highway: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=900&q=80',
-  forest: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80',
-  city: 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?auto=format&fit=crop&w=900&q=80',
-  food: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=900&q=80',
-  park: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80',
-  default: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=900&q=80'
-};
-
-async function fetchPlaceImage(lat, lng, name, category = '') {
-  const lowerName = (name || '').toLowerCase();
-  for (const [key, url] of Object.entries(KNOWN_DESTINATION_PHOTOS)) {
-    if (lowerName.includes(key)) return url;
-  }
-  const lowerCat = (category || '').toLowerCase();
-  if (lowerCat.includes('park') || lowerCat.includes('garden')) return THEMATIC_PHOTOS.park;
-  if (lowerCat.includes('lake') || lowerCat.includes('river')) return THEMATIC_PHOTOS.lake;
-  if (lowerCat.includes('food') || lowerCat.includes('restaurant')) return THEMATIC_PHOTOS.food;
-  if (lowerCat.includes('fort') || lowerCat.includes('monument')) return THEMATIC_PHOTOS.fort;
-  return THEMATIC_PHOTOS.default;
-}
-
-function formatCategoryTag(category) {
-  if (!category) return 'Scenic Stop';
-  const c = category.toLowerCase();
-  if (c.includes('monument') || c.includes('fort') || c.includes('palace') || c.includes('historic')) return 'Historical Heritage';
-  if (c.includes('food') || c.includes('restaurant') || c.includes('bakery') || c.includes('cuisine')) return 'Famous Dining & Food';
-  if (c.includes('park') || c.includes('lake') || c.includes('garden') || c.includes('sanctuary')) return 'Park & Nature Sanctuary';
-  return 'Scenic Stop';
-}
-
-const FAMOUS_INDIAN_HUBS = {
-  hyderabad: {
-    cityName: 'Hyderabad',
-    lat: 17.3850,
-    lng: 78.4867,
-    radiusKm: 65,
-    places: [
-      // Monuments & Heritage
-      {
-        id: 'hyd-charminar',
-        name: 'Charminar',
-        sub: 'Old City, Hyderabad',
-        category: 'monuments',
-        tag: 'Iconic 1591 Monument',
-        lat: 17.3616,
-        lng: 78.4747,
-        img: 'https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=600&q=80',
-        meta: '09:00 AM - 05:30 PM | Entry Rs 25',
-        dur: 60
-      },
-      {
-        id: 'hyd-golconda',
-        name: 'Golconda Fort',
-        sub: 'Ibrahim Bagh, Hyderabad',
-        category: 'monuments',
-        tag: 'Medieval Acoustic Citadel',
-        lat: 17.3833,
-        lng: 78.4011,
-        img: 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=600&q=80',
-        meta: '09:00 AM - 05:30 PM | Light & Sound Show',
-        dur: 90
-      },
-      {
-        id: 'hyd-qutb-shahi',
-        name: 'Qutb Shahi Tombs',
-        sub: 'Shaikpet, Hyderabad',
-        category: 'monuments',
-        tag: 'Seven Royal Tombs & Gardens',
-        lat: 17.3942,
-        lng: 78.3970,
-        img: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80',
-        meta: '09:30 AM - 04:30 PM | Heritage Complex',
-        dur: 60
-      },
-      {
-        id: 'hyd-chowmahalla',
-        name: 'Chowmahalla Palace',
-        sub: 'Khilwat, Hyderabad',
-        category: 'monuments',
-        tag: 'Nizami Royal Palace & Vintage Cars',
-        lat: 17.3578,
-        lng: 78.4717,
-        img: 'https://images.unsplash.com/photo-1609137144822-4416999a0980?auto=format&fit=crop&w=600&q=80',
-        meta: '10:00 AM - 05:00 PM | Royal Regalia',
-        dur: 75
-      },
-      {
-        id: 'hyd-salar-jung',
-        name: 'Salar Jung Museum',
-        sub: 'Dar-ul-Shifa, Hyderabad',
-        category: 'monuments',
-        tag: 'World Rare Artifacts & Veiled Rebecca',
-        lat: 17.3713,
-        lng: 78.4804,
-        img: 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?auto=format&fit=crop&w=600&q=80',
-        meta: '10:00 AM - 05:00 PM | World Heritage Art',
-        dur: 100
-      },
-      // Famous Food & Restaurants
-      {
-        id: 'hyd-paradise',
-        name: 'Paradise Biryani',
-        sub: 'MG Road, Secunderabad',
-        category: 'food',
-        tag: 'World Famous Dum Biryani Since 1953',
-        lat: 17.4416,
-        lng: 78.4983,
-        img: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=600&q=80',
-        meta: '11:00 AM - 11:00 PM | Iconic Hyderabadi Dum',
-        dur: 45
-      },
-      {
-        id: 'hyd-bawarchi',
-        name: 'Bawarchi Restaurant',
-        sub: 'RTC X Roads, Hyderabad',
-        category: 'food',
-        tag: 'Legendary Mutton Biryani Hub',
-        lat: 17.4048,
-        lng: 78.4981,
-        img: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=600&q=80',
-        meta: '11:30 AM - 11:30 PM | Authentic Spice Heritage',
-        dur: 45
-      },
-      {
-        id: 'hyd-karachi',
-        name: 'Karachi Bakery',
-        sub: 'Mozamjahi Market, Hyderabad',
-        category: 'food',
-        tag: 'Original Fruit & Osmania Biscuits Since 1953',
-        lat: 17.3822,
-        lng: 78.4735,
-        img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80',
-        meta: '10:00 AM - 10:00 PM | Heritage Bakery',
-        dur: 30
-      },
-      {
-        id: 'hyd-pista-house',
-        name: 'Pista House & Irani Chai',
-        sub: 'Charminar, Hyderabad',
-        category: 'food',
-        tag: 'GI-Tagged Haleem & Zafrani Chai',
-        lat: 17.3610,
-        lng: 78.4730,
-        img: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80',
-        meta: '10:00 AM - 12:00 AM | Irani Chai & Osmania',
-        dur: 30
-      },
-      {
-        id: 'hyd-ram-ki-bandi',
-        name: 'Ram Ki Bandi',
-        sub: 'Nampally, Hyderabad',
-        category: 'food',
-        tag: 'Famous Midnight Butter Cheese Dosa',
-        lat: 17.3833,
-        lng: 78.4744,
-        img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80',
-        meta: '03:00 AM - 08:00 AM | Street Food Legend',
-        dur: 30
-      },
-      {
-        id: 'hyd-shah-ghouse',
-        name: 'Shah Ghouse Cafe',
-        sub: 'Tolichowki / Charminar',
-        category: 'food',
-        tag: 'Mutton Biryani, Paaya & Khubani Meetha',
-        lat: 17.3996,
-        lng: 78.4116,
-        img: 'https://images.unsplash.com/photo-1633945274405-b6c8069047b0?auto=format&fit=crop&w=600&q=80',
-        meta: '11:00 AM - 01:00 AM | Late Night Dine',
-        dur: 45
-      },
-      // Parks & Lakes
-      {
-        id: 'hyd-hussain-sagar',
-        name: 'Hussain Sagar & Buddha Statue',
-        sub: 'Tank Bund, Hyderabad',
-        category: 'parks',
-        tag: 'Heart-Shaped Lake & Monolith Buddha',
-        lat: 17.4239,
-        lng: 78.4738,
-        img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
-        meta: 'Boat Ride to Statue | Sunset Promenade',
-        dur: 60
-      },
-      {
-        id: 'hyd-kbr-park',
-        name: 'KBR National Park',
-        sub: 'Jubilee Hills, Hyderabad',
-        category: 'parks',
-        tag: 'Lush Urban Forest Sanctuary',
-        lat: 17.4244,
-        lng: 78.4238,
-        img: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-        meta: '05:30 AM - 10:00 AM, 04:30 PM - 07:00 PM',
-        dur: 60
-      },
-      {
-        id: 'hyd-lumbini',
-        name: 'Lumbini Park & Laser Show',
-        sub: 'Khairatabad, Hyderabad',
-        category: 'parks',
-        tag: 'Lakeside Park & Speed Boating Jetty',
-        lat: 17.4143,
-        lng: 78.4735,
-        img: 'https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=600&q=80',
-        meta: '09:00 AM - 09:00 PM | Laser & Fountain Show',
-        dur: 45
-      },
-      {
-        id: 'hyd-durgam-cheruvu',
-        name: 'Durgam Cheruvu & Cable Bridge',
-        sub: 'Hitec City, Madhapur',
-        category: 'parks',
-        tag: 'Secret Lake & Hanging Cable-Stayed Bridge',
-        lat: 17.4332,
-        lng: 78.3846,
-        img: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
-        meta: 'Open 24 Hours | Illuminated Skywalk Promenade',
-        dur: 45
-      }
-    ]
-  },
-  bangalore: {
-    cityName: 'Bengaluru',
-    lat: 12.9716,
-    lng: 77.5946,
-    radiusKm: 60,
-    places: [
-      {
-        id: 'blr-palace',
-        name: 'Bangalore Palace',
-        sub: 'Vasanth Nagar, Bengaluru',
-        category: 'monuments',
-        tag: 'Tudor-Style Royal Palace',
-        lat: 12.9988,
-        lng: 77.5921,
-        img: 'https://images.unsplash.com/photo-1600100397608-f010f443b222?auto=format&fit=crop&w=600&q=80',
-        meta: '10:00 AM - 05:30 PM | Audio Tour',
-        dur: 60
-      },
-      {
-        id: 'blr-vidyarthi',
-        name: 'Vidyarthi Bhavan',
-        sub: 'Gandhi Bazaar, Basavanagudi',
-        category: 'food',
-        tag: 'Legendary Crispy Masala Dosa Since 1943',
-        lat: 12.9427,
-        lng: 77.5714,
-        img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80',
-        meta: '06:30 AM - 11:30 AM, 02:00 PM - 08:00 PM',
-        dur: 45
-      },
-      {
-        id: 'blr-cubbon',
-        name: 'Cubbon Park',
-        sub: 'Kasturba Road, Bengaluru',
-        category: 'parks',
-        tag: '300-Acre Green Lung of Bengaluru',
-        lat: 12.9763,
-        lng: 77.5929,
-        img: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-        meta: '06:00 AM - 06:00 PM | Bamboo Groves',
-        dur: 60
-      },
-      {
-        id: 'blr-lalbagh',
-        name: 'Lalbagh Botanical Garden',
-        sub: 'Mavalli, Bengaluru',
-        category: 'parks',
-        tag: 'Iconic Glass House & Bonsai Garden',
-        lat: 12.9507,
-        lng: 77.5848,
-        img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
-        meta: '06:00 AM - 07:00 PM | 240-Acre Heritage Park',
-        dur: 75
-      }
-    ]
-  },
-  delhi: {
-    cityName: 'Delhi',
-    lat: 28.6139,
-    lng: 77.2090,
-    radiusKm: 60,
-    places: [
-      {
-        id: 'del-red-fort',
-        name: 'Red Fort (Lal Qila)',
-        sub: 'Old Delhi',
-        category: 'monuments',
-        tag: 'Mughal Fortress of Shah Jahan',
-        lat: 28.6562,
-        lng: 77.2410,
-        img: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=600&q=80',
-        meta: '09:30 AM - 04:30 PM | UNESCO World Heritage',
-        dur: 90
-      },
-      {
-        id: 'del-karims',
-        name: "Karim's Jama Masjid",
-        sub: 'Gali Kababian, Jama Masjid',
-        category: 'food',
-        tag: 'Royal Mughlai Kebabs & Nihari Since 1913',
-        lat: 28.6508,
-        lng: 77.2334,
-        img: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=600&q=80',
-        meta: '09:00 AM - 01:00 AM | Mutton Seekh Kebab',
-        dur: 50
-      },
-      {
-        id: 'del-lodhi',
-        name: 'Lodhi Garden',
-        sub: 'Lodhi Road, New Delhi',
-        category: 'parks',
-        tag: '90-Acre Tomb Complex & Lush Grounds',
-        lat: 28.5931,
-        lng: 77.2197,
-        img: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-        meta: '06:00 AM - 08:00 PM | Historic Garden',
-        dur: 60
-      }
-    ]
-  },
-  jaipur: {
-    cityName: 'Jaipur',
-    lat: 26.9124,
-    lng: 75.7873,
-    radiusKm: 60,
-    places: [
-      {
-        id: 'jai-hawa-mahal',
-        name: 'Hawa Mahal',
-        sub: 'Badi Choupad, Pink City, Jaipur',
-        category: 'monuments',
-        tag: 'Palace of Winds with 953 Jharokhas',
-        lat: 26.9239,
-        lng: 75.8267,
-        img: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=600&q=80',
-        meta: '09:00 AM - 05:00 PM | Pink Sandstone Icon',
-        dur: 60
-      },
-      {
-        id: 'jai-rawat',
-        name: 'Rawat Mishthan Bhandar',
-        sub: 'Station Road, Sindhi Camp, Jaipur',
-        category: 'food',
-        tag: 'Famous Hot Pyaaz Kachori & Mawa Kachori',
-        lat: 26.9213,
-        lng: 75.7972,
-        img: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=600&q=80',
-        meta: '06:00 AM - 10:30 PM | Crispy Onion Kachori',
-        dur: 30
-      },
-      {
-        id: 'jai-central-park',
-        name: 'Central Park Jaipur',
-        sub: 'Prithviraj Road, Jaipur',
-        category: 'parks',
-        tag: 'Largest Green Park with Tallest Tricolor',
-        lat: 26.9015,
-        lng: 75.8085,
-        img: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=600&q=80',
-        meta: '05:00 AM - 09:00 PM | 5km Jogging Track',
-        dur: 45
-      }
-    ]
-  }
-};
-
-let activeNearbyPlaces = [];
-let currentNearbyFilter = 'all';
-
-async function getNearbyFamousPlaces(lat, lng, localityName = '') {
-  const lowerName = (localityName || '').toLowerCase();
-  
-  // 1. Check known hubs by distance or name match
-  for (const [key, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
-    const distToHub = calculateHaversineKm(lat, lng, hub.lat, hub.lng);
-    if (distToHub <= hub.radiusKm || lowerName.includes(key) || lowerName.includes(hub.cityName.toLowerCase())) {
-      const placesWithDist = hub.places.map(p => {
-        const d = calculateHaversineKm(lat, lng, p.lat, p.lng);
-        return {
-          ...p,
-          distanceKm: d,
-          distText: `${d < 1 ? Math.round(d * 1000) + ' m' : d.toFixed(1) + ' km'} away`
-        };
-      });
-      placesWithDist.sort((a, b) => a.distanceKm - b.distanceKm);
-      return {
-        cityName: hub.cityName,
-        places: placesWithDist
-      };
-    }
-  }
-
-  // 2. Dynamic Fallback via Wikipedia Geosearch for ANY other location in India
-  try {
-    const geoUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=15000&ggslimit=10&prop=pageimages|description&pithumbsize=600&format=json&origin=*`;
-    const res = await fetch(geoUrl);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.query && data.query.pages) {
-        const pages = Object.values(data.query.pages);
-        const dynamicPlaces = pages.map((page, i) => {
-          const title = page.title;
-          const lower = title.toLowerCase();
-          let cat = 'monuments';
-          let tag = 'Famous Attraction';
-          if (lower.includes('park') || lower.includes('lake') || lower.includes('fall') || lower.includes('forest') || lower.includes('garden')) {
-            cat = 'parks';
-            tag = 'Scenic Nature & Park';
-          } else if (lower.includes('food') || lower.includes('restaurant') || lower.includes('cafe') || lower.includes('dosa') || lower.includes('hotel')) {
-            cat = 'food';
-            tag = 'Famous Food & Dining';
-          }
-          const pLat = page.coordinates ? page.coordinates[0].lat : (lat + (i * 0.007));
-          const pLng = page.coordinates ? page.coordinates[0].lon : (lng + (i * 0.007));
-          const dist = calculateHaversineKm(lat, lng, pLat, pLng);
-          return {
-            id: `dyn-${page.pageid}`,
-            name: title,
-            sub: page.description || (localityName ? localityName.split(',')[0] : 'Landmark in Area'),
-            category: cat,
-            tag: tag,
-            lat: pLat,
-            lng: pLng,
-            img: (page.thumbnail && page.thumbnail.source) ? page.thumbnail.source : THEMATIC_PHOTOS.default,
-            meta: 'Open for visitors',
-            distanceKm: dist,
-            distText: `${dist.toFixed(1)} km away`,
-            dur: 45
-          };
-        });
-
-        dynamicPlaces.sort((a, b) => a.distanceKm - b.distanceKm);
-        return {
-          cityName: localityName.split(',')[0] || 'This Area',
-          places: dynamicPlaces
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('Dynamic nearby search skipped:', err);
-  }
-
-  return {
-    cityName: localityName.split(',')[0] || 'This Area',
-    places: []
-  };
-}
-
-function renderNearbyPlaces(places, filter = 'all') {
-  const carousel = document.getElementById('nearby-places-carousel');
-  const countBadge = document.getElementById('nearby-count-badge');
-  if (!carousel) return;
-
-  const filtered = filter === 'all' ? places : places.filter(p => p.category === filter);
-  if (countBadge) countBadge.textContent = `${filtered.length} Places`;
-
-  if (filtered.length === 0) {
-    carousel.innerHTML = `
-      <div style="padding: 16px; text-align: center; color: var(--on-surface-variant); font-size: 12px; background: var(--surface-container-low); border-radius: 12px;">
-        No ${filter === 'all' ? '' : filter} places listed for this area yet.
-      </div>
-    `;
-    return;
-  }
-
-  carousel.innerHTML = filtered.map(p => `
-    <div class="nearby-place-card" data-place-id="${p.id}" data-lat="${p.lat}" data-lng="${p.lng}" data-name="${p.name}">
-      <img src="${p.img}" alt="${p.name}" class="nearby-card-thumb" onerror="this.src='${THEMATIC_PHOTOS.default}'" />
-      <div class="nearby-card-body">
-        <div class="nearby-card-title">${p.name}</div>
-        <div class="nearby-card-sub">${p.sub}</div>
-        <div class="nearby-card-meta">
-          <span>${p.distText}</span>
-          <span>•</span>
-          <span style="color: var(--on-surface-variant); font-weight: 500;">${p.meta}</span>
-        </div>
-      </div>
-      <button class="nearby-card-add-btn" data-name="${p.name}" data-lat="${p.lat}" data-lng="${p.lng}" data-dur="${p.dur || 60}">
-        + Add
-      </button>
-    </div>
-  `).join('');
-
-  // Wire card click (pan to spot on map)
-  carousel.querySelectorAll('.nearby-place-card').forEach(card => {
-    card.onclick = (e) => {
-      if (e.target.closest('.nearby-card-add-btn')) return;
-      const cLat = parseFloat(card.getAttribute('data-lat'));
-      const cLng = parseFloat(card.getAttribute('data-lng'));
-      const cName = card.getAttribute('data-name');
-      if (mapInstance && !isNaN(cLat) && !isNaN(cLng)) {
-        mapInstance.panTo({ lat: cLat, lng: cLng });
-        if (selectedPlaceMarker) {
-          try { selectedPlaceMarker.setMap(null); } catch (e) {}
-        }
-        const pinSvg = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="34" height="42" viewBox="0 0 34 42">
-            <path d="M17 2 C8.7 2 2 8.7 2 17 C2 27.5 17 40 17 40 C17 40 32 27.5 32 17 C32 8.7 25.3 2 17 2 Z" fill="#E53935" stroke="#FFFFFF" stroke-width="2"/>
-            <circle cx="17" cy="16" r="5" fill="#FFFFFF"/>
-          </svg>
-        `);
-        selectedPlaceMarker = new google.maps.Marker({
-          position: { lat: cLat, lng: cLng },
-          map: mapInstance,
-          icon: {
-            url: pinSvg,
-            scaledSize: new google.maps.Size(28, 35),
-            anchor: new google.maps.Point(14, 35)
-          },
-          zIndex: 1200
-        });
-      }
-    };
-  });
-
-  // Wire "+ Add" button on each card
-  carousel.querySelectorAll('.nearby-card-add-btn').forEach(btn => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      const sName = btn.getAttribute('data-name');
-      const sLat = parseFloat(btn.getAttribute('data-lat'));
-      const sLng = parseFloat(btn.getAttribute('data-lng'));
-      const sDur = parseInt(btn.getAttribute('data-dur'), 10) || 60;
-
-      if (!state.activeTripId || !state.trips || state.trips.length === 0) {
-        const newTripId = `trip-${Date.now()}`;
-        const newTrip = {
-          id: newTripId,
-          title: `Road Trip to ${sName}`,
-          destinationName: sName,
-          departureTimeMinutes: 0,
-          totalBudget: 0,
-          groupSize: 0,
-          vehicleMileageKmPerLitre: 0,
-          fuelPricePerLitre: 0,
-          isArchived: false
-        };
-        state.trips = [newTrip];
-        state.activeTripId = newTripId;
-        state.stopsMap[newTripId] = [];
-        state.expensesMap[newTripId] = [];
-      }
-
-      const stops = state.stopsMap[state.activeTripId] || [];
-      const newStop = {
-        id: `stop-${Date.now()}`,
-        tripId: state.activeTripId,
-        name: sName,
-        latitude: sLat,
-        longitude: sLng,
-        orderIndex: stops.length,
-        durationMinutes: sDur,
-        bufferMinutes: 15,
-        isOvernight: false,
-        openingHourMinutes: 540,
-        closingHourMinutes: 1080
-      };
-      stops.push(newStop);
-      state.stopsMap[state.activeTripId] = stops;
-      Storage.save(state);
-
-      refreshApp();
-      showToast(`Added ${sName} to itinerary!`);
-      btn.textContent = 'Added';
-      btn.style.background = 'var(--success)';
-      btn.style.color = '#FFFFFF';
-      btn.style.borderColor = 'var(--success)';
-    };
-  });
-}
-
-function setupNearbyTabsListener() {
-  const tabsRow = document.getElementById('nearby-tabs-row');
-  if (!tabsRow) return;
-
-  tabsRow.querySelectorAll('.nearby-tab-chip').forEach(tab => {
-    tab.onclick = () => {
-      tabsRow.querySelectorAll('.nearby-tab-chip').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      currentNearbyFilter = tab.getAttribute('data-filter') || 'all';
-      renderNearbyPlaces(activeNearbyPlaces, currentNearbyFilter);
-    };
-  });
-}
-
-// Master Handler for Map Place Selection & Nearby Discovery
-async function handleMapPlaceSelection(lat, lng, explicitName = null) {
-  if (!mapInstance) return;
-
-  if (selectedPlaceMarker) {
-    try { selectedPlaceMarker.setMap(null); } catch (e) {}
-    selectedPlaceMarker = null;
-  }
-
-  const dropPinIcon = L.divIcon({
-    className: 'selected-pin-container',
-    html: `
-      <div style="background: #DC2626; width: 28px; height: 28px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2.5px solid #FFFFFF; box-shadow: 0 3px 10px rgba(220,38,38,0.4); display: flex; align-items: center; justify-content: center;">
-        <div style="width: 8px; height: 8px; border-radius: 50%; background: #FFFFFF; transform: rotate(45deg);"></div>
-      </div>
-    `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 28]
-  });
-
-  selectedPlaceMarker = L.marker([lat, lng], {
-    icon: dropPinIcon,
-    zIndexOffset: 3000
-  }).addTo(mapInstance);
-
-  mapInstance.panTo([lat, lng]);
-
-  const sheet = document.getElementById('selected-place-sheet');
-  const imgEl = document.getElementById('selected-place-img');
-  const tagEl = document.getElementById('selected-place-tag');
-  const nameEl = document.getElementById('selected-place-name');
-  const locEl = document.getElementById('selected-place-location');
-  const distEl = document.getElementById('selected-place-dist-badge');
-  const hoursEl = document.getElementById('selected-place-hours-text');
-  const coordsEl = document.getElementById('selected-place-coords');
-
-  if (!sheet) return;
-
-  sheet.classList.remove('hidden');
-
-  let placeName = explicitName || '';
-  let locality = 'India';
-  let category = 'Scenic Destination';
-  let initialPhoto = THEMATIC_PHOTOS.default;
-
-  const lowerExplicit = (explicitName || '').toLowerCase();
-  
-  // Check known hubs (like Hyderabad, Bangalore, Delhi, Jaipur)
-  let matchedHub = null;
-  for (const [k, hub] of Object.entries(FAMOUS_INDIAN_HUBS)) {
-    const d = calculateHaversineKm(lat, lng, hub.lat, hub.lng);
-    if (d <= hub.radiusKm || lowerExplicit.includes(k) || lowerExplicit.includes(hub.cityName.toLowerCase())) {
-      matchedHub = hub;
-      break;
-    }
-  }
-
-  if (matchedHub) {
-    if (!placeName) placeName = matchedHub.cityName;
-    locality = matchedHub.cityName === 'Hyderabad' ? 'Telangana, India' : `${matchedHub.cityName}, India`;
-    category = 'Historical Heritage';
-    if (KNOWN_DESTINATION_PHOTOS[matchedHub.cityName.toLowerCase()]) {
-      initialPhoto = KNOWN_DESTINATION_PHOTOS[matchedHub.cityName.toLowerCase()];
-    }
-  } else if (explicitName) {
-    placeName = explicitName;
-    locality = 'India';
-    for (const [k, u] of Object.entries(KNOWN_DESTINATION_PHOTOS)) {
-      if (lowerExplicit.includes(k)) {
-        initialPhoto = u;
-        break;
-      }
-    }
-  }
-
-  if (!placeName) {
-    placeName = `Location (${lat.toFixed(3)}, ${lng.toFixed(3)})`;
-  }
-
-  nameEl.textContent = placeName;
-  locEl.textContent = locality;
-  tagEl.textContent = formatCategoryTag(category);
-  coordsEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  fetchRealPlacePhoto(placeName).then(realPhoto => { if (realPhoto && imgEl) { imgEl.src = realPhoto; if (currentSelectedPlace) currentSelectedPlace.imageUrl = realPhoto; } });
-  distEl.textContent = userLocation ? `${calculateHaversineKm(userLocation.lat, userLocation.lng, lat, lng).toFixed(1)} km away` : 'Selected Spot';
-  imgEl.src = initialPhoto;
-
-  // POPULATE NEARBY FAMOUS PLACES, FOOD, PARKS & MONUMENTS
-  try {
-    const nearbyData = await getNearbyFamousPlaces(lat, lng, explicitName || placeName || locality);
-    activeNearbyPlaces = nearbyData.places || [];
-    const nearbyCityEl = document.getElementById('nearby-city-name');
-    if (nearbyCityEl) nearbyCityEl.textContent = nearbyData.cityName || (placeName ? placeName.split(',')[0] : 'This Area');
-    currentNearbyFilter = 'all';
-    
-    // Reset tab filter chips
-    const tabsRow = document.getElementById('nearby-tabs-row');
-    if (tabsRow) {
-      tabsRow.querySelectorAll('.nearby-tab-chip').forEach(t => {
-        if (t.getAttribute('data-filter') === 'all') t.classList.add('active');
-        else t.classList.remove('active');
-      });
-    }
-
-    renderNearbyPlaces(activeNearbyPlaces, 'all');
-  } catch (err) {
-    console.warn('Nearby exploration error:', err);
-  }
-
-  // Reverse geocoding in background if placeName not known
-  if (!explicitName && !matchedHub) {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`);
-      if (res.ok) {
-        const data = await res.json();
-        const addr = data.address || {};
-        const primaryTitle = data.name || addr.tourism || addr.historic || addr.natural || addr.amenity || addr.road || addr.suburb || addr.village || addr.town || addr.city;
-        if (primaryTitle) {
-          placeName = primaryTitle;
-          nameEl.textContent = placeName;
-        }
-        const parts = [addr.suburb, addr.town || addr.city || addr.village, addr.state, addr.country].filter(Boolean);
-        locality = parts.join(', ') || data.display_name || 'India';
-        locEl.textContent = locality;
-      }
-    } catch (err) {
-      console.warn('Reverse geocoding error:', err);
-    }
-  }
-
-  const hoursInfo = getPlaceHours ? getPlaceHours(placeName) : null;
-  const hoursDisplay = hoursInfo ? hoursInfo.name : '08:00 AM - 06:00 PM';
-  hoursEl.textContent = hoursDisplay;
-
-  currentSelectedPlace = {
-    name: placeName,
-    latitude: lat,
-    longitude: lng,
-    locality,
-    imageUrl: initialPhoto,
-    hoursDisplay
-  };
-}
-
-
-// ==========================================================================
-// GROQ AI ROAD TRIP ENGINE, AUTONOMOUS BREAK RESEARCH & HISTORY MODULE
-// ==========================================================================
-
-const GROQ_CONFIG_KEY = 'tripweave_groq_api_key';
-const GROQ_MODEL_KEY = 'tripweave_groq_model';
-const AI_PLAN_HISTORY_KEY = 'tripweave_ai_plan_history';
-
-let activeGeneratedAIPlan = null;
-let activeViewingHistoryPlan = null;
-
-function getStoredGroqKey() {
-  try {
-    return localStorage.getItem(GROQ_CONFIG_KEY) || '';
-  } catch (e) {
-    return '';
-  }
-}
-
-function getStoredGroqModel() {
-  try {
-    return localStorage.getItem(GROQ_MODEL_KEY) || 'llama-3.3-70b-versatile';
-  } catch (e) {
-    return 'llama-3.3-70b-versatile';
-  }
-}
-
-function updateGroqStatusUI() {
-  const badge = document.getElementById('groq-status-badge');
-  const input = document.getElementById('setting-groq-key-input');
-  const modelSelect = document.getElementById('setting-groq-model-select');
-  const key = getStoredGroqKey();
-  const model = getStoredGroqModel();
-
-  if (input && key) input.value = key;
-  if (modelSelect && model) modelSelect.value = model;
-
-  if (badge) {
-    if (key && key.trim().startsWith('gsk_')) {
-      badge.textContent = 'Configured';
-      badge.className = 'groq-status-pill configured';
-    } else if (key && key.trim().length > 10) {
-      badge.textContent = 'Key Saved';
-      badge.className = 'groq-status-pill configured';
-    } else {
-      badge.textContent = 'No Key Set';
-      badge.className = 'groq-status-pill unconfigured';
-    }
-  }
-}
-
-function saveGroqKeyFromUI() {
-  const input = document.getElementById('setting-groq-key-input');
-  const modelSelect = document.getElementById('setting-groq-model-select');
-  const key = input ? input.value.trim() : '';
-  const model = modelSelect ? modelSelect.value : 'llama-3.3-70b-versatile';
-
-  try {
-    localStorage.setItem(GROQ_CONFIG_KEY, key);
-    localStorage.setItem(GROQ_MODEL_KEY, model);
-  } catch (e) {
-    console.warn('Failed to save Groq key:', e);
-  }
-
-  updateGroqStatusUI();
-  showToast(key ? 'Groq API Key saved successfully' : 'Groq API Key cleared');
-}
-
-// AI Plan History Store
-function getAIPlanHistory() {
-  try {
-    const raw = localStorage.getItem(AI_PLAN_HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function savePlanToHistory(plan) {
-  try {
-    const list = getAIPlanHistory();
-    const item = {
-      ...plan,
-      id: plan.id || 'ai-plan-' + Date.now(),
-      savedAt: new Date().toISOString()
-    };
-    const updated = [item, ...list.filter(p => p.id !== item.id)].slice(0, 30);
-    localStorage.setItem(AI_PLAN_HISTORY_KEY, JSON.stringify(updated));
-    renderAIPlanHistory();
-    return item;
-  } catch (e) {
-    console.warn('Failed to save plan history:', e);
-  }
-}
-
-function deleteHistoryPlan(id) {
-  try {
-    const list = getAIPlanHistory();
-    const updated = list.filter(p => p.id !== id);
-    localStorage.setItem(AI_PLAN_HISTORY_KEY, JSON.stringify(updated));
-    renderAIPlanHistory();
-    showToast('Plan removed from history');
-  } catch (e) {
-    console.warn('Failed to delete plan history:', e);
-  }
-}
-
-function renderAIPlanHistory() {
-  const container = document.getElementById('history-cards-container');
-  const emptyState = document.getElementById('history-empty-state');
-  const countBadge = document.getElementById('history-count-badge');
-  if (!container) return;
-
-  const list = getAIPlanHistory();
-  if (countBadge) countBadge.textContent = list.length;
-
-  if (list.length === 0) {
-    if (emptyState) {
-      emptyState.classList.remove('hidden');
-    }
-    container.innerHTML = '';
-    return;
-  }
-
-  if (emptyState) {
-    emptyState.classList.add('hidden');
-  }
-
-  container.innerHTML = list.map(item => {
-    const dateFormatted = new Date(item.savedAt).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    const stopsCount = (item.stops || []).length;
-    const foodStops = (item.stops || []).filter(s => s.category === 'breakfast' || s.category === 'lunch' || s.category === 'dinner' || s.recommendedFood).length;
-
-    return `
-      <div class="ai-history-card">
-        <div class="ai-history-card-header">
-          <div>
-            <div class="ai-history-card-title">${item.origin || 'Trip'} ➔ ${item.destination || 'Destination'}</div>
-            <div class="ai-history-card-date">Created on ${dateFormatted} • ${item.vehicle || 'Car'}</div>
-          </div>
-          <button class="btn-small" onclick="window.removeAIHistoryPlan('${item.id}')" style="color: var(--error); padding: 4px 8px;" title="Delete">✕</button>
-        </div>
-        <div class="ai-history-card-meta">
-          <span class="chip active" style="font-size: 10px; padding: 2px 8px;">${item.totalDistanceKm || 0} km</span>
-          <span class="chip" style="font-size: 10px; padding: 2px 8px;">${item.totalDrivingHours || 0} hrs</span>
-          <span class="chip" style="font-size: 10px; padding: 2px 8px;">${stopsCount} Stops</span>
-          ${foodStops > 0 ? `<span class="chip" style="font-size: 10px; padding: 2px 8px;">${foodStops} Dining Spots</span>` : ''}
-          <span class="chip" style="font-size: 10px; padding: 2px 8px;">${item.members || 2} Travelers</span>
-        </div>
-        <div style="display: flex; gap: 8px; margin-top: 4px;">
-          <button class="btn-small" onclick="window.viewAIHistoryPlan('${item.id}')" style="flex: 1; padding: 6px 10px; font-size: 11px;">View Stops</button>
-          <button class="btn-primary" onclick="window.loadAIHistoryPlan('${item.id}')" style="flex: 1.5; padding: 6px 12px; font-size: 11px;">Load Itinerary</button>
-        </div>
+        <button class="btn-small ${isActive ? 'secondary' : 'primary'}" onclick="window.switchActiveTrip('${t.id}')">
+          ${isActive ? 'Active' : 'Open'}
+        </button>
       </div>
     `;
   }).join('');
 }
 
-// Global window hooks for onclick
-window.removeAIHistoryPlan = function(id) {
-  deleteHistoryPlan(id);
+window.switchActiveTrip = function(id) {
+  state.activeTripId = id;
+  refreshAppUI();
+  if (window.__switchTab) window.__switchTab('map');
+  showToast('Switched active trip');
 };
 
-window.viewAIHistoryPlan = function(id) {
-  const list = getAIPlanHistory();
-  const plan = list.find(p => p.id === id);
-  if (!plan) {
-    showToast('Itinerary details not found');
-    return;
-  }
-  activeViewingHistoryPlan = plan;
-
-  const modal = document.getElementById('modal-view-history-plan');
-  const title = document.getElementById('history-view-title');
-  const subtitle = document.getElementById('history-view-subtitle');
-  const meta = document.getElementById('history-view-meta');
-  const listEl = document.getElementById('history-view-stops-list');
-
-  const originName = plan.origin || 'Start';
-  const destName = plan.destination || 'Destination';
-
-  if (title) title.textContent = `${originName} ➔ ${destName}`;
-  if (subtitle) subtitle.textContent = `Planned on ${new Date(plan.savedAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
-
-  if (meta) {
-    meta.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span class="chip active" style="font-size: 10.5px; padding: 2px 8px;">${plan.vehicle || 'Vehicle'}</span>
-        <span style="font-size: 12px; font-weight: 700; color: var(--primary);">${plan.totalDistanceKm || 0} km Total</span>
-      </div>
-      <div class="history-detail-stats-row">
-        <span>⏱️ ~${plan.totalDrivingHours || 0} hrs drive</span>
-        <span>⛽ Est. Fuel ₹${plan.estimatedFuelCostInr || 0}</span>
-        <span>👥 ${plan.members || 2} Travelers</span>
-        <span>⚡ ${plan.mileage || 16} km/L</span>
-      </div>
-    `;
-  }
-
-  if (listEl) {
-    const stops = plan.stops || [];
-    if (stops.length === 0) {
-      listEl.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--on-surface-variant); font-size: 12px;">No stops recorded for this itinerary.</div>`;
-    } else {
-      listEl.innerHTML = stops.map((s, idx) => {
-        const mapsLink = s.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + destName)}`;
-        return `
-          <div class="history-detail-stop-card">
-            <div class="history-detail-stop-header">
-              <div>
-                <div class="history-detail-stop-title">${idx + 1}. ${s.name}</div>
-                ${s.category ? `<span class="chip" style="font-size: 9.5px; padding: 1px 6px; margin-top: 3px; display: inline-block; text-transform: uppercase;">${s.category}</span>` : ''}
-              </div>
-              <span class="break-duration-tag">${s.breakEstimateText || (s.durationMinutes ? s.durationMinutes + 'm break' : 'Visit')}</span>
-            </div>
-            ${s.reason ? `<p style="font-size: 11.5px; color: var(--on-surface-variant); margin: 0; line-height: 1.35;">${s.reason}</p>` : ''}
-            ${s.recommendedFood ? `<div style="font-size: 11.5px; color: var(--primary); font-weight: 600;">Recommended: ${s.recommendedFood}</div>` : ''}
-            <div style="margin-top: 4px;">
-              <a href="${mapsLink}" target="_blank" class="restaurant-map-link">View in Google Maps</a>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-  }
-
-  if (modal) {
-    modal.classList.remove('hidden');
-    modal.removeAttribute('hidden');
-  }
+window.removeAIHistoryPlan = function(id) {
+  deleteAIHistoryPlan(id);
+  renderSavedTripsHistory();
+  showToast('Plan removed from history');
 };
 
 window.loadAIHistoryPlan = function(id) {
-  const list = getAIPlanHistory();
-  const plan = list.find(p => p.id === id);
+  const history = getAIHistoryPlans();
+  const plan = history.find(p => p.id === id);
   if (!plan) return;
-  applyAIPlanToActiveTrip(plan);
+
+  const tripId = `trip-${Date.now()}`;
+  const newTrip = {
+    id: tripId,
+    title: plan.title || `${plan.origin} to ${plan.destination}`,
+    origin: plan.origin,
+    destination: plan.destination,
+    departureDate: new Date().toISOString().split('T')[0],
+    departureTimeMinutes: 480,
+    groupSize: plan.members || 4,
+    vehicleMileageKmPerLitre: 16,
+    fuelPricePerLitre: 102.5,
+    totalBudget: plan.totalCost || 25000
+  };
+
+  const newExpenses = buildItemizedExpenses(tripId, {
+    fuelCost: plan.fuelCost || 4200,
+    tollCost: plan.tollCost || 380,
+    stayCost: plan.stayCost || 4800,
+    mealsCost: plan.mealsCost || 2400
+  });
+
+  state.trips = [newTrip, ...state.trips.filter(t => t.id !== tripId)];
+  state.activeTripId = tripId;
+  state.setStops(tripId, plan.stops || []);
+  state.setExpenses(tripId, newExpenses);
+
+  refreshAppUI();
+
+  if (window.__switchTab) window.__switchTab('map');
+  showToast(`Loaded ${newTrip.title}!`);
 };
 
-// Apply AI Plan into Active Trip State
-function applyAIPlanToActiveTrip(plan) {
-  if (!plan || !plan.stops || plan.stops.length === 0) {
-    showToast('Cannot apply empty itinerary');
-    return;
+// --------------------------------------------------------------------------
+// Bootstrap Initialization on DOM Ready
+// --------------------------------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Theme initialization
+  const savedTheme = localStorage.getItem('tripweave_theme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('theme-dark');
+    document.body.classList.remove('theme-light');
   }
 
-  const trip = getActiveTrip();
-  if (trip) {
-    trip.title = `${plan.origin} to ${plan.destination}`;
-    trip.destinationName = plan.destination;
-  }
-
-  const convertedStops = plan.stops.map((s, idx) => {
-    return {
-      id: 'stop-' + Date.now() + '-' + idx + '-' + Math.random().toString(36).substr(2, 4),
-      name: s.name,
-      latitude: s.latitude,
-      longitude: s.longitude,
-      durationMinutes: s.durationMinutes || 30,
-      bufferMinutes: 15,
-      isOvernight: !!s.isOvernight,
-      category: s.category || 'stop',
-      reason: s.reason || '',
-      recommendedFood: s.recommendedFood || '',
-      mapsUrl: s.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name)}`,
-      breakEstimate: s.breakEstimateText || `${s.durationMinutes || 30}m break`
-    };
+  // 0. Setup Authentication Gate & User Profile Sync
+  setupAuthUI({
+    onAuthenticated: (user) => {
+      refreshAppUI();
+    }
   });
 
-  state.stopsMap[state.activeTripId] = convertedStops;
+  // 1. Initialize Map
+  initMap('leaflet-map');
+  setupLocationListeners((msg) => showToast(msg));
 
-  // AI Automatic Travel Expense Computation based on From -> To Corridor
-  const distKm = plan.totalDistanceKm || 350;
-  const mileage = plan.mileage || 16.0;
-  const members = plan.members || 2;
-  const vehicle = plan.vehicle || 'Car';
-  const isEV = /\bev\b|electric|nexon\s*ev|zs\s*ev|ioniq|byd|tesla/i.test((vehicle).toLowerCase());
-
-  const fuelCost = isEV 
-    ? Math.round((distKm / 6.0) * 8.5)
-    : Math.round((distKm / Math.max(8, mileage)) * 96);
-  const tollCost = Math.round(distKm * 2.15);
-  const foodCost = Math.max(600, Math.round(members * Math.max(2, convertedStops.length - 2) * 260));
-  const entryFee = Math.round(members * 120);
-  const reserveCost = Math.round((fuelCost + tollCost + foodCost) * 0.10);
-
-  state.expensesMap[state.activeTripId] = [
-    {
-      id: 'ai-exp-' + Date.now() + '-1',
-      tripId: state.activeTripId,
-      title: isEV ? `EV Fast Charging (${vehicle})` : `Highway Fuel (${Math.round(distKm / mileage)} L)`,
-      category: 'fuel',
-      scenarioValues: { low: Math.round(fuelCost * 0.9), typical: fuelCost, high: Math.round(fuelCost * 1.15) },
-      provenanceType: 'calculated',
-      confidenceText: `Calculated for ${distKm} km @ ${mileage} km/L`
-    },
-    {
-      id: 'ai-exp-' + Date.now() + '-2',
-      tripId: state.activeTripId,
-      title: 'FASTag Highway Toll Plazas',
-      category: 'toll',
-      scenarioValues: { low: Math.round(tollCost * 0.95), typical: tollCost, high: Math.round(tollCost * 1.1) },
-      provenanceType: 'official',
-      confidenceText: 'NHAI FASTag highway corridor schedule'
-    },
-    {
-      id: 'ai-exp-' + Date.now() + '-3',
-      tripId: state.activeTripId,
-      title: `Highway Dining & Refreshments (${members} Travelers)`,
-      category: 'food',
-      scenarioValues: { low: Math.round(foodCost * 0.85), typical: foodCost, high: Math.round(foodCost * 1.25) },
-      provenanceType: 'estimated',
-      confidenceText: `AI estimated across ${convertedStops.length} highway food stops`
-    },
-    {
-      id: 'ai-exp-' + Date.now() + '-4',
-      tripId: state.activeTripId,
-      title: 'Sightseeing & Landmark Entry Fees',
-      category: 'activity',
-      scenarioValues: { low: Math.round(entryFee * 0.8), typical: entryFee, high: Math.round(entryFee * 1.3) },
-      provenanceType: 'estimated',
-      confidenceText: 'Monument & heritage ticketing'
-    },
-    {
-      id: 'ai-exp-' + Date.now() + '-5',
-      tripId: state.activeTripId,
-      title: 'Emergency Highway Contingency (10%)',
-      category: 'other',
-      scenarioValues: { low: Math.round(reserveCost * 0.8), typical: reserveCost, high: Math.round(reserveCost * 1.2) },
-      provenanceType: 'calculated',
-      confidenceText: 'Puncture repair, extra fuel & emergency buffer'
+  // 2. Setup Floating Navigation Bar
+  const { switchTab } = setupNavigationUI({
+    onTabChanged: (tab) => {
+      if (tab === 'map') resizeMap();
     }
-  ];
+  });
+  window.__switchTab = switchTab;
 
-  if (trip) {
-    trip.totalBudget = fuelCost + tollCost + foodCost + entryFee + reserveCost;
-  }
-
-  Storage.save(state);
-  refreshApp();
-
-  // Close modals
-  const planModal = document.getElementById('modal-ai-planner');
-  if (planModal) planModal.classList.add('hidden');
-  const histModal = document.getElementById('modal-view-history-plan');
-  if (histModal) histModal.classList.add('hidden');
-
-  switchTab('itinerary');
-  showToast(`Applied ${convertedStops.length} AI research stops to Itinerary!`);
-}
-
-// Research-based highway break & corridor calculation engine
-async function generateCorridorResearchPlan(params) {
-  const { origin, destination, vehicle, mileage, members, departureTime, preferences } = params;
-
-  // Well known highway coordinates in India
-  const KNOWN_COORDS = {
-    'hyderabad': { lat: 17.3850, lng: 78.4867 },
-    'hampi': { lat: 15.3350, lng: 76.4600 },
-    'bangalore': { lat: 12.9716, lng: 77.5946 },
-    'bengaluru': { lat: 12.9716, lng: 77.5946 },
-    'goa': { lat: 15.2993, lng: 74.1240 },
-    'mumbai': { lat: 19.0760, lng: 72.8777 },
-    'pune': { lat: 18.5204, lng: 73.8567 },
-    'chennai': { lat: 13.0827, lng: 80.2707 },
-    'delhi': { lat: 28.6139, lng: 77.2090 },
-    'jaipur': { lat: 26.9124, lng: 75.7873 },
-    'agra': { lat: 27.1767, lng: 78.0081 },
-    'mysore': { lat: 12.2958, lng: 76.6394 },
-    'coorg': { lat: 12.3375, lng: 75.8069 },
-    'ooty': { lat: 11.4102, lng: 76.6950 },
-    'tirupati': { lat: 13.6288, lng: 79.4192 },
-    'vijayawada': { lat: 16.5062, lng: 80.6480 },
-    'visakhapatnam': { lat: 17.6868, lng: 83.2185 },
-    'vizag': { lat: 17.6868, lng: 83.2185 }
-  };
-
-  const getCoord = async (placeName) => {
-    const key = placeName.trim().toLowerCase();
-    for (const [k, v] of Object.entries(KNOWN_COORDS)) {
-      if (key.includes(k)) return v;
+  // 3. Setup Add Stop Modal
+  addStopModalController = setupAddStopModal({
+    onStopAdded: (newStop) => {
+      const tripId = state.activeTripId || 'default-trip';
+      const stops = state.getActiveStops();
+      newStop.stopOrder = stops.length;
+      stops.push(newStop);
+      state.setStops(tripId, stops);
+      refreshAppUI();
     }
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&accept-language=en&q=${encodeURIComponent(placeName)}&limit=1`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data[0]) {
-          return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        }
-      }
-    } catch (e) {
-      console.warn('Geocoding error:', e);
-    }
-    return { lat: 17.3850 + (Math.random() - 0.5) * 2, lng: 78.4867 + (Math.random() - 0.5) * 2 };
-  };
-
-  const originCoord = await getCoord(origin);
-  const destCoord = await getCoord(destination);
-
-  const directKm = calculateHaversineKm(originCoord.lat, originCoord.lng, destCoord.lat, destCoord.lng);
-  const roadDistanceKm = Math.max(30, Math.round(directKm * 1.25));
-  const avgSpeed = 62; // km/h realistic highway cruising with tolls
-  const drivingHours = (roadDistanceKm / avgSpeed).toFixed(1);
-
-  // Parse departure time minutes
-  const [depH, depM] = departureTime.split(':').map(Number);
-  const departureMinutes = (depH || 7) * 60 + (depM || 0);
-
-  // Advanced Vehicle Type Analysis based on user's manual input
-  const vLower = (vehicle || '').toLowerCase();
-  const isEV = /\bev\b|electric|nexon\s*ev|zs\s*ev|ioniq|tiago\s*ev|curvv\s*ev|byd|tesla|windsor/i.test(vLower);
-  const isMotorcycle = /bike|motorcycle|scooter|bullet|himalayan|ktm|royalenfield|royal\s*enfield|interceptor|duke|meteor|classic\s*350|pulsar|yamaha/i.test(vLower);
-  const isDiesel = /diesel|suv|harrier|safari|scorpio|fortuner|innova|thar|xuv/i.test(vLower);
-
-  const fuelLiters = (roadDistanceKm / Math.max(8, mileage)).toFixed(1);
-  const fuelCost = isEV 
-    ? Math.round((roadDistanceKm / 6.0) * 8.5) // ~₹8.5 per unit on fast chargers
-    : isDiesel 
-      ? Math.round(fuelLiters * 94) // Diesel avg ₹94/L
-      : Math.round(fuelLiters * 103); // Petrol avg ₹103/L
-
-  // Autonomous Research Break Generator
-  // Research rules:
-  // 1. 20m quick bio break every 2.5 - 3 hours (~150-180 km)
-  // 2. 45-50m breakfast if driving through 8:00 AM - 9:30 AM
-  // 3. 50-60m lunch break if driving through 12:30 PM - 2:30 PM
-  // 4. 45m dinner if driving past 7:30 PM
-  // 5. Fuel/EV recharge break based on mileage
-
-  const stops = [];
-
-  // Stop 0: Origin
-  stops.push({
-    name: `Start: ${origin}`,
-    latitude: originCoord.lat,
-    longitude: originCoord.lng,
-    durationMinutes: 0,
-    breakEstimateText: 'Departure Point',
-    category: 'start',
-    reason: `Departing at ${formatMinutes(departureMinutes)} with ${members} travelers in ${vehicle}`,
-    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(origin)}`
   });
 
-  const numIntermediateStops = roadDistanceKm < 120 ? 1 : roadDistanceKm < 280 ? 2 : roadDistanceKm < 500 ? 3 : 4;
+  // Helper: Cancel Active Route / Destination and return to initial state
+  function cancelActiveRoute() {
+    const tripId = state.activeTripId || 'default-trip';
 
-  for (let i = 1; i <= numIntermediateStops; i++) {
-    const fraction = i / (numIntermediateStops + 1);
-    const stopKm = Math.round(roadDistanceKm * fraction);
-    const stopLat = originCoord.lat + (destCoord.lat - originCoord.lat) * fraction + (Math.random() - 0.5) * 0.05;
-    const stopLng = originCoord.lng + (destCoord.lng - originCoord.lng) * fraction + (Math.random() - 0.5) * 0.05;
-
-    const stopMinutes = departureMinutes + Math.round((stopKm / avgSpeed) * 60);
-    const timeNorm = ((stopMinutes % 1440) + 1440) % 1440;
-
-    let category = 'break';
-    let duration = 25;
-    let breakReason = '25m Highway Bio & Refreshment Break';
-    let spotName = `Highway Plaza & Rest Stop (${stopKm} km)`;
-    let dining = 'Filter coffee, fresh juices, clean highway restrooms';
-
-    if (timeNorm >= 480 && timeNorm <= 600) {
-      category = 'breakfast';
-      duration = 45;
-      breakReason = '45m Meal Break (Research: 8:00-10:00 AM Breakfast Window)';
-      spotName = `Grand Highway Tiffins & Dhaba (${stopKm} km)`;
-      dining = 'South Indian tiffins, dosas, parathas & tea';
-    } else if (timeNorm >= 750 && timeNorm <= 900) {
-      category = 'lunch';
-      duration = 55;
-      breakReason = '55m Meal Break (Research: 12:30-2:30 PM Lunch Window)';
-      spotName = `Highway Grand Family Restaurant & Dhaba (${stopKm} km)`;
-      dining = 'Authentic highway thali, tandoori curries & hygienic amenities';
-    } else if (timeNorm >= 1140 && timeNorm <= 1260) {
-      category = 'dinner';
-      duration = 50;
-      breakReason = '50m Meal Break (Research: 7:00-9:00 PM Dinner Window)';
-      spotName = `Heritage Dhaba & Highway Grill (${stopKm} km)`;
-      dining = 'Family dining, rich curries, roti baskets & beverages';
-    } else if (isEV && i === 2) {
-      category = 'fuel';
-      duration = 45;
-      breakReason = '45m EV DC Fast Charging & Coffee (Research: 220km Range Buffer)';
-      spotName = `Tata Power 60kW DC Fast Charger & Café (${stopKm} km)`;
-      dining = 'Express café, rest area & 15-80% vehicle top-up';
-    } else {
-      category = 'break';
-      duration = 25;
-      breakReason = '25m Driver Fatigue Relief (Research: 2.5h Continuous Drive)';
-      spotName = `Expressway Oasis & Fuel Station (${stopKm} km)`;
-      dining = 'Fuel refilling, cold beverages, tea & restrooms';
+    // 1. Exit turn-by-turn navigation if active
+    if (directionsController && typeof directionsController.exitTurnByTurn === 'function') {
+      directionsController.exitTurnByTurn();
     }
 
-    stops.push({
-      name: spotName,
-      latitude: parseFloat(stopLat.toFixed(4)),
-      longitude: parseFloat(stopLng.toFixed(4)),
-      durationMinutes: duration,
-      breakEstimateText: breakReason,
-      category,
-      reason: `Located at corridor km ${stopKm}. Matches travel research for fatigue prevention.`,
-      recommendedFood: dining,
-      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spotName + ' ' + destination)}`
-    });
-  }
+    // 2. Clear active route and corridor stops
+    state.activeRoute = null;
+    state.corridorAmenities = [];
 
-  // Final Stop: Destination
-  stops.push({
-    name: `Destination: ${destination}`,
-    latitude: destCoord.lat,
-    longitude: destCoord.lng,
-    durationMinutes: 120,
-    breakEstimateText: 'Final Destination',
-    category: 'destination',
-    reason: `Trip destination reached after ${roadDistanceKm} km corridor.`,
-    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`
+    // 3. Clear route polyline on map
+    renderRoutePolyline(null);
+
+    // 4. Clear stops & reset trip destination/origin
+    state.setStops(tripId, []);
+    const trip = state.getActiveTrip();
+    if (trip) {
+      trip.title = 'My Road Trip';
+      trip.origin = '';
+      trip.destination = '';
+    }
+    state.saveToStorage();
+
+    // 5. Hide corridor tray
+    const corridorTray = document.getElementById('corridor-amenities-tray');
+    if (corridorTray) corridorTray.classList.add('hidden');
+
+    // 6. Close directions box and clear inputs
+    if (directionsController && typeof directionsController.closeDirections === 'function') {
+      directionsController.closeDirections();
+    }
+    const origInput = document.getElementById('dir-input-origin');
+    const destInput = document.getElementById('dir-input-dest');
+    if (origInput) origInput.value = '';
+    if (destInput) destInput.value = '';
+
+    // 7. Refresh app UI (switches sheet back to 'Where are you traveling?')
+    refreshAppUI();
+
+    showToast('Route cancelled');
+  }
+  window.cancelActiveRoute = cancelActiveRoute;
+
+  // 4. Setup Floating Sheet & Enlarge/Enclose Controls
+  sheetController = setupSheetUI({
+    onOpenFullItinerary: () => switchTab('itinerary'),
+    onStartNavigation: () => {
+      if (directionsController) directionsController.startTurnByTurn();
+    },
+    onAddStop: () => {
+      if (addStopModalController) addStopModalController.openModal();
+    },
+    onCancelRoute: () => {
+      cancelActiveRoute();
+    }
   });
 
-  return {
-    origin,
-    destination,
-    vehicle,
-    mileage,
-    members,
-    departureTime,
-    preferences,
-    totalDistanceKm: roadDistanceKm,
-    totalDrivingHours: parseFloat(drivingHours),
-    estimatedFuelCostInr: fuelCost,
-    stops
-  };
-}
-
-// Call Groq API or Fallback to Highway Research Engine
-async function planTripWithGroq(params) {
-  const groqKey = getStoredGroqKey();
-  const groqModel = getStoredGroqModel();
-
-  if (!groqKey || groqKey.trim().length < 10) {
-    // Graceful fallback to research engine
-    console.log('No Groq key configured, executing local highway research engine...');
-    return await generateCorridorResearchPlan(params);
-  }
-
-  const systemPrompt = `You are an expert highway road trip planning engine for travelers.
-You autonomously calculate optimal break times based on scientific long-distance travel research:
-- Analyze the user's manual vehicle model (e.g. Electric EV, Touring Motorcycle, Diesel SUV, Petrol Sedan) and adjust the plan accordingly:
-  * For Electric Vehicles (EVs): schedule 35-45m DC fast-charging stops every 200-250 km at real highway charging hubs.
-  * For Motorcycles / Bikes: schedule 20m hydration and rider saddle fatigue breaks every 1.5 - 2 hours (~100-120 km) at biker-friendly highway cafes.
-  * For Cars / SUVs: schedule 20-25m bio/tea breaks every 2.5-3 hours, and 45-60m meal stops corresponding to normal meal times (Breakfast 8:00-9:30 AM, Lunch 12:30-2:30 PM, Dinner 7:30-9:30 PM).
-- Do NOT ask the user how long they want to wait; calculate and estimate it scientifically.
-- Provide real, famous highway restaurants and dhabas along the highway corridor with specific food recommendations and direct Google Maps query URLs.
-
-Output MUST be strictly valid JSON with this exact schema:
-{
-  "totalDistanceKm": 380,
-  "totalDrivingHours": 6.5,
-  "estimatedFuelCostInr": 2400,
-  "stops": [
-    {
-      "name": "Grand Highway Dhaba, Jadcherla",
-      "category": "breakfast",
-      "durationMinutes": 45,
-      "breakEstimateText": "45m Meal Break (Research: 8:30 AM Breakfast Window)",
-      "latitude": 16.76,
-      "longitude": 78.14,
-      "reason": "Authentic highway tiffins, hygienic restrooms & fuel pump nearby",
-      "recommendedFood": "Crispy Dosa, Masala Tea",
-      "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Grand+Highway+Dhaba+Jadcherla"
-    }
-  ]
-}`;
-
-  const userPrompt = `Plan a complete highway road trip itinerary:
-- Starting Point: ${params.origin}
-- Destination: ${params.destination}
-- Vehicle: ${params.vehicle} (${params.mileage} km/L)
-- Travelers: ${params.members}
-- Departure Time: ${params.departureTime}
-- Stop & Dining Preferences: ${params.preferences || 'Authentic highway restaurants, scenic spots'}
-
-Return only valid JSON.`;
-
-  try {
-  // Dynamic Model Cascade: Automatically fail over during peak traffic hours
-  const MODELS_CASCADE = [
-    groqModel || 'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'mixtral-8x7b-32768'
-  ];
-
-  let parsed = null;
-
-  for (const modelCandidate of MODELS_CASCADE) {
-    try {
-      console.log(`[Groq AI] Querying model: ${modelCandidate}...`);
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${groqKey}`
-        },
-        body: JSON.stringify({
-          model: modelCandidate,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.3,
-          response_format: { type: 'json_object' }
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const contentStr = data.choices?.[0]?.message?.content;
-        if (contentStr) {
-          parsed = JSON.parse(contentStr);
-          console.log(`[Groq AI] Successfully received response from ${modelCandidate}`);
-          break; // Success! Break out of cascade
-        }
+  // 5. Setup Directions Drawer & Highway Corridor Tray
+  directionsController = setupDirectionsUI({
+    onRouteComputed: (origName, destName, origCoords, destCoords, route, amenities) => {
+      const tripId = state.activeTripId || 'default-trip';
+      let trip = state.getActiveTrip();
+      if (!trip) {
+        trip = {
+          id: tripId,
+          title: `${origName} to ${destName}`,
+          origin: origName,
+          destination: destName,
+          departureDate: new Date().toISOString().split('T')[0],
+          departureTimeMinutes: 480,
+          groupSize: 4,
+          vehicleMileageKmPerLitre: 16,
+          fuelPricePerLitre: 102.5,
+          totalBudget: 25000
+        };
+        state.trips = [trip, ...state.trips.filter(t => t.id !== tripId)];
+        state.activeTripId = tripId;
       } else {
-        const errText = await res.text();
-        console.warn(`[Groq AI] Model ${modelCandidate} returned HTTP ${res.status}: ${errText}. Failing over to next model...`);
+        trip.title = `${origName} to ${destName}`;
+        trip.origin = origName;
+        trip.destination = destName;
       }
-    } catch (modelErr) {
-      console.warn(`[Groq AI] Exception on ${modelCandidate}: ${modelErr}. Trying next candidate...`);
-    }
-  }
 
-  if (!parsed) {
-    console.log('[Groq AI] All remote models exhausted or peak traffic reached. Executing local research corridor engine...');
-    return await generateCorridorResearchPlan(params);
-  }
-
-    // Ensure all stops have mapsUrl
-    if (parsed.stops && Array.isArray(parsed.stops)) {
-      parsed.stops = parsed.stops.map(s => {
-        if (!s.mapsUrl) {
-          s.mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.name + ' ' + params.destination)}`;
+      const stops = [
+        {
+          id: `stop-${Date.now()}-origin`,
+          name: origName,
+          latitude: origCoords[0],
+          longitude: origCoords[1],
+          durationMinutes: 0,
+          plannedDurationMinutes: 0,
+          stopOrder: 0
+        },
+        {
+          id: `stop-${Date.now()}-dest`,
+          name: destName,
+          latitude: destCoords[0],
+          longitude: destCoords[1],
+          durationMinutes: route ? route.durationMinutes : 220,
+          plannedDurationMinutes: route ? route.durationMinutes : 220,
+          roadDistanceKm: route ? Math.round(route.distanceKm * 10) / 10 : 218,
+          stopOrder: 1
         }
-        return s;
-      });
-    }
+      ];
 
-    return {
-      origin: params.origin,
-      destination: params.destination,
-      vehicle: params.vehicle,
-      mileage: params.mileage,
-      members: params.members,
-      departureTime: params.departureTime,
-      preferences: params.preferences,
-      totalDistanceKm: parsed.totalDistanceKm || 350,
-      totalDrivingHours: parsed.totalDrivingHours || 6.0,
-      estimatedFuelCostInr: parsed.estimatedFuelCostInr || 2200,
-      stops: parsed.stops || []
-    };
-  } catch (err) {
-    console.warn('Groq call exception:', err);
-    return await generateCorridorResearchPlan(params);
-  }
-}
+      state.setStops(tripId, stops);
+      state.saveToStorage();
+      refreshAppUI();
+    },
+    onAddAmenityStop: (amenity) => {
+      const tripId = state.activeTripId || 'default-trip';
+      const stops = state.getActiveStops();
+      const insertIdx = Math.max(1, stops.length - 1);
 
-// Setup Event Listeners for Groq & AI Planner
-function setupGroqAndAIPlannerEvents() {
-  updateGroqStatusUI();
+      const newStop = {
+        id: `stop-amenity-${Date.now()}`,
+        name: amenity.name,
+        latitude: amenity.latitude,
+        longitude: amenity.longitude,
+        durationMinutes: 45,
+        plannedDurationMinutes: 45,
+        stopOrder: insertIdx,
+        category: amenity.category,
+        mapsUrl: amenity.mapsUrl
+      };
 
-  // Segmented Tabs in More Screen
-  const btnTabHistory = document.getElementById('btn-more-tab-history');
-  const btnTabSettings = document.getElementById('btn-more-tab-settings');
-  const sectionHistory = document.getElementById('more-section-history');
-  const sectionSettings = document.getElementById('more-section-settings');
+      stops.splice(insertIdx, 0, newStop);
+      state.setStops(tripId, stops);
+      refreshAppUI();
+      showToast(`Added ${amenity.name} to itinerary!`);
+    },
+    onToast: (msg) => showToast(msg)
+  });
 
-  const moreTitle = document.getElementById('more-title');
-  const moreSubtitle = document.getElementById('more-subtitle');
-
-  if (btnTabHistory && btnTabSettings && sectionHistory && sectionSettings) {
-    btnTabHistory.onclick = () => {
-      btnTabHistory.classList.add('active');
-      btnTabSettings.classList.remove('active');
-      sectionHistory.classList.remove('hidden');
-      sectionSettings.classList.add('hidden');
-      if (moreTitle) moreTitle.textContent = 'AI Plan History';
-      if (moreSubtitle) moreSubtitle.textContent = 'Saved AI itineraries, routes & stops';
-      renderAIPlanHistory();
-    };
-
-    btnTabSettings.onclick = () => {
-      btnTabSettings.classList.add('active');
-      btnTabHistory.classList.remove('active');
-      sectionSettings.classList.remove('hidden');
-      sectionHistory.classList.add('hidden');
-      if (moreTitle) moreTitle.textContent = 'Settings & App';
-      if (moreSubtitle) moreSubtitle.textContent = 'Groq AI, vehicle profile & preferences';
+  // Quick Plan buttons in Empty Card Banner
+  const btnQuickRoute = document.getElementById('btn-quick-plan-route');
+  if (btnQuickRoute) {
+    btnQuickRoute.onclick = () => {
+      if (directionsController) directionsController.openDirections();
     };
   }
 
-  // Save Groq Key Button
-  const btnSaveKey = document.getElementById('btn-save-groq-key');
-  if (btnSaveKey) {
-    btnSaveKey.onclick = saveGroqKeyFromUI;
+  const btnQuickAI = document.getElementById('btn-quick-plan-ai');
+  if (btnQuickAI) {
+    btnQuickAI.onclick = () => switchTab('itinerary');
   }
 
-    // Toggle Advanced Custom Options in AI Planner
-  const btnToggleOpts = document.getElementById('btn-toggle-ai-custom-opts');
-  const customFields = document.getElementById('ai-planner-custom-fields');
-  const chevronOpts = document.getElementById('chevron-ai-custom-opts');
+  // 6. Setup Timeline UI & AI Assistant
+  timelineController = setupTimelineUI({
+    onStopDeleted: (stopId) => {
+      const tripId = state.activeTripId || 'default-trip';
+      state.removeStop(tripId, stopId);
+      refreshAppUI();
+      showToast('Stop removed');
+    },
+    onPlanGenerated: (plan) => {
+      window.loadAIHistoryPlan(plan.id);
+    },
+    onToast: (msg) => showToast(msg)
+  });
 
-  if (btnToggleOpts && customFields) {
-    btnToggleOpts.onclick = () => {
-      const isHidden = customFields.classList.toggle('hidden');
-      if (chevronOpts) {
-        chevronOpts.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+  // Add stop button in Itinerary tab header
+  const btnAddItin = document.getElementById('add-stop-itinerary-btn');
+  if (btnAddItin) {
+    btnAddItin.onclick = () => {
+      if (addStopModalController) addStopModalController.openModal();
+    };
+  }
+
+  // 7. Setup Budget UI
+  budgetController = setupBudgetUI({
+    onScenarioChanged: () => refreshAppUI()
+  });
+
+  // 8. Setup Share Modal
+  shareModalController = setupShareModal(computeActivePlan);
+
+  const btnShareItin = document.getElementById('btn-share-itinerary');
+  if (btnShareItin) {
+    btnShareItin.onclick = () => {
+      if (shareModalController) shareModalController.openModal();
+    };
+  }
+
+  // 9. Setup Map Layer Selector FAB
+  const btnLayer = document.getElementById('btn-layer-selector');
+  if (btnLayer) {
+    let currentLayer = 'roadmap';
+    btnLayer.onclick = () => {
+      if (currentLayer === 'roadmap') currentLayer = 'satellite';
+      else if (currentLayer === 'satellite') currentLayer = 'terrain';
+      else currentLayer = 'roadmap';
+      switchMapLayer(currentLayer);
+      showToast(`Switched to Google Maps ${currentLayer.charAt(0).toUpperCase() + currentLayer.slice(1)}`);
+    };
+  }
+
+  // 10. Setup Trips Screen (Create New Trip)
+  const btnCreateTrip = document.getElementById('btn-create-new-trip');
+  if (btnCreateTrip) {
+    btnCreateTrip.onclick = () => {
+      const tripName = window.prompt('Enter new trip name or destination (e.g. Western Ghats Monsoon Drive):', 'South India Coastal Tour');
+      if (tripName && tripName.trim()) {
+        const newId = `trip-${Date.now()}`;
+        const freshTrip = {
+          id: newId,
+          title: tripName.trim(),
+          origin: 'Starting City',
+          destination: tripName.trim(),
+          departureDate: new Date().toISOString().split('T')[0],
+          departureTimeMinutes: 480,
+          groupSize: 4,
+          vehicleMileageKmPerLitre: 16,
+          fuelPricePerLitre: 102.5,
+          totalBudget: 25000
+        };
+        state.trips = [freshTrip, ...state.trips];
+        state.activeTripId = newId;
+        state.setStops(newId, []);
+        refreshAppUI();
+        switchTab('map');
+        showToast(`Created new trip: ${freshTrip.title}`);
       }
     };
   }
 
-  // Open AI Planner Triggers
-  const btnOpenHero = document.getElementById('btn-open-ai-planner');
+  // 11. Setup More Screen (Segmented Tabs, Groq Key, Travel Profile, Theme)
+  const btnMoreHistory = document.getElementById('btn-more-tab-history');
+  const btnMoreSettings = document.getElementById('btn-more-tab-settings');
+  const secMoreHistory = document.getElementById('more-section-history');
+  const secMoreSettings = document.getElementById('more-section-settings');
+
+  if (btnMoreHistory && btnMoreSettings) {
+    btnMoreHistory.onclick = () => {
+      btnMoreHistory.classList.add('active');
+      btnMoreSettings.classList.remove('active');
+      if (secMoreHistory) secMoreHistory.classList.remove('hidden');
+      if (secMoreSettings) secMoreSettings.classList.add('hidden');
+    };
+    btnMoreSettings.onclick = () => {
+      btnMoreSettings.classList.add('active');
+      btnMoreHistory.classList.remove('active');
+      if (secMoreSettings) secMoreSettings.classList.remove('hidden');
+      if (secMoreHistory) secMoreHistory.classList.add('hidden');
+    };
+  }
+
   const btnHistoryNew = document.getElementById('btn-history-plan-new');
-  const modalAI = document.getElementById('modal-ai-planner');
-  const modalAIClose = document.getElementById('modal-ai-planner-close-btn');
-  const btnAIBack = document.getElementById('btn-ai-planner-back');
+  if (btnHistoryNew) {
+    btnHistoryNew.onclick = () => switchTab('itinerary');
+  }
 
-  const openPlanner = () => {
-    if (modalAI) modalAI.classList.remove('hidden');
-    // Reset view states
-    const formCont = document.getElementById('ai-planner-form-container');
-    const loadCont = document.getElementById('ai-planner-loading-container');
-    const resCont = document.getElementById('ai-planner-result-container');
-    const applyBtn = document.getElementById('btn-apply-ai-itinerary');
-    const customFields = document.getElementById('ai-planner-custom-fields');
-    const chevronOpts = document.getElementById('chevron-ai-custom-opts');
-
-    if (formCont) formCont.classList.remove('hidden');
-    if (loadCont) loadCont.classList.add('hidden');
-    if (resCont) resCont.classList.add('hidden');
-    if (applyBtn) applyBtn.classList.add('hidden');
-    // Keep optional travel preferences collapsed by default
-    if (customFields) customFields.classList.add('hidden');
-    if (chevronOpts) chevronOpts.style.transform = 'rotate(0deg)';
-
-    // Synchronize defaults from Settings profile if available
-    const settingVehicle = document.getElementById('setting-vehicle-input') || document.getElementById('setting-vehicle-select');
-    const settingMileage = document.getElementById('setting-mileage-input');
-    const settingTravelers = document.getElementById('setting-travelers-input');
-    const aiVehicle = document.getElementById('ai-input-vehicle');
-    const aiMileage = document.getElementById('ai-input-mileage');
-    const aiTravelers = document.getElementById('ai-input-members');
-
-    if (settingVehicle && aiVehicle) {
-      aiVehicle.value = settingVehicle.value || 'Hyundai Creta Diesel';
+  const btnSaveGroq = document.getElementById('btn-save-groq-key');
+  const inputGroq = document.getElementById('setting-groq-key-input');
+  const badgeGroq = document.getElementById('groq-status-badge');
+  if (inputGroq) {
+    inputGroq.value = localStorage.getItem('tripweave_groq_api_key') || '';
+    if (badgeGroq && inputGroq.value) {
+      badgeGroq.textContent = 'Configured';
+      badgeGroq.classList.remove('unconfigured');
+      badgeGroq.classList.add('configured');
     }
-    if (settingMileage && aiMileage) aiMileage.value = settingMileage.value;
-    if (settingTravelers && aiTravelers) aiTravelers.value = settingTravelers.value;
-  };
-
-  const closePlanner = () => {
-    if (modalAI) modalAI.classList.add('hidden');
-  };
-
-  if (btnOpenHero) btnOpenHero.onclick = openPlanner;
-  if (btnHistoryNew) btnHistoryNew.onclick = openPlanner;
-  if (modalAIClose) modalAIClose.onclick = closePlanner;
-  if (btnAIBack) btnAIBack.onclick = closePlanner;
-
-  // Run AI Plan Button
-  const btnRunPlan = document.getElementById('btn-run-ai-plan');
-  if (btnRunPlan) {
-    btnRunPlan.onclick = async () => {
-      const originInput = document.getElementById('ai-input-origin');
-      const destInput = document.getElementById('ai-input-destination');
-      const vehicleInput = document.getElementById('ai-input-vehicle');
-      const mileageInput = document.getElementById('ai-input-mileage');
-      const membersInput = document.getElementById('ai-input-members');
-      const depInput = document.getElementById('ai-input-departure');
-      const prefInput = document.getElementById('ai-input-preferences');
-
-      const origin = originInput ? originInput.value.trim() : 'Hyderabad';
-      const destination = destInput ? destInput.value.trim() : 'Hampi';
-      const vehicle = vehicleInput ? vehicleInput.value : 'Diesel SUV';
-      const mileage = mileageInput ? parseFloat(mileageInput.value) || 16.0 : 16.0;
-      const members = membersInput ? parseInt(membersInput.value, 10) || 4 : 4;
-      const departureTime = depInput ? depInput.value : '06:30';
-      const preferences = prefInput ? prefInput.value.trim() : '';
-
-      if (!origin || !destination) {
-        showToast('Please enter both starting point and destination');
-        return;
+  }
+  if (btnSaveGroq && inputGroq) {
+    btnSaveGroq.onclick = () => {
+      const val = inputGroq.value.trim();
+      localStorage.setItem('tripweave_groq_api_key', val);
+      if (badgeGroq) {
+        badgeGroq.textContent = val ? 'Configured' : 'No Key Set';
+        badgeGroq.classList.toggle('configured', Boolean(val));
+        badgeGroq.classList.toggle('unconfigured', !val);
       }
+      showToast(val ? 'Groq AI key saved!' : 'Groq key cleared');
+    };
+  }
 
-      const formCont = document.getElementById('ai-planner-form-container');
-      const loadCont = document.getElementById('ai-planner-loading-container');
-      const resCont = document.getElementById('ai-planner-result-container');
-      const applyBtn = document.getElementById('btn-apply-ai-itinerary');
-      const loadStepText = document.getElementById('ai-loading-step-text');
+  // Vehicle Details (Integrated in Itinerary interface)
+  const inMileage = document.getElementById('setting-mileage-input');
+  const inFuel = document.getElementById('setting-fuel-price-input');
+  const inVehicle = document.getElementById('setting-vehicle-input');
 
-      if (formCont) formCont.classList.add('hidden');
-      if (loadCont) loadCont.classList.remove('hidden');
-      if (resCont) resCont.classList.add('hidden');
-      if (applyBtn) applyBtn.classList.add('hidden');
+  const curTrip = state.getActiveTrip();
+  if (curTrip) {
+    if (inMileage && curTrip.vehicleMileageKmPerLitre) inMileage.value = curTrip.vehicleMileageKmPerLitre;
+    if (inFuel && curTrip.fuelPricePerLitre) inFuel.value = curTrip.fuelPricePerLitre;
+    if (inVehicle && curTrip.vehicleModel) inVehicle.value = curTrip.vehicleModel;
+  }
 
-      if (loadStepText) loadStepText.textContent = `Synthesizing ${origin} to ${destination} corridor with scientific research break estimates...`;
-
-      try {
-        const plan = await planTripWithGroq({
-          origin,
-          destination,
-          vehicle,
-          mileage,
-          members,
-          departureTime,
-          preferences
-        });
-
-        activeGeneratedAIPlan = plan;
-
-        if (loadCont) loadCont.classList.add('hidden');
-        if (resCont) resCont.classList.remove('hidden');
-        if (applyBtn) applyBtn.classList.remove('hidden');
-
-        // Populate summary
-        const resTitle = document.getElementById('ai-res-title');
-        const resDist = document.getElementById('ai-res-dist');
-        const resTime = document.getElementById('ai-res-time');
-        const resFuel = document.getElementById('ai-res-fuel');
-        const stopsList = document.getElementById('ai-res-stops-list');
-
-        if (resTitle) resTitle.textContent = `${plan.origin} to ${plan.destination}`;
-        if (resDist) resDist.textContent = `${plan.totalDistanceKm} km`;
-        if (resTime) resTime.textContent = `~${plan.totalDrivingHours} hrs drive`;
-        if (resFuel) resFuel.textContent = `Est. Fuel ₹${plan.estimatedFuelCostInr}`;
-
-        if (stopsList) {
-          stopsList.innerHTML = (plan.stops || []).map((s, idx) => `
-            <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 4px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong style="font-size: 13px; color: var(--on-surface);">${idx + 1}. ${s.name}</strong>
-                <span class="break-duration-tag">${s.breakEstimateText || s.durationMinutes + 'm'}</span>
-              </div>
-              ${s.reason ? `<p style="font-size: 11px; color: var(--on-surface-variant); margin: 0; line-height: 1.3;">${s.reason}</p>` : ''}
-              ${s.recommendedFood ? `<div style="font-size: 11px; color: var(--primary);">Recommended: ${s.recommendedFood}</div>` : ''}
-              ${s.mapsUrl ? `<div style="margin-top: 4px;"><a href="${s.mapsUrl}" target="_blank" class="restaurant-map-link">View in Google Maps</a></div>` : ''}
-            </div>
-          `).join('');
+  [inMileage, inFuel, inVehicle].forEach(inp => {
+    if (inp) {
+      inp.onchange = () => {
+        const trip = state.getActiveTrip();
+        if (trip) {
+          if (inMileage) trip.vehicleMileageKmPerLitre = parseFloat(inMileage.value) || 16;
+          if (inFuel) trip.fuelPricePerLitre = parseFloat(inFuel.value) || 102.8;
+          if (inVehicle) trip.vehicleModel = inVehicle.value.trim() || 'Hyundai Creta Diesel';
+          state.saveToStorage();
+          refreshAppUI();
+          showToast('Vehicle details updated');
         }
-      } catch (err) {
-        console.error('AI Planning failed:', err);
-        showToast('Planning error: using fallback corridor');
-        if (loadCont) loadCont.classList.add('hidden');
-        if (formCont) formCont.classList.remove('hidden');
-      }
-    };
-  }
-
-  // Apply Generated Itinerary Button
-  const btnApply = document.getElementById('btn-apply-ai-itinerary');
-  if (btnApply) {
-    btnApply.onclick = () => {
-      if (!activeGeneratedAIPlan) return;
-      savePlanToHistory(activeGeneratedAIPlan);
-      applyAIPlanToActiveTrip(activeGeneratedAIPlan);
-    };
-  }
-
-  // Modal View History Plan Controls
-  const modalHistClose = document.getElementById('modal-history-view-close-btn');
-  const btnHistClose = document.getElementById('btn-history-view-close');
-  const btnHistLoad = document.getElementById('btn-history-view-load');
-
-  const closeHistModal = () => {
-    const modal = document.getElementById('modal-view-history-plan');
-    if (modal) {
-      modal.classList.add('hidden');
-      modal.setAttribute('hidden', '');
+      };
     }
-  };
+  });
 
-  if (modalHistClose) modalHistClose.onclick = closeHistModal;
-  if (btnHistClose) btnHistClose.onclick = closeHistModal;
-  if (btnHistLoad) {
-    btnHistLoad.onclick = () => {
-      if (activeViewingHistoryPlan) {
-        applyAIPlanToActiveTrip(activeViewingHistoryPlan);
-      }
+  // Theme Toggle Button in More tab
+  const btnThemeToggle = document.getElementById('theme-toggle-btn');
+  if (btnThemeToggle) {
+    btnThemeToggle.onclick = () => {
+      const isDark = document.body.classList.toggle('theme-dark');
+      document.body.classList.toggle('theme-light', !isDark);
+      localStorage.setItem('tripweave_theme', isDark ? 'dark' : 'light');
+      showToast(`Switched to ${isDark ? 'Dark' : 'Light'} theme`);
     };
   }
-}
+
+  // 12. Setup OTA Update Checker & Modal
+  setupUpdateModal();
+  setTimeout(() => {
+    checkAppUpdates(false, (remote) => showUpdateModal(remote));
+  }, 2500);
+
+  const btnCheckUpdate = document.getElementById('btn-check-update');
+  if (btnCheckUpdate) {
+    btnCheckUpdate.onclick = () => {
+      checkAppUpdates(
+        true,
+        (remote) => showUpdateModal(remote),
+        (name) => showToast(`You are on the latest version (TripWeave v${name})`)
+      );
+    };
+  }
+
+  // 13. Initial UI Render
+  refreshAppUI();
+});

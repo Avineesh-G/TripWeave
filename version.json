@@ -1,12 +1,15 @@
 {
-  "versionName": "1.5.1",
-  "versionCode": 7,
-  "releaseDate": "2026-10-19",
+  "versionName": "1.6.0",
+  "versionCode": 8,
+  "releaseDate": "2026-10-28",
   "apkUrl": "https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk",
   "releaseNotes": [
-    "Native in-app APK installer with direct PackageInstaller integration",
-    "Eliminated update prompt loop with OS-level version code verification",
-    "Precise ~100m location radius circle and consistent distance feedback",
-    "Automated download manager background download with cache busting"
+    "Ground-up modular architecture: lightning-fast ES services & dedicated UI controllers",
+    "Eliminated update loop with Android OS PackageManager versionCode bridge verification",
+    "Clean map startup with zero mock data and calibrated high-precision GPS blue dot",
+    "Floating glassmorphic bottom dock & Enlarge/Enclose sheet with zero tab obstruction",
+    "Turn-by-turn route guidance HUD with simulated driving and authentic highway corridor stops",
+    "Conversational AI road trip planner in Itinerary tab syncing itemized budget cards with per-head split",
+    "100% crisp vector SVG iconography (zero emoji artifacts)"
   ]
 }

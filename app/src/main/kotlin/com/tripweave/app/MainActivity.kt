@@ -346,6 +346,29 @@ class MainActivity : ComponentActivity() {
         }
 
         @JavascriptInterface
+        fun getAppVersionCode(): Int {
+            return try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    packageManager.getPackageInfo(packageName, 0).longVersionCode.toInt()
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageManager.getPackageInfo(packageName, 0).versionCode
+                }
+            } catch (e: Exception) {
+                8
+            }
+        }
+
+        @JavascriptInterface
+        fun getAppVersionName(): String {
+            return try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: "1.6.0"
+            } catch (e: Exception) {
+                "1.6.0"
+            }
+        }
+
+        @JavascriptInterface
         fun isNativeAndroid(): Boolean {
             return true
         }

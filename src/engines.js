@@ -45,9 +45,16 @@ export const ScheduleEngine = {
         distanceKm = 0;
       } else {
         const prev = sortedStops[index - 1];
-        distanceKm = this.calculateHaversineDistanceKm(prev.latitude, prev.longitude, stop.latitude, stop.longitude);
-        const avgSpeedKmH = distanceKm > 80 ? 55 : 40; // Realistic Indian road trip speed
-        travelDuration = Math.max(10, Math.round((distanceKm / avgSpeedKmH) * 60));
+        if (stop.roadDistanceKm && sortedStops.length === 2) {
+          distanceKm = Math.round(stop.roadDistanceKm * 10) / 10;
+          travelDuration = stop.plannedDurationMinutes || Math.round((distanceKm / 58) * 60);
+        } else {
+          // Real-world road driving distance (applies highway tortuosity factor 1.25x over straight-line)
+          const straightKm = this.calculateHaversineDistanceKm(prev.latitude, prev.longitude, stop.latitude, stop.longitude);
+          distanceKm = Math.round(straightKm * 1.25 * 10) / 10;
+          const avgSpeedKmH = distanceKm > 80 ? 58 : 42; // Realistic Indian road speed
+          travelDuration = Math.max(10, Math.round((distanceKm / avgSpeedKmH) * 60));
+        }
       }
 
       totalTravelMinutes += travelDuration;
