@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
   
   <!-- Custom Styling -->
-  <script type="module" crossorigin src="/assets/index-DroHKLG8.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DKP-OaCi.css">
+  <script type="module" crossorigin src="/assets/index-DTBPS-ya.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-W4ZrDGqS.css">
 </head>
 <body class="theme-light">
   <!-- Mobile Aspect Ratio Container -->
@@ -191,7 +191,7 @@
           <span>Sign In to Continue</span>
         </div>
 
-        <!-- Google Sign-In Action -->
+        <!-- Google Sign-In Action (Google Login Only) -->
         <div class="auth-action-area">
           <button id="btn-google-signin" class="btn-google-signin" title="Sign in with Google">
             <!-- Official Google 'G' Vector Icon -->
@@ -202,14 +202,6 @@
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
             <span id="google-signin-btn-label">Sign in with Google</span>
-          </button>
-
-          <button id="btn-guest-signin" class="btn-guest-signin" title="Continue as Explorer">
-            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
-            </svg>
-            <span>Continue as Explorer</span>
           </button>
         </div>
 
@@ -231,7 +223,7 @@
     <main class="main-content">
       
       <!-- SCREEN 1: MAP HOME -->
-      <section id="screen-map" class="screen-view active card-is-enlarged">
+      <section id="screen-map" class="screen-view active">
         <!-- Leaflet Map full-bleed -->
         <div id="leaflet-map" class="map-viewport"></div>
 
@@ -325,23 +317,12 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              <input type="text" id="place-search-input" placeholder="Search places in India..." autocomplete="off" />
+              <input type="text" id="place-search-input" placeholder="Search monuments & destinations worldwide..." autocomplete="off" />
 
               <!-- Quick Directions Button -->
               <button id="btn-toggle-directions" class="search-action-btn" title="Highway Route & Directions" type="button">
                 <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                </svg>
-              </button>
-
-              <!-- Quick Share Button -->
-              <button id="btn-open-share" class="search-action-btn" title="Share & Export Trip" type="button">
-                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                 </svg>
               </button>
 
@@ -357,17 +338,22 @@
             <!-- Highway Route & Directions Box (Seamlessly Merges into Search Bar) -->
             <div id="map-directions-box" class="map-directions-box hidden">
               <div class="dir-box-header">
-                <button id="btn-back-directions" class="dir-back-btn" title="Back to Search" type="button">
-                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="19" y1="12" x2="5" y2="12"></line>
-                    <polyline points="12 19 5 12 12 5"></polyline>
-                  </svg>
-                </button>
                 <div class="dir-title-badge">
                   <svg class="icon-xs" style="color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
                   </svg>
-                  <strong style="font-size: 13px; color: var(--on-surface);">Highway Route &amp; Amenities</strong>
+                  <strong style="font-size: 13.5px; color: var(--on-surface);">Highway Directions</strong>
+                </div>
+                <!-- Transport Mode Pills -->
+                <div class="dir-mode-pills" id="dir-mode-pills">
+                  <button type="button" class="dir-mode-pill active" data-mode="driving" title="Driving Route">
+                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="9" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    <span>Drive</span>
+                  </button>
+                  <button type="button" class="dir-mode-pill" data-mode="moto" title="Two-Wheeler Route">
+                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="5.5" cy="17.5" r="3.5"></circle><circle cx="18.5" cy="17.5" r="3.5"></circle><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h4"></path></svg>
+                    <span>Moto</span>
+                  </button>
                 </div>
                 <button id="btn-close-directions" class="dir-close-btn" title="Close" type="button">
                   <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -399,11 +385,7 @@
                 </div>
               </div>
               <div class="dir-actions-row">
-                <button id="btn-cancel-directions-box" class="btn-cancel-route-action" type="button" title="Cancel route selection">
-                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  <span>Cancel</span>
-                </button>
-                <button id="btn-calculate-route" class="btn-primary btn-calc-route" type="button">
+                <button id="btn-calculate-route" class="btn-primary btn-calc-route" type="button" style="width: 100%;">
                   <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                     <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
                   </svg>
@@ -412,86 +394,16 @@
               </div>
             </div>
           </div>
-
-          <!-- Chip Row with Icons -->
-          <div class="filter-chips-row">
-            <!-- Trip Switcher Chip -->
-            <button class="chip active" id="chip-trip-switcher">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              <span id="header-trip-title">No Active Trip</span>
-            </button>
-
-            <!-- Feasibility Pill -->
-            <div class="feasibility-pill" id="feasibility-pill-btn" title="Open Warnings Center">
-              <div class="feasibility-ring-wrapper">
-                <svg class="feasibility-ring-svg" viewBox="0 0 36 36">
-                  <circle class="ring-bg" cx="18" cy="18" r="14"></circle>
-                  <circle class="ring-budget" id="ring-budget-circle" cx="18" cy="18" r="14"></circle>
-                  <circle class="ring-bg-inner" cx="18" cy="18" r="10"></circle>
-                  <circle class="ring-time" id="ring-time-circle" cx="18" cy="18" r="10"></circle>
-                </svg>
-              </div>
-              <span class="feasibility-label" id="feasibility-label-text">Feasible</span>
-            </div>
-
-            <!-- Google Maps Official Layer Switcher Chip -->
-            <button class="chip" id="chip-google-layers" title="Toggle Google Maps (Roadmap, Satellite, Terrain)">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                <polyline points="2 17 12 22 22 17"></polyline>
-                <polyline points="2 12 12 17 22 12"></polyline>
-              </svg>
-              <span id="map-layer-label">Google Maps</span>
-            </button>
-
-            <!-- Category Chips with Vector Icons -->
-            <button class="chip" data-cat="attractions" id="chip-attractions">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="2" y1="20" x2="22" y2="20"></line>
-                <line x1="4" y1="20" x2="4" y2="10"></line>
-                <line x1="10" y1="20" x2="10" y2="10"></line>
-                <line x1="14" y1="20" x2="14" y2="10"></line>
-                <line x1="20" y1="20" x2="20" y2="10"></line>
-                <polygon points="12 2 2 8 22 8"></polygon>
-              </svg>
-              <span>Attractions</span>
-            </button>
-
-            <button class="chip" data-cat="food" id="chip-food">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                <line x1="6" y1="1" x2="6" y2="4"></line>
-                <line x1="10" y1="1" x2="10" y2="4"></line>
-                <line x1="14" y1="1" x2="14" y2="4"></line>
-              </svg>
-              <span>Food</span>
-            </button>
-
-            <button class="chip" data-cat="fuel" id="chip-fuel">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="22" x2="15" y2="22"></line>
-                <line x1="4" y1="9" x2="14" y2="9"></line>
-                <path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path>
-                <path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L19 6"></path>
-              </svg>
-              <span>Fuel</span>
-            </button>
-
-            <button class="chip" data-cat="stays" id="chip-stays">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 4v16"></path>
-                <path d="M2 8h18a2 2 0 0 1 2 2v10"></path>
-                <path d="M2 17h20"></path>
-                <path d="M6 8v9"></path>
-              </svg>
-              <span>Stays</span>
-            </button>
-          </div>
         </div>
+
+        <!-- Google Maps Style Layer Selector Button -->
+        <button id="btn-layer-selector" class="fab-map-layer-btn" title="Toggle Map Layers (Roadmap / Satellite / Terrain)" type="button">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+        </button>
 
         <!-- Google Maps Style Locate Me Button -->
         <button id="btn-locate-me" class="fab-locate-btn" title="Your Location">
@@ -502,182 +414,78 @@
           </svg>
         </button>
 
-        <!-- Selected Place Bottom Card (Google Maps Style with Full Place Photo) -->
-        <div id="selected-place-sheet" class="selected-place-sheet hidden">
-          <div class="selected-place-img-wrapper">
-            <img id="selected-place-img" src="" alt="Place Photo" class="selected-place-img" />
-            <div class="selected-place-img-overlay"></div>
-            <span class="selected-place-tag" id="selected-place-tag">Scenic Stop</span>
-            <button id="btn-close-place-card" class="place-close-btn" title="Close">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+        <!-- Google Maps Style Place & Monument Preview Card -->
+        <div id="map-place-preview-card" class="map-place-preview-card hidden">
+          <button id="btn-close-place-preview" class="btn-close-place-card" type="button" title="Close Preview">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          <div class="place-preview-img-container" id="place-preview-img-box">
+            <img id="place-preview-image" class="place-preview-cover-img" src="" alt="Monument or place photo" />
+            <div class="place-preview-gradient-scrim"></div>
+            <div class="place-preview-floating-badge" id="place-preview-badge">Explore Landmark</div>
           </div>
-          <div class="selected-place-details">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-              <div style="min-width: 0; flex: 1;">
-                <h3 class="selected-place-name" id="selected-place-name">Place Name</h3>
-                <p class="selected-place-location" id="selected-place-location">Location, India</p>
-              </div>
-              <div class="selected-place-dist-badge" id="selected-place-dist-badge">-- km</div>
+          <div class="place-preview-body">
+            <div class="place-preview-inline-badge" id="place-preview-inline-badge">Travel Destination</div>
+            <div class="place-preview-title-row">
+              <h3 class="place-preview-name" id="place-preview-name">Destination</h3>
             </div>
-            <div class="selected-place-meta-row" id="selected-place-meta-row">
-              <span class="meta-pill" id="selected-place-hours">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                <span id="selected-place-hours-text">09:00 AM - 06:00 PM</span>
-              </span>
-              <button class="meta-pill" id="btn-copy-coords" title="Click to copy GPS coordinates" style="cursor: pointer; background: var(--surface-container); border: 1px solid var(--primary); color: var(--primary); display: inline-flex; align-items: center; gap: 5px;">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span id="selected-place-coords">--° N, --° E</span>
-              </button>
-            </div>
-            <div class="selected-place-actions">
-              <button id="btn-add-selected-stop" class="btn-primary" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Add to Itinerary</span>
-              </button>
-              <button id="btn-navigate-to-selected" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 5px;" title="Directions">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                </svg>
+            <p class="place-preview-desc" id="place-preview-desc">Loading area details...</p>
+            <div class="place-preview-btn-row">
+              <button id="btn-place-get-directions" class="btn-place-action primary" type="button">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
                 <span>Directions</span>
               </button>
-              <button id="btn-set-destination" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                  <line x1="4" y1="22" x2="4" y2="15"></line>
-                </svg>
-                <span>Destination</span>
+              <button id="btn-place-add-itinerary" class="btn-place-action secondary" type="button">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Add Stop</span>
               </button>
-            </div>
-
-            <!-- Famous Places, Food & Parks Around This Location -->
-            <div class="nearby-explore-section" id="nearby-explore-section">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 8px;">
-                <strong style="font-size: 13.5px; font-weight: 800; color: var(--on-surface);">Famous Places Around <span id="nearby-city-name">Hyderabad</span></strong>
-                <span class="chip active" style="font-size: 10.5px; padding: 2px 8px;" id="nearby-count-badge">Top Picks</span>
-              </div>
-
-              <!-- Filter Category Chips (All, Monuments, Famous Food, Parks & Lakes) -->
-              <div class="nearby-tabs-row" id="nearby-tabs-row">
-                <button class="nearby-tab-chip active" data-filter="all">All</button>
-                <button class="nearby-tab-chip" data-filter="monuments">
-                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                    <polyline points="2 17 12 22 22 17"></polyline>
-                  </svg>
-                  <span>Monuments</span>
-                </button>
-                <button class="nearby-tab-chip" data-filter="food">
-                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                  </svg>
-                  <span>Famous Food</span>
-                </button>
-                <button class="nearby-tab-chip" data-filter="parks">
-                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"></path>
-                  </svg>
-                  <span>Parks &amp; Lakes</span>
-                </button>
-              </div>
-
-              <!-- List of Nearby Places -->
-              <div class="nearby-places-carousel" id="nearby-places-carousel">
-                <!-- Dynamically populated -->
-              </div>
             </div>
           </div>
         </div>
 
-
-
-        <!-- Dynamic Floating Bottom Trip Card & Sheet -->
-        <div id="map-peek-sheet" class="bottom-trip-card">
-          <div class="sheet-drag-handle" id="sheet-drag-handle" title="Drag or tap to Enlarge / Enclose"></div>
-
-          <!-- Empty State: Beautiful Road Trip Quick Start Banner -->
-          <div id="trip-card-empty-state" class="trip-card-empty">
-            <div class="trip-card-empty-header">
-              <div class="trip-card-empty-left">
-                <div class="trip-ready-badge">
-                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                  </svg>
-                </div>
-                <div class="trip-card-empty-text">
-                  <div class="trip-ready-title">Where are you traveling?</div>
-                  <div class="trip-ready-sub">Set route or explore highway stops</div>
-                </div>
-              </div>
-              <button id="btn-empty-card-toggle" class="btn-card-toggle-enclose" title="Enclose / Minimize card" type="button">
-                <span>Enclose</span>
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </button>
-            </div>
-
-            <div id="trip-card-empty-actions-default" class="trip-card-empty-actions">
-              <button id="btn-quick-plan-route" class="btn-trip-action primary" type="button">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
-                <span>Get Route</span>
-              </button>
-              <button id="btn-quick-plan-ai" class="btn-trip-action secondary" type="button">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                <span>AI Planner</span>
-              </button>
-            </div>
-            <div id="trip-card-empty-actions-selecting" class="trip-card-empty-actions hidden">
-              <button id="btn-cancel-selecting-route" class="btn-trip-action cancel-action" type="button" title="Cancel route selection">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                <span>Cancel Route Selection</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Minimal Floating Pill when Empty State is Enclosed -->
-          <div id="trip-card-minimized-state" class="trip-card-minimized hidden">
-            <button id="btn-enlarge-empty-card" class="btn-pill-enlarge" type="button">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
-              <span>Plan Road Trip</span>
-              <span class="enlarge-chip-tag">Enlarge</span>
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"></polyline></svg>
-            </button>
-          </div>
+        <!-- Dynamic Floating Bottom Trip Card & Sheet (Appears ONLY when Route/Trip is Active) -->
+        <div id="map-peek-sheet" class="bottom-trip-card hidden">
 
           <!-- Active State: Dynamic Route & Stop Sequence with Enlarge / Enclose Control -->
           <div id="trip-card-active-state" class="trip-card-active hidden">
             <div class="sheet-peek-content" id="sheet-summary-peek">
               <div class="peek-left">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span class="trip-route-bullet"></span>
-                  <span class="peek-title" id="peek-next-stop-title">Next: Stop Name</span>
+                <!-- Executive Route Driving Duration Hero -->
+                <div class="route-hero-stats">
+                  <span class="route-hero-time" id="peek-route-hero-time">-- min</span>
+                  <span class="route-hero-sub" id="peek-route-hero-sub">-- km • Fastest route</span>
                 </div>
-                <span class="peek-subtitle" id="peek-stats-subtitle">0 stops • 0 km • 0 travelers</span>
+                <div class="route-hero-path" id="peek-route-hero-path">
+                  <span class="trip-route-bullet"></span>
+                  <span class="peek-title" id="peek-next-stop-title">Origin → Destination</span>
+                </div>
+                <span class="peek-subtitle" id="peek-stats-subtitle" style="display: none;">0 stops • 0 km</span>
+                <span class="peek-cost" id="peek-total-cost" style="display: none;">₹0</span>
+                <span class="peek-budget-caption" id="peek-budget-caption" style="display: none;">of ₹0</span>
               </div>
               <div class="peek-right" style="display: flex; align-items: center; gap: 8px;">
-                <div style="text-align: right;">
-                  <span class="peek-cost" id="peek-total-cost">₹0</span>
-                  <span class="peek-budget-caption" id="peek-budget-caption">of ₹0 budget</span>
-                </div>
                 <!-- Cancel / Clear Route Button on active card -->
-                <button id="btn-cancel-active-route" class="btn-quick-cancel" title="Cancel Route / Destination" type="button">
+                <button id="btn-cancel-active-route" class="btn-quick-cancel" title="Cancel Route / Destination" type="button" aria-label="Cancel Route">
                   <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
-                  <span>Cancel</span>
+                </button>
+                <!-- Steps / Details Button -->
+                <button id="btn-toggle-sheet" class="sheet-steps-pill-btn" type="button" title="View Directions & Steps">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                  </svg>
+                  <span class="enlarge-label">Steps</span>
+                  <span class="enclose-label hidden">Hide</span>
                 </button>
                 <!-- Quick Start Navigation Button right on peek sheet -->
                 <button id="btn-quick-start-nav" class="btn-quick-nav" title="Start Turn-by-Turn Navigation" type="button">
@@ -686,68 +494,97 @@
                   </svg>
                   <span>Start</span>
                 </button>
-                <!-- Dedicated Enlarge / Enclose Button near the Floating Nav -->
-                <button id="btn-toggle-sheet" class="sheet-enlarge-enclose-btn" type="button" title="Enlarge or Enclose details">
-                  <span class="enlarge-label">Enlarge</span>
-                  <span class="enclose-label hidden">Enclose</span>
-                  <svg class="toggle-chevron icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="18 15 12 9 6 15"></polyline>
-                  </svg>
-                </button>
               </div>
             </div>
 
             <div class="sheet-expanded-body" id="sheet-expanded-body">
-              <div class="sheet-expanded-header-row">
-                <div class="sheet-expanded-title-col">
-                  <strong style="font-size: 13.5px; color: var(--on-surface);">Itinerary Sequence</strong>
-                  <span style="font-size: 11px; color: var(--on-surface-variant);">Stop timeline &amp; highway halts</span>
-                </div>
-                <div class="sheet-expanded-actions-row">
-                  <button class="btn-small danger" id="btn-cancel-active-route-expanded" title="Cancel Route" type="button">
-                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    <span>Cancel Route</span>
-                  </button>
-                  <button class="btn-small secondary" id="btn-sheet-add-stop" title="Add Stop to Itinerary" type="button">
-                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span>Add Stop</span>
-                  </button>
-                  <button class="btn-small primary" id="btn-open-full-itinerary" type="button">
-                    <span>Full View</span>
-                  </button>
-                </div>
-              </div>
-              <div id="sheet-stops-compact-list" style="display: flex; flex-direction: column; gap: 6px;">
-                <!-- Populated dynamically -->
+              <!-- Sheet View Tabs: Stops & Corridor vs Turn-by-Turn Directions -->
+              <div class="sheet-tabs-nav">
+                <button id="tab-sheet-stops" class="sheet-tab-btn active" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  <span>Stops &amp; Corridor</span>
+                </button>
+                <button id="tab-sheet-steps" class="sheet-tab-btn" type="button">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                  <span>Turn-by-Turn Directions</span>
+                  <span id="tab-steps-badge" class="tab-badge">0</span>
+                </button>
               </div>
 
-              <!-- Integrated Highway Corridor Stops (Hotels, Dhabas & Fuel along the Journey) -->
-              <div id="corridor-amenities-tray" class="corridor-amenities-tray hidden">
-                <div class="corridor-tray-header">
-                  <div class="corridor-tray-top-bar">
-                    <div class="corridor-tray-title-group">
-                      <div class="corridor-tray-title" id="corridor-tray-title">Hotels &amp; Dining on Route</div>
-                      <div class="corridor-tray-sub" id="corridor-tray-sub">Curated corridor stops for your journey</div>
-                    </div>
+              <!-- View 1: Stops & Highway Corridor -->
+              <div id="sheet-stops-view">
+                <div class="sheet-expanded-header-row">
+                  <div class="sheet-expanded-title-col">
+                    <strong style="font-size: 13.5px; color: var(--on-surface);">Itinerary Sequence</strong>
+                    <span style="font-size: 11px; color: var(--on-surface-variant);">Stop timeline &amp; highway halts</span>
                   </div>
-                  <div class="corridor-filter-chips" id="corridor-tray-tabs">
-                    <button class="corridor-tab active" data-ctab="all" type="button">All</button>
-                    <button class="corridor-tab" data-ctab="stays" type="button">
-                      <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"></path></svg>
-                      <span>Hotels</span>
+                  <div class="sheet-expanded-actions-row">
+                    <button class="btn-small danger" id="btn-cancel-active-route-expanded" title="Cancel Route" type="button">
+                      <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      <span>Cancel Route</span>
                     </button>
-                    <button class="corridor-tab" data-ctab="food" type="button">
-                      <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
-                      <span>Dhabas</span>
+                    <button class="btn-small secondary" id="btn-sheet-add-stop" title="Add Stop to Itinerary" type="button">
+                      <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                      <span>Add Stop</span>
                     </button>
-                    <button class="corridor-tab" data-ctab="fuel" type="button">
-                      <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>
-                      <span>Fuel</span>
+                    <button class="btn-small primary" id="btn-open-full-itinerary" type="button">
+                      <span>Full View</span>
                     </button>
                   </div>
                 </div>
-                <div id="corridor-amenities-list" class="corridor-amenities-list">
-                  <!-- Dynamically populated -->
+                <div id="sheet-stops-compact-list" style="display: flex; flex-direction: column; gap: 6px;">
+                  <!-- Populated dynamically -->
+                </div>
+
+                <!-- Integrated Highway Corridor Stops (Hotels, Dhabas & Fuel along the Journey) -->
+                <div id="corridor-amenities-tray" class="corridor-amenities-tray hidden">
+                  <div class="corridor-tray-header">
+                    <div class="corridor-tray-top-bar">
+                      <div class="corridor-tray-title-group">
+                        <div class="corridor-tray-title" id="corridor-tray-title">Hotels &amp; Dining on Route</div>
+                        <div class="corridor-tray-sub" id="corridor-tray-sub">Curated corridor stops for your journey</div>
+                      </div>
+                    </div>
+                    <div class="corridor-filter-chips" id="corridor-tray-tabs">
+                      <button class="corridor-tab active" data-ctab="all" type="button">All</button>
+                      <button class="corridor-tab" data-ctab="stays" type="button">
+                        <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"></path></svg>
+                        <span>Hotels</span>
+                      </button>
+                      <button class="corridor-tab" data-ctab="food" type="button">
+                        <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                        <span>Dhabas</span>
+                      </button>
+                      <button class="corridor-tab" data-ctab="fuel" type="button">
+                        <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>
+                        <span>Fuel</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div id="corridor-amenities-list" class="corridor-amenities-list">
+                    <!-- Dynamically populated -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- View 2: Turn-by-Turn Maneuvers & Route Steps -->
+              <div id="sheet-directions-view" class="hidden">
+                <div class="route-directions-header-card" style="margin-bottom: 10px; padding: 10px 14px; background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div id="sheet-directions-summary-title" style="font-size: 13.5px; font-weight: 800; color: var(--on-surface);">Highway Route</div>
+                    <div id="sheet-directions-summary-sub" style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px;">⚡ Fastest route with typical highway traffic</div>
+                  </div>
+                  <button id="btn-sheet-steps-start-nav" class="btn-primary" style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 12.5px; border-radius: var(--radius-pill);" type="button">
+                    <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                    <span>Start Navigation</span>
+                  </button>
+                </div>
+                <div style="font-size: 11.5px; color: var(--on-surface-variant); margin-bottom: 10px; display: flex; align-items: center; gap: 5px;">
+                  <svg class="icon-xs" style="color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                  <span>Tap any turn below to preview the junction on the map</span>
+                </div>
+                <div id="sheet-directions-steps-list" style="display: flex; flex-direction: column; gap: 8px;">
+                  <!-- Populated dynamically with turn maneuvers -->
                 </div>
               </div>
             </div>
@@ -757,13 +594,20 @@
 
       <!-- SCREEN 2: ITINERARY TIMELINE -->
       <section id="screen-itinerary" class="screen-view">
-        <div class="screen-header-bar">
-          <div>
+        <div class="screen-header-bar itinerary-screen-header">
+          <div class="itinerary-header-left">
             <h1 class="screen-title" id="itinerary-title">Itinerary Timeline</h1>
-            <p style="font-size: 12px; color: var(--on-surface-variant);" id="itinerary-subtitle">Sequential schedule with dynamic buffer verification</p>
+            <p class="itinerary-header-desc" id="itinerary-subtitle">Sequential schedule with dynamic buffer verification</p>
           </div>
-                    <div style="display: flex; gap: 8px;">
-            <button id="btn-share-itinerary" class="btn-small secondary" title="Share Road Trip">
+          <div class="itinerary-header-actions">
+            <button id="btn-itinerary-pdf-history" class="itinerary-action-btn history-btn" title="Tour &amp; PDF Dossier History" type="button">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span>History</span>
+            </button>
+            <button id="btn-share-itinerary" class="itinerary-action-btn share-btn" title="Share Road Trip" type="button">
               <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="5" r="3"></circle>
                 <circle cx="6" cy="12" r="3"></circle>
@@ -773,12 +617,12 @@
               </svg>
               <span>Share</span>
             </button>
-            <button id="add-stop-itinerary-btn" class="btn-small primary">
+            <button id="add-stop-itinerary-btn" class="itinerary-action-btn add-btn" title="Add Stop" type="button">
               <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
-              <span>Add</span>
+              <span>Add Stop</span>
             </button>
           </div>
         </div>
@@ -1450,55 +1294,39 @@
             <span class="chip" id="share-feasibility-chip" style="font-size: 11px; padding: 3px 8px; font-weight: 700;">Feasible</span>
           </div>
 
-          <!-- WhatsApp / SMS Summary Preview Box -->
+          <!-- Text Summary Preview Box -->
           <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <span style="font-size: 12px; font-weight: 700; color: var(--on-surface);">WhatsApp Itinerary Message</span>
-              <span style="font-size: 11px; color: var(--on-surface-variant);">Ready to send</span>
+              <span style="font-size: 12px; font-weight: 700; color: var(--on-surface);">Itinerary Text Summary</span>
+              <span style="font-size: 11px; color: var(--on-surface-variant);">Ready to copy</span>
             </div>
-            <textarea id="share-whatsapp-text" class="share-preview-box" readonly rows="8" spellcheck="false"></textarea>
+            <textarea id="share-summary-text" class="share-preview-box" readonly rows="8" spellcheck="false"></textarea>
           </div>
 
-          <!-- Share Action Buttons -->
-          <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px;">
-            <button id="btn-share-whatsapp-send" class="btn-whatsapp">
-              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-              </svg>
-              <span>Send WhatsApp</span>
-            </button>
-
-            <button id="btn-share-copy-text" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <!-- Share Action Button -->
+          <div>
+            <button id="btn-share-copy-text" class="btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px;">
               <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
               </svg>
-              <span>Copy Text</span>
+              <span>Copy Itinerary Text</span>
             </button>
           </div>
 
           <div style="border-top: 1px dashed var(--outline-variant); margin: 2px 0;"></div>
 
-          <!-- Additional Export Formats -->
+          <!-- Offline JSON Backup -->
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--on-surface);">Offline Road Book &amp; Backup</span>
-            <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px;">
-              <button id="btn-export-pdf" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px;">
-                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                  <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-                <span>Print / Save PDF</span>
-              </button>
-
-              <button id="btn-export-json" class="btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--on-surface);">Offline Backup</span>
+            <div>
+              <button id="btn-export-json" class="btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 10px;">
                 <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                <span>Export JSON</span>
+                <span>Export JSON Backup</span>
               </button>
             </div>
           </div>
@@ -1515,17 +1343,10 @@
     <!-- MODAL: ACCOUNT & SETTINGS -->
     <div id="modal-account-settings" class="modal-backdrop hidden">
       <div class="modal-card" style="max-width: 370px; border-radius: 24px; padding: 0; overflow: hidden;">
-        <!-- Header with Back & Close Buttons -->
-        <div style="padding: 14px 16px 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--outline-variant);">
-          <button class="modal-close-btn" id="modal-account-back-btn" title="Back to previous screen" type="button" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-pill); cursor: pointer; color: var(--on-surface);">
-            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span style="font-size: 13px; font-weight: 700;">Back</span>
-          </button>
-          <div style="font-size: 14px; font-weight: 800; color: var(--on-surface);">Account &amp; Profile</div>
-          <button class="modal-close-btn" id="modal-account-close-btn" title="Close" type="button" style="cursor: pointer; padding: 4px;">
+        <!-- Header with Title & Only Close Cross Button -->
+        <div style="padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--outline-variant);">
+          <div style="font-size: 15px; font-weight: 800; color: var(--on-surface);">Account &amp; Profile</div>
+          <button class="modal-close-btn" id="modal-account-close-btn" title="Close" type="button" style="cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
             <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -1586,22 +1407,15 @@
           </div>
         </div>
 
-        <!-- Footer Actions: Sign Out & Back/Done -->
-        <div class="modal-footer" style="padding: 12px 16px; display: flex; gap: 8px; border-top: 1px solid var(--outline-variant); background: var(--surface);">
-          <button id="btn-account-signout" class="account-signout-btn" type="button" style="padding: 9px 14px; border-radius: 12px; background: rgba(234, 67, 53, 0.08); border: 1px solid rgba(234, 67, 53, 0.25); color: #EA4335; font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <!-- Footer Action: Sign Out Only -->
+        <div class="modal-footer" style="padding: 12px 16px; display: flex; border-top: 1px solid var(--outline-variant); background: var(--surface);">
+          <button id="btn-account-signout" class="account-signout-btn" type="button" style="width: 100%; padding: 10px 14px; border-radius: 12px; background: rgba(234, 67, 53, 0.08); border: 1px solid rgba(234, 67, 53, 0.25); color: #EA4335; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
             <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
             </svg>
             <span>Sign Out</span>
-          </button>
-          <button id="modal-account-done-btn" class="btn-primary" type="button" style="flex: 1; padding: 9px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;">
-            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            <span>Back to Map</span>
           </button>
         </div>
       </div>
@@ -1838,6 +1652,95 @@
           <button id="btn-history-view-load" class="btn-primary" style="flex: 2; display: flex; align-items: center; justify-content: center; gap: 6px;">
             <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
             <span>Load into Itinerary</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: TOUR & PDF DOSSIER HISTORY -->
+    <div id="modal-tour-pdf-history" class="modal-backdrop hidden">
+      <div class="modal-card pdf-history-modal-card" style="max-width: 480px; max-height: 86vh;">
+        <div class="modal-header">
+          <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+            <div class="history-modal-icon-badge">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <div>
+              <h2 class="modal-title" style="font-size: 15.5px; font-weight: 800; margin: 0;">Tour &amp; PDF Dossier History</h2>
+              <div style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px;">Saved road trip plans &amp; verified highway routes</div>
+            </div>
+          </div>
+          <button class="modal-close-btn" id="modal-pdf-history-close-btn" title="Close">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div class="modal-body" id="pdf-history-list-container" style="gap: 12px; padding: 14px 16px;">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: RESPECTFUL PDF DOWNLOAD CONFIRMATION DIALOG -->
+    <div id="modal-pdf-download-confirm" class="modal-backdrop hidden">
+      <div class="modal-card pdf-download-modal-card" style="max-width: 420px; border-radius: 24px; padding: 0; overflow: hidden; box-shadow: 0 20px 45px rgba(0,0,0,0.28);">
+        <!-- Top Visual Accent Header -->
+        <div class="pdf-modal-header-banner" style="background: linear-gradient(135deg, #1A56DB 0%, #3B82F6 100%); padding: 22px 20px 18px 20px; color: #FFFFFF; position: relative;">
+          <button class="modal-close-btn" id="modal-pdf-confirm-close-btn" title="Close" style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.2); color: #FFFFFF; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 14px; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
+            <div>
+              <h2 style="font-size: 16.5px; font-weight: 800; margin: 0; color: #FFFFFF; letter-spacing: -0.2px;">Travel Dossier PDF</h2>
+              <p style="font-size: 12px; margin: 3px 0 0 0; color: rgba(255, 255, 255, 0.88);">Ready for Offline Road Trip Exploration</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Courteous Dialog Body -->
+        <div class="modal-body" style="padding: 20px 22px; gap: 14px;">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <strong style="font-size: 15px; color: var(--on-surface); line-height: 1.35;" id="pdf-confirm-question">
+              Shall I download the travel dossier file for you?
+            </strong>
+            <p style="font-size: 12.5px; color: var(--on-surface-variant); line-height: 1.45; margin: 0;">
+              Your comprehensive road trip guide includes your route breakdown, scheduled stop timings, highway halts, verified dining stops, and budget summary.
+            </p>
+          </div>
+
+          <!-- Trip Snapshot Card -->
+          <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div id="pdf-confirm-trip-title" style="font-weight: 800; font-size: 13.5px; color: var(--on-surface);">Bengaluru → Ooty</div>
+              <div id="pdf-confirm-trip-meta" style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px;">4 stops • ~280 km • Printable PDF</div>
+            </div>
+            <span style="font-size: 11px; font-weight: 800; color: var(--primary); background: var(--primary-container); padding: 3px 8px; border-radius: 6px;">Ready</span>
+          </div>
+        </div>
+
+        <!-- Courteous Action Buttons -->
+        <div class="modal-footer" style="padding: 14px 22px 20px 22px; display: flex; gap: 10px; background: var(--surface);">
+          <button id="btn-pdf-confirm-cancel" class="btn-secondary" style="flex: 1; border-radius: var(--radius-pill); font-weight: 700; font-size: 13px;" type="button">
+            <span>Not Now</span>
+          </button>
+          <button id="btn-pdf-confirm-proceed" class="btn-primary" style="flex: 1.5; border-radius: var(--radius-pill); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(26, 86, 219, 0.35);" type="button">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Yes, Download PDF</span>
           </button>
         </div>
       </div>

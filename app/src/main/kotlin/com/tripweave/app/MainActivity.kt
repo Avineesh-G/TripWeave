@@ -372,6 +372,25 @@ class MainActivity : ComponentActivity() {
         fun isNativeAndroid(): Boolean {
             return true
         }
+
+        @JavascriptInterface
+        fun printHtml(htmlContent: String, jobName: String?) {
+            runOnUiThread {
+                try {
+                    val printManager = getSystemService(Context.PRINT_SERVICE) as? android.print.PrintManager ?: return@runOnUiThread
+                    val printWebView = WebView(this@MainActivity)
+                    printWebView.webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            val printAdapter = printWebView.createPrintDocumentAdapter(jobName ?: "TripWeave_Itinerary")
+                            printManager.print(jobName ?: "TripWeave_Itinerary", printAdapter, android.print.PrintAttributes.Builder().build())
+                        }
+                    }
+                    printWebView.loadDataWithBaseURL("https://appassets.androidplatform.net/", htmlContent, "text/html", "utf-8", null)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
     }
 
     inner class AndroidLocationBridge {

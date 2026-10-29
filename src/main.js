@@ -33,8 +33,8 @@ import {
   listenAuth,
   saveTripToCloud
 } from './services/auth.service.js';
-import { generateWhatsAppSummary, exportTripAsJSON } from './services/export.service.js';
 import { getAIHistoryPlans, deleteAIHistoryPlan } from './services/ai.service.js';
+import { exportCurrentItineraryAsPdf } from './services/pdf.service.js';
 
 import { setupNavigationUI } from './ui/navigation.ui.js';
 import { setupSheetUI, updateSheetState } from './ui/sheet.ui.js';
@@ -46,7 +46,8 @@ import {
   setupUpdateModal,
   showUpdateModal,
   setupShareModal,
-  setupAddStopModal
+  setupAddStopModal,
+  setupPdfDownloadConfirmModal
 } from './ui/modals.ui.js';
 import { setupAuthUI } from './ui/auth.ui.js';
 
@@ -294,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   window.__switchTab = switchTab;
+  window.__exportItineraryPdf = exportCurrentItineraryAsPdf;
 
   // 3. Setup Add Stop Modal
   addStopModalController = setupAddStopModal({
@@ -444,19 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
     onToast: (msg) => showToast(msg)
   });
 
-  // Quick Plan buttons in Empty Card Banner
-  const btnQuickRoute = document.getElementById('btn-quick-plan-route');
-  if (btnQuickRoute) {
-    btnQuickRoute.onclick = () => {
-      if (directionsController) directionsController.openDirections();
-    };
-  }
-
-  const btnQuickAI = document.getElementById('btn-quick-plan-ai');
-  if (btnQuickAI) {
-    btnQuickAI.onclick = () => switchTab('itinerary');
-  }
-
   // 6. Setup Timeline UI & AI Assistant
   timelineController = setupTimelineUI({
     onStopDeleted: (stopId) => {
@@ -467,6 +456,10 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     onPlanGenerated: (plan) => {
       window.loadAIHistoryPlan(plan.id);
+      if (window.__switchTab) window.__switchTab('map');
+    },
+    onDownloadPdf: (plan) => {
+      downloadPlanPdf(plan);
     },
     onToast: (msg) => showToast(msg)
   });
@@ -493,6 +486,146 @@ document.addEventListener('DOMContentLoaded', () => {
       if (shareModalController) shareModalController.openModal();
     };
   }
+
+  function getExportablePlan() {
+    const plan = computeActivePlan();
+    if (!plan || !plan.stops || plan.stops.length === 0) {
+      return null;
+    }
+    return {
+      title: (plan.trip && plan.trip.title) ? plan.trip.title : `${plan.stops[0].name} to ${plan.stops[plan.stops.length - 1].name} Road Trip`,
+      origin: plan.stops[0].name,
+      destination: plan.stops[plan.stops.length - 1].name,
+      stops: plan.stops,
+      totalDistanceKm: plan.totalDistanceKm || 0,
+      totalDrivingHours: plan.totalDurationHours || (plan.totalDistanceKm ? plan.totalDistanceKm / 55 : 0),
+      members: (plan.trip && plan.trip.groupSize) ? plan.trip.groupSize : 4,
+      comfort: (plan.trip && plan.trip.comfort) ? plan.trip.comfort : 'comfort',
+      dining: (plan.trip && plan.trip.dining) ? plan.trip.dining : 'family',
+      expenses: plan.expenses || []
+    };
+  }
+
+  async function downloadPlanPdf(plan) {
+    const target = plan || getExportablePlan();
+    if (!target || !target.stops || target.stops.length === 0) {
+      showToast('Your itinerary is empty. Please add stops before exporting.');
+      return;
+    }
+    showToast('Compiling verified Travel Dossier PDF...');
+    try {
+      await exportCurrentItineraryAsPdf(target);
+      showToast('Travel Dossier PDF downloaded successfully!');
+    } catch (err) {
+      console.error('PDF export error:', err);
+      showToast('Failed to export PDF dossier.');
+    }
+  }
+
+  // Tour & PDF Dossier History Modal Controller
+  const modalPdfHistory = document.getElementById('modal-tour-pdf-history');
+  const btnClosePdfHistory = document.getElementById('modal-pdf-history-close-btn');
+  const pdfHistoryContainer = document.getElementById('pdf-history-list-container');
+  const btnItineraryPdfHistory = document.getElementById('btn-itinerary-pdf-history');
+
+  function renderPdfHistoryModal() {
+    if (!pdfHistoryContainer) return;
+    const history = getAIHistoryPlans();
+
+    if (!history || history.length === 0) {
+      pdfHistoryContainer.innerHTML = `
+        <div style="padding: 40px 16px; text-align: center; color: var(--on-surface-variant); background: var(--surface-container-low); border: 1px dashed var(--outline-variant); border-radius: 16px;">
+          <div style="font-size: 28px; margin-bottom: 8px;">📂</div>
+          <div style="font-weight: 800; font-size: 14.5px; color: var(--on-surface);">No Tour Dossiers Saved Yet</div>
+          <p style="font-size: 12px; margin: 6px 0 0 0; line-height: 1.45;">Fill out the itinerary planner with your starting city &amp; destination to generate tour plans and download verified PDFs.</p>
+        </div>
+      `;
+      return;
+    }
+
+    pdfHistoryContainer.innerHTML = history.map(plan => {
+      const savedDate = plan.savedAt ? new Date(plan.savedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Verified Plan';
+      return `
+        <div class="pdf-history-item-card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+            <div style="flex: 1; min-width: 0;">
+              <strong class="pdf-history-title">
+                ${plan.title || `${plan.origin} to ${plan.destination}`}
+              </strong>
+              <div class="pdf-history-sub">
+                ${plan.origin} → ${plan.destination} • ${savedDate}
+              </div>
+            </div>
+            <button class="pdf-history-delete-btn" onclick="window.removePdfHistoryItem('${plan.id}')" title="Delete from history">
+              Delete
+            </button>
+          </div>
+
+          <div class="pdf-history-stats-pill">
+            <span class="stat-dist">${plan.totalDistanceKm || 0} km</span> •
+            <span>~${plan.totalDrivingHours || 0}h drive</span> •
+            <span>${(plan.stops || []).length} stops</span> •
+            <span class="stat-cost">₹${(plan.totalCost || 0).toLocaleString('en-IN')}</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 2px;">
+            <button class="btn-history-view" onclick="window.openPdfHistoryInApp('${plan.id}')">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+              <span>View in App</span>
+            </button>
+            <button class="btn-history-download" onclick="window.downloadPdfHistoryItem('${plan.id}')">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Download PDF</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  window.openPdfHistoryInApp = (id) => {
+    window.loadAIHistoryPlan(id);
+    if (modalPdfHistory) modalPdfHistory.classList.add('hidden');
+    if (window.__switchTab) window.__switchTab('map');
+  };
+
+  window.downloadPdfHistoryItem = async (id) => {
+    const history = getAIHistoryPlans();
+    const plan = history.find(p => p.id === id);
+    if (!plan) return;
+    if (modalPdfHistory) modalPdfHistory.classList.add('hidden');
+    downloadPlanPdf(plan);
+  };
+
+  window.removePdfHistoryItem = (id) => {
+    deleteAIHistoryPlan(id);
+    renderPdfHistoryModal();
+    showToast('Removed from history');
+  };
+
+  if (btnItineraryPdfHistory) {
+    btnItineraryPdfHistory.onclick = () => {
+      renderPdfHistoryModal();
+      if (modalPdfHistory) modalPdfHistory.classList.remove('hidden');
+    };
+  }
+
+  if (btnClosePdfHistory) {
+    btnClosePdfHistory.onclick = () => {
+      if (modalPdfHistory) modalPdfHistory.classList.add('hidden');
+    };
+  }
+
+  if (modalPdfHistory) {
+    modalPdfHistory.onclick = (e) => {
+      if (e.target === modalPdfHistory) modalPdfHistory.classList.add('hidden');
+    };
+  }
+
+  window.__exportItineraryPdf = (plan) => {
+    downloadPlanPdf(plan);
+  };
+
 
   // 9. Setup Map Layer Selector FAB
   const btnLayer = document.getElementById('btn-layer-selector');

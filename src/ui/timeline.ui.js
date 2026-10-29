@@ -3,7 +3,7 @@ import { ICONS } from '../icons.js';
 import { formatMinutes, getPlaceHours } from '../services/scheduler.service.js';
 import { generateRoadTripPlan } from '../services/ai.service.js';
 
-export function setupTimelineUI({ onStopDeleted = null, onPlanGenerated = null, onToast = null }) {
+export function setupTimelineUI({ onStopDeleted = null, onPlanGenerated = null, onDownloadPdf = null, onToast = null }) {
   const container = document.getElementById('timeline-list');
   const btnGenerateAI = document.getElementById('btn-generate-ai-plan');
   const aiInputOrigin = document.getElementById('ai-chat-origin');
@@ -12,9 +12,11 @@ export function setupTimelineUI({ onStopDeleted = null, onPlanGenerated = null, 
   const aiInputBudget = document.getElementById('ai-chat-budget');
   const comfortChips = document.querySelectorAll('#ai-comfort-chips .ai-pill-chip');
   const diningChips = document.querySelectorAll('#ai-dining-chips .ai-pill-chip');
+  const resultContainer = document.getElementById('ai-chat-result');
 
   let selectedComfort = 'comfort';
   let selectedDining = 'dhabas';
+  let lastCalculatedPlan = null;
 
   comfortChips.forEach(chip => {
     chip.onclick = () => {
@@ -32,6 +34,91 @@ export function setupTimelineUI({ onStopDeleted = null, onPlanGenerated = null, 
     };
   });
 
+  function renderPlanResult(plan) {
+    if (!resultContainer) return;
+    lastCalculatedPlan = plan;
+
+    resultContainer.innerHTML = `
+      <div class="calculated-tour-card" style="background: var(--surface-container); border: 1.5px solid var(--primary); border-radius: 18px; padding: 16px; margin-top: 12px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+          <div>
+            <div style="font-size: 15px; font-weight: 800; color: var(--on-surface);">${plan.title}</div>
+            <div style="font-size: 12px; color: var(--on-surface-variant); margin-top: 2px;">
+              ${plan.origin} → ${plan.destination} • ${plan.members || 4} travelers
+            </div>
+          </div>
+          <span class="chip active" style="font-size: 10.5px; padding: 3px 9px; border-radius: 20px; background: var(--primary-container); color: var(--primary); font-weight: 700; white-space: nowrap;">
+            ⚡ Verified Route
+          </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: var(--surface); padding: 10px; border-radius: 12px; border: 1px solid var(--outline-variant); text-align: center;">
+          <div>
+            <div style="font-size: 9.5px; color: var(--on-surface-variant); font-weight: 700;">DISTANCE</div>
+            <div style="font-size: 13px; font-weight: 800; color: var(--on-surface); margin-top: 2px;">${plan.totalDistanceKm} km</div>
+          </div>
+          <div>
+            <div style="font-size: 9.5px; color: var(--on-surface-variant); font-weight: 700;">DRIVE</div>
+            <div style="font-size: 13px; font-weight: 800; color: var(--on-surface); margin-top: 2px;">~${plan.totalDrivingHours}h</div>
+          </div>
+          <div>
+            <div style="font-size: 9.5px; color: var(--on-surface-variant); font-weight: 700;">STOPS</div>
+            <div style="font-size: 13px; font-weight: 800; color: var(--on-surface); margin-top: 2px;">${plan.stops.length}</div>
+          </div>
+          <div>
+            <div style="font-size: 9.5px; color: var(--on-surface-variant); font-weight: 700;">BUDGET</div>
+            <div style="font-size: 13px; font-weight: 800; color: var(--primary); margin-top: 2px;">₹${(plan.totalCost || 0).toLocaleString('en-IN')}</div>
+          </div>
+        </div>
+
+        <!-- Real Waypoint Stops preview -->
+        <div style="font-size: 11.5px; color: var(--on-surface-variant); display: flex; flex-direction: column; gap: 5px; background: var(--surface-container-low); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--outline-variant);">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #10B981; flex-shrink: 0;"></span>
+            <strong>Start:</strong> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${plan.origin}</span>
+          </div>
+          ${plan.stops.slice(1, -1).map(s => `
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #F59E0B; flex-shrink: 0;"></span>
+              <strong>Waypoint:</strong> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.name}</span>
+            </div>
+          `).join('')}
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #EF4444; flex-shrink: 0;"></span>
+            <strong>End:</strong> <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${plan.destination}</span>
+          </div>
+        </div>
+
+        <!-- Bottom Action Options: View in App or Download as PDF -->
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <button id="btn-tour-view-app" class="btn-primary" style="flex: 1; padding: 11px 12px; border-radius: var(--radius-pill); font-weight: 700; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;" type="button">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+            <span>View in App</span>
+          </button>
+          <button id="btn-tour-download-pdf" class="btn-secondary" style="flex: 1.25; padding: 11px 12px; border-radius: var(--radius-pill); font-weight: 800; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--primary); color: #FFFFFF; border: none; box-shadow: 0 4px 14px rgba(26, 86, 219, 0.32); cursor: pointer;" type="button">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Download as PDF</span>
+          </button>
+        </div>
+      </div>
+    `;
+    resultContainer.classList.remove('hidden');
+
+    const btnViewApp = document.getElementById('btn-tour-view-app');
+    if (btnViewApp) {
+      btnViewApp.onclick = () => {
+        if (typeof onPlanGenerated === 'function') onPlanGenerated(plan);
+      };
+    }
+
+    const btnDownloadPdf = document.getElementById('btn-tour-download-pdf');
+    if (btnDownloadPdf) {
+      btnDownloadPdf.onclick = () => {
+        if (typeof onDownloadPdf === 'function') onDownloadPdf(plan);
+      };
+    }
+  }
+
   if (btnGenerateAI) {
     btnGenerateAI.onclick = async () => {
       const orig = aiInputOrigin.value.trim();
@@ -46,7 +133,7 @@ export function setupTimelineUI({ onStopDeleted = null, onPlanGenerated = null, 
 
       const originalBtnText = btnGenerateAI.innerHTML;
       btnGenerateAI.disabled = true;
-      btnGenerateAI.innerHTML = `<span class="spinner-ai" style="width:16px;height:16px;border-width:2px;"></span> Calculating Plan...`;
+      btnGenerateAI.innerHTML = `<span class="spinner-ai" style="width:16px;height:16px;border-width:2px;"></span> Calculating Verified Plan...`;
 
       try {
         const plan = await generateRoadTripPlan({
@@ -58,11 +145,10 @@ export function setupTimelineUI({ onStopDeleted = null, onPlanGenerated = null, 
           dining: selectedDining
         });
 
-        if (typeof onPlanGenerated === 'function') {
-          onPlanGenerated(plan);
-        }
+        renderPlanResult(plan);
+
         if (typeof onToast === 'function') {
-          onToast(`Road trip itinerary created with ${plan.stops.length} stops!`);
+          onToast(`Road trip plan ready! Choose "View in App" or "Download as PDF" below.`);
         }
       } catch (err) {
         console.error('AI plan error:', err);

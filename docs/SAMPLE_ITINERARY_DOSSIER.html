@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bangalore to Ooty Scenic Mountain Drive</title>
+  <style>
+    /* ==========================================================================
+       TripWeave A4 Publication Print Stylesheet
+       ========================================================================== */
+    @page {
+      size: A4 portrait;
+      margin: 12mm 14mm 12mm 14mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0F172A !important;
+      background: #FFFFFF !important;
+      font-size: 11pt;
+      line-height: 1.5;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+
+    /* A4 Discrete Page Architecture */
+    .dossier-page {
+      width: 794px;
+      min-height: 1123px;
+      padding: 32px 36px;
+      margin: 0 auto;
+      background: #FFFFFF !important;
+      color: #0F172A !important;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .dossier-page-content {
+      flex: 1;
+    }
+
+    .card-block {
+      page-break-inside: avoid;
+      break-inside: avoid;
+      background: #FFFFFF !important;
+      border: 1.5px solid #CBD5E1 !important;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    /* Header Bar */
+    .dossier-top-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2.5px solid #1A73E8;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .brand-logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-title {
+      font-size: 16pt;
+      font-weight: 800;
+      color: #1A73E8 !important;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-tagline {
+      font-size: 9pt;
+      color: #334155 !important;
+      font-weight: 600;
+    }
+
+    .header-metadata {
+      text-align: right;
+      font-size: 9pt;
+      color: #334155 !important;
+    }
+
+    .ref-badge {
+      display: inline-block;
+      background: #EFF6FF !important;
+      color: #1D4ED8 !important;
+      border: 1px solid #93C5FD !important;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 3px;
+      font-size: 8.5pt;
+    }
+
+    /* Hero Banner */
+    .hero-banner {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      height: 165px;
+      border: 1px solid #94A3B8;
+    }
+
+    .hero-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, rgba(15,23,42,0) 0%, rgba(15,23,42,0.92) 100%) !important;
+      padding: 12px 14px;
+      color: #FFFFFF !important;
+    }
+
+    .hero-trip-title {
+      font-size: 14pt;
+      font-weight: 800;
+      color: #FFFFFF !important;
+      margin-bottom: 4px;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    }
+
+    .hero-badges-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hero-badge {
+      background: rgba(15, 23, 42, 0.65) !important;
+      border: 1px solid rgba(255, 255, 255, 0.6) !important;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #FFFFFF !important;
+    }
+
+    /* Section Headings */
+    .section-title {
+      font-size: 11pt;
+      font-weight: 800;
+      color: #0F172A !important;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #CBD5E1 !important;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .section-icon {
+      color: #1A73E8 !important;
+      font-size: 12pt;
+      line-height: 1;
+    }
+
+    /* Tables */
+    .metric-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+      font-size: 9pt;
+    }
+
+    .metric-table th, .metric-table td {
+      border: 1px solid #CBD5E1 !important;
+      padding: 6px 8px;
+      text-align: left;
+      color: #0F172A !important;
+    }
+
+    .metric-table th {
+      background: #F1F5F9 !important;
+      color: #0F172A !important;
+      font-weight: 800;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+    }
+
+    .metric-table tr:nth-child(even) {
+      background: #F8FAFC !important;
+    }
+
+    .total-row {
+      background: #DBEAFE !important;
+      font-weight: 800;
+      color: #1E3A8A !important;
+    }
+
+    /* Place Cards & Point Lists */
+    .place-item {
+      border-left: 4px solid #1A73E8 !important;
+      border-top: 1px solid #E2E8F0;
+      border-right: 1px solid #E2E8F0;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 8px 10px;
+      background: #F8FAFC !important;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 8px;
+      page-break-inside: avoid;
+    }
+
+    .place-header-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
+
+    .place-title {
+      font-size: 10.5pt;
+      font-weight: 800;
+      color: #0F172A !important;
+    }
+
+    .timing-pill {
+      background: #FEF3C7 !important;
+      color: #78350F !important;
+      border: 1.5px solid #F59E0B !important;
+      font-size: 7.5pt;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .place-meta-line {
+      font-size: 8pt;
+      color: #334155 !important;
+      margin-bottom: 4px;
+      font-style: italic;
+    }
+
+    .points-list {
+      margin-left: 14px;
+      font-size: 8.5pt;
+      color: #1E293B !important;
+    }
+
+    .points-list li {
+      margin-bottom: 2px;
+    }
+
+    /* Restaurant & Hotel Badges */
+    .amenity-chip {
+      display: inline-block;
+      background: #F1F5F9;
+      color: #334155;
+      font-size: 7.5pt;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-right: 4px;
+      margin-top: 3px;
+      border: 1px solid #E2E8F0;
+    }
+
+    .veg-badge {
+      background: #DCFCE7;
+      color: #166534;
+      border: 1px solid #86EFAC;
+      font-size: 7.5pt;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-left: 6px;
+    }
+
+    /* Footer Note */
+    .dossier-footer {
+      border-top: 1px solid #CBD5E1;
+      padding-top: 8px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 8pt;
+      color: #64748B;
+    }
+  </style>
+</head>
+<body>
+  <div class="dossier-root">
+
+    <!-- PAGE 1: EXECUTIVE ROUTE SUMMARY & BUDGET -->
+    <div class="dossier-page" data-page="1">
+      <div class="dossier-page-content">
+        <div class="dossier-top-header">
+          <div class="brand-logo-wrap">
+            <div>
+              <div class="brand-title">TripWeave</div>
+              <div class="brand-tagline">Official Highway Route &amp; Travel Dossier</div>
+            </div>
+          </div>
+          <div class="header-metadata">
+            <div>Date Generated: <strong>30 October 2026</strong></div>
+            <div class="ref-badge">REF: TW-859564</div>
+          </div>
+        </div>
+
+        <!-- Hero Card with Curated Landscape Imagery -->
+        <div class="hero-banner" style="background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);">
+          <img class="hero-image" src="https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?auto=format&fit=crop&w=1200&q=80" alt="Ooty, Tamil Nadu Landscape" crossorigin="anonymous" onerror="this.style.display='none'" />
+          <div class="hero-overlay">
+            <h1 class="hero-trip-title">Bangalore to Ooty Scenic Mountain Drive</h1>
+            <div class="hero-badges-row">
+              <span class="hero-badge">Distance: 275 km</span>
+              <span class="hero-badge">Est. Driving: 5.5 hrs</span>
+              <span class="hero-badge">Travelers: 4 Persons</span>
+              <span class="hero-badge">Comfort: COMFORT</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: Route Corridor & Highway Transit Details -->
+        <div class="card-block">
+          <h2 class="section-title"><span class="section-icon">🛣️</span> 1. Highway Corridor &amp; Transit Details</h2>
+          <table class="metric-table">
+            <tr>
+              <th style="width: 25%;">Starting Point (Origin)</th>
+              <td style="width: 75%;"><strong>Bangalore, Karnataka</strong></td>
+            </tr>
+            <tr>
+              <th>Final Destination</th>
+              <td><strong>Ooty, Tamil Nadu</strong></td>
+            </tr>
+            <tr>
+              <th>Primary Expressways / Highways</th>
+              <td>National Highway 44 & State Arterial Highway • Regional Scenic Mountain / Coastal Bypass</td>
+            </tr>
+            <tr>
+              <th>Corridor Overview</th>
+              <td>An exceptional, well-engineered road corridor connecting Bangalore, Karnataka to Ooty, Tamil Nadu featuring four-lane divided highways, scenic mountain vistas, and established tourist transit plazas.</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Section 2: Financial Planning & Budget Allocation -->
+        <div class="card-block">
+          <h2 class="section-title"><span class="section-icon">💳</span> 2. Budget Estimation &amp; Financial Allocation</h2>
+          <table class="metric-table">
+            <thead>
+              <tr>
+                <th>Expense Category</th>
+                <th>Estimation Basis</th>
+                <th style="text-align: right;">Amount (INR)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Estimated Fuel</strong></td>
+                <td>Calculated for 275 km at ~15 km/L (₹102.5/L)</td>
+                <td style="text-align: right;">₹1,980</td>
+              </tr>
+              <tr>
+                <td><strong>FASTag Toll Charges</strong></td>
+                <td>National &amp; State Highway electronic toll plazas</td>
+                <td style="text-align: right;">₹380</td>
+              </tr>
+              <tr>
+                <td><strong>Accommodations / Stays</strong></td>
+                <td>2 Room(s) based on comfort tier</td>
+                <td style="text-align: right;">₹6,800</td>
+              </tr>
+              <tr>
+                <td><strong>Meals &amp; Refreshments</strong></td>
+                <td>Dining budget allocated for 4 traveler(s)</td>
+                <td style="text-align: right;">₹3,000</td>
+              </tr>
+              <tr class="total-row">
+                <td colspan="2"><strong>Total Estimated Tour Budget</strong></td>
+                <td style="text-align: right;"><strong>₹12,160</strong></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="font-size: 7.5pt; color: #64748B; margin-top: 5px; text-align: right;">
+            Budget represents an estimated planning baseline based on current regional highway averages.
+          </div>
+        </div>
+      </div>
+
+      <div class="dossier-footer">
+        <span>TripWeave Intelligent Road Trip Planner</span>
+        <span>Page 1 of 3</span>
+      </div>
+    </div>
+
+    <!-- PAGE 2: PLACES TO VISIT & DINING -->
+    <div class="dossier-page" data-page="2">
+      <div class="dossier-page-content">
+        <div class="dossier-top-header">
+          <div class="brand-logo-wrap">
+            <div class="brand-title" style="font-size: 13pt;">TripWeave — Ooty, Tamil Nadu Itinerary</div>
+          </div>
+          <div class="header-metadata">
+            <span class="ref-badge">REF: TW-859564</span>
+          </div>
+        </div>
+
+        <div class="card-block">
+          <h2 class="section-title"><span class="section-icon">📍</span> 3. Planned Places to Visit &amp; Optimal Viewing Timings</h2>
+          <div style="font-size: 8.5pt; color: #475569; margin-bottom: 8px;">
+            To ensure a premier experience, visit times are synchronized with golden lighting, cool ambient temperatures, and low footfall windows.
+          </div>
+
+          
+            <div class="place-item">
+              <div class="place-header-row">
+                <div class="place-title">1. Ooty, Tamil Nadu Botanical Viewpoint & Heritage Reserve</div>
+                <span class="timing-pill">Best Time: 06:30 AM – 08:30 AM</span>
+              </div>
+              <div class="place-meta-line">
+                Experience Window: Crisp morning mist, golden hour photography, and peaceful strolls before tourist buses arrive. • Duration: 1 Hour 45 Mins
+              </div>
+              <ul class="points-list">
+                <li>Panoramic views across lush valley ridges and indigenous flora collections</li><li>Well-paved walking trail with guided informational plaques</li>
+                <li><strong>Entry &amp; Access:</strong> ₹60 per adult • <strong>Parking:</strong> Spacious designated paved vehicle parking</li>
+              </ul>
+            </div>
+          
+            <div class="place-item">
+              <div class="place-header-row">
+                <div class="place-title">2. Ooty, Tamil Nadu Central Lake & Promenade</div>
+                <span class="timing-pill">Best Time: 04:30 PM – 06:15 PM</span>
+              </div>
+              <div class="place-meta-line">
+                Experience Window: Gentle evening breeze, serene water reflections, and pleasant weather for walking. • Duration: 1 Hour 30 Mins
+              </div>
+              <ul class="points-list">
+                <li>Eco-friendly pedal boating and lakeside cycling track</li><li>Local handicraft stalls and fresh tea/spice concessions</li>
+                <li><strong>Entry &amp; Access:</strong> Free public entry (Boating: ₹150) • <strong>Parking:</strong> Pay-and-park municipal facility available</li>
+              </ul>
+            </div>
+          
+            <div class="place-item">
+              <div class="place-header-row">
+                <div class="place-title">3. Ooty, Tamil Nadu Sunset Peak Observation Deck</div>
+                <span class="timing-pill">Best Time: 05:45 PM – 06:45 PM</span>
+              </div>
+              <div class="place-meta-line">
+                Experience Window: Spectacular 360-degree sunset panorama over distant mountain horizons. • Duration: 1 Hour 00 Mins
+              </div>
+              <ul class="points-list">
+                <li>Telescope viewing station and designated selfie platforms</li><li>Fresh roasted corn and hot local beverages nearby</li>
+                <li><strong>Entry &amp; Access:</strong> ₹20 per adult • <strong>Parking:</strong> Curbside regulated parking</li>
+              </ul>
+            </div>
+          
+        </div>
+
+        <!-- Section 4: Verified Restaurants & Highway Dining -->
+        <div class="card-block">
+          <h2 class="section-title"><span class="section-icon">🍽️</span> 4. Recommended Restaurants &amp; Highway Food Stops</h2>
+
+          
+            <div class="place-item" style="border-left-color: #F59E0B;">
+              <div class="place-header-row">
+                <div class="place-title">
+                  1. Paakashala & Highway Grand Feast Plaza
+                  <span class="veg-badge">Pure Vegetarian</span>
+                </div>
+                <span class="timing-pill" style="background: #ECFDF5; color: #065F46; border-color: #A7F3D0;">Breakfast / Morning Pitstop: 08:00 AM – 09:30 AM</span>
+              </div>
+              <div class="place-meta-line">
+                Location: <strong>Midway Highway Corridor Plaza (Km 120)</strong> • Cuisine: Authentic South & North Indian
+              </div>
+              <div style="font-size: 8.5pt; color: #1E293B; margin-bottom: 3px;">
+                <strong>Specialty:</strong> Crispy Butter Ghee Roast Dosa, Hot Filter Coffee & Thali
+              </div>
+              <div>
+                <span class="amenity-chip">Spotless Restrooms</span><span class="amenity-chip">100+ Car Parking</span><span class="amenity-chip">Baby Care Room</span><span class="amenity-chip">Fast Counter Service</span>
+              </div>
+            </div>
+          
+            <div class="place-item" style="border-left-color: #F59E0B;">
+              <div class="place-header-row">
+                <div class="place-title">
+                  2. Ooty, Tamil Nadu Heritage Dining & Spice Kitchen
+                  <span class="veg-badge">Veg & Non-Veg Multi-Cuisine</span>
+                </div>
+                <span class="timing-pill" style="background: #ECFDF5; color: #065F46; border-color: #A7F3D0;">Dinner: 07:30 PM – 09:30 PM</span>
+              </div>
+              <div class="place-meta-line">
+                Location: <strong>Central Ooty, Tamil Nadu Promenade Road</strong> • Cuisine: Regional Cuisine & Multi-Cuisine Grills
+              </div>
+              <div style="font-size: 8.5pt; color: #1E293B; margin-bottom: 3px;">
+                <strong>Specialty:</strong> Slow-cooked Fragrant Biryani, Clay-Oven Rotis & Fresh Desserts
+              </div>
+              <div>
+                <span class="amenity-chip">Air-Conditioned Family Dining</span><span class="amenity-chip">Valet Parking</span><span class="amenity-chip">Indoor & Outdoor Terrace</span>
+              </div>
+            </div>
+          
+        </div>
+      </div>
+
+      <div class="dossier-footer">
+        <span>TripWeave Intelligent Road Trip Planner</span>
+        <span>Page 2 of 3</span>
+      </div>
+    </div>
+
+    <!-- PAGE 3: HOTELS & LOCAL RECOMMENDATIONS -->
+    <div class="dossier-page" data-page="3">
+      <div class="dossier-page-content">
+        <div class="dossier-top-header">
+          <div class="brand-logo-wrap">
+            <div class="brand-title" style="font-size: 13pt;">TripWeave — Stays &amp; Travel Advisory</div>
+          </div>
+          <div class="header-metadata">
+            <span class="ref-badge">REF: TW-859564</span>
+          </div>
+        </div>
+
+        <!-- Section 5: Hotels Searched Based on Itinerary & Comfort -->
+        <div class="card-block">
+          <h2 class="section-title"><span class="section-icon">🏨</span> 5. Curated Accommodations &amp; Stays</h2>
+          <div style="font-size: 8.5pt; color: #475569; margin-bottom: 8px;">
+            Selected strictly based on your party size (4 travelers), budget target, and comfort tier (COMFORT).
+          </div>
+
+          
+            <div class="place-item" style="border-left-color: #8B5CF6;">
+              <div class="place-header-row">
+                <div class="place-title">1. Ooty, Tamil Nadu Grand Executive Comfort Hotel</div>
+                <span class="timing-pill" style="background: #EDE9FE; color: #5B21B6; border-color: #DDD6FE;">₹3,400 / night</span>
+              </div>
+              <div class="place-meta-line">
+                Category: <strong>Executive Comfort Hotel</strong> • Policy: Check-in: 02:00 PM | Check-out: 11:00 AM
+              </div>
+              <div style="font-size: 8pt; color: #334155; margin-bottom: 4px;">
+                Strategically located within 10 minutes of primary sightseeing attractions with smooth vehicular access.
+              </div>
+              <div>
+                <span class="amenity-chip">Secure Private Parking</span><span class="amenity-chip">Complimentary Hot Breakfast</span><span class="amenity-chip">24/7 Front Desk</span><span class="amenity-chip">High-Speed Wi-Fi</span><span class="amenity-chip">Mountain / Garden Facing Rooms</span>
+              </div>
+            </div>
+          
+        </div>
+
+        <!-- Section 6: Local Recommendations & Emergency Advisory -->
+        <div class="card-block">
+          <h2 class="section-title"><span class="section-icon">🛡️</span> 6. Essential Recommendations &amp; Travel Safety Advisory</h2>
+
+          
+            <div style="margin-bottom: 8px;">
+              <div style="font-weight: 700; font-size: 9pt; color: #1E293B; margin-bottom: 3px;">
+                • Weather & What to Pack
+              </div>
+              <ul class="points-list" style="margin-left: 18px;">
+                <li>Morning and late evening temperatures drop noticeably; keep a light jacket or fleece handy.</li><li>Comfortable walking sneakers or trail shoes are recommended for walking trails and viewpoint steps.</li><li>Keep an umbrella or light windbreaker in the car during mountain transit.</li>
+              </ul>
+            </div>
+          
+            <div style="margin-bottom: 8px;">
+              <div style="font-weight: 700; font-size: 9pt; color: #1E293B; margin-bottom: 3px;">
+                • Highway & Mountain Driving Safety
+              </div>
+              <ul class="points-list" style="margin-left: 18px;">
+                <li>On ghat road hairpin curves, strictly stay in your lane and use low gear rather than excessive braking.</li><li>Keep your FASTag wallet recharged with at least ₹500 balance before starting.</li><li>Start early in the morning to bypass metropolitan exit bottlenecks.</li>
+              </ul>
+            </div>
+          
+            <div style="margin-bottom: 8px;">
+              <div style="font-weight: 700; font-size: 9pt; color: #1E293B; margin-bottom: 3px;">
+                • Local Etiquette & Travel Responsibilities
+              </div>
+              <ul class="points-list" style="margin-left: 18px;">
+                <li>Strict plastic-free zones are enforced in many scenic areas; please carry reusable bottles.</li><li>Remove footwear where requested before stepping onto sacred or protected heritage platforms.</li><li>Support local artisan co-operatives for authentic honey, organic tea, and handmade crafts.</li>
+              </ul>
+            </div>
+          
+            <div style="margin-bottom: 8px;">
+              <div style="font-weight: 700; font-size: 9pt; color: #1E293B; margin-bottom: 3px;">
+                • Emergency Support & Helplines
+              </div>
+              <ul class="points-list" style="margin-left: 18px;">
+                <li>National Emergency Helpline: 112</li><li>NHAI Highway Emergency Assistance & Crane Service: 1033</li><li>Medical Emergency & Ambulance: 108</li>
+              </ul>
+            </div>
+          
+        </div>
+      </div>
+
+      <div class="dossier-footer">
+        <span>TripWeave · Verified Digital Travel Dossier</span>
+        <span>Page 3 of 3</span>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

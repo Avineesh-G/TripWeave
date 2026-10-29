@@ -48,13 +48,15 @@ export function createGoogleTileLayer(layerKey = 'roadmap') {
   const conf = GOOGLE_TILE_PROVIDERS[layerKey] || GOOGLE_TILE_PROVIDERS.roadmap;
   const layer = L.tileLayer(conf.url, {
     subdomains: conf.subdomains,
-    maxZoom: conf.maxZoom,
+    maxZoom: conf.maxZoom || 20,
+    minZoom: 4,
+    noWrap: false,
     tileSize: conf.tileSize || 256,
     zoomOffset: conf.zoomOffset !== undefined ? conf.zoomOffset : 0,
     detectRetina: false,
     attribution: conf.attribution,
     crossOrigin: true,
-    keepBuffer: 8,
+    keepBuffer: 16,
     updateWhenIdle: false,
     updateWhenZooming: true
   });
@@ -62,7 +64,8 @@ export function createGoogleTileLayer(layerKey = 'roadmap') {
   layer.on('tileerror', function(error, tile) {
     if (tile && !tile._fallbackApplied && error.coords) {
       tile._fallbackApplied = true;
-      tile.src = `https://a.basemaps.cartocdn.com/rastertiles/voyager/${error.coords.z}/${error.coords.x}/${error.coords.y}@2x.png`;
+      const sub = ['a', 'b', 'c', 'd'][Math.abs((error.coords.x + error.coords.y) % 4)];
+      tile.src = `https://${sub}.basemaps.cartocdn.com/rastertiles/voyager/${error.coords.z}/${error.coords.x}/${error.coords.y}@2x.png`;
     }
   });
 
@@ -152,9 +155,14 @@ export function initMap(containerId = 'leaflet-map') {
   mapInstance = L.map(containerId, {
     zoomControl: false,
     attributionControl: false,
-    fadeAnimation: false,
+    fadeAnimation: true,
     zoomAnimation: true,
-    maxZoom: 20
+    minZoom: 4,
+    maxZoom: 20,
+    zoomSnap: 0.25,
+    zoomDelta: 0.5,
+    worldCopyJump: true,
+    preferCanvas: true
   }).setView(initialCenter, initialZoom);
 
   currentTileLayer = createGoogleTileLayer('roadmap');
@@ -173,7 +181,29 @@ export function initMap(containerId = 'leaflet-map') {
     }
   }
 
+  // Prevent UI overlays (search dropdown, top bar, place card) from propagating clicks/scrolls to Leaflet map
+  const searchDropdown = document.getElementById('search-suggestions-dropdown');
+  if (searchDropdown) {
+    L.DomEvent.disableClickPropagation(searchDropdown);
+    L.DomEvent.disableScrollPropagation(searchDropdown);
+  }
+  const topSearchWrap = document.getElementById('top-search-wrap');
+  if (topSearchWrap) {
+    L.DomEvent.disableClickPropagation(topSearchWrap);
+  }
+  const placePreviewCard = document.getElementById('map-place-preview-card');
+  if (placePreviewCard) {
+    L.DomEvent.disableClickPropagation(placePreviewCard);
+    L.DomEvent.disableScrollPropagation(placePreviewCard);
+  }
+
   mapInstance.on('click', (e) => {
+    // If search suggestions are active, dismiss the dropdown without tapping the background map
+    const activeDropdown = document.getElementById('search-suggestions-dropdown');
+    if (activeDropdown && !activeDropdown.classList.contains('hidden')) {
+      activeDropdown.classList.add('hidden');
+      return;
+    }
     if (typeof window.__onMapClicked === 'function') {
       window.__onMapClicked(e.latlng.lat, e.latlng.lng);
     }
@@ -183,6 +213,16 @@ export function initMap(containerId = 'leaflet-map') {
   setTimeout(resizeMap, 50);
   setTimeout(resizeMap, 200);
   setTimeout(resizeMap, 500);
+
+  // Dynamic Aspect Ratio & Device Orientation Listener
+  window.addEventListener('resize', () => {
+    resizeMap();
+  }, { passive: true });
+
+  window.addEventListener('orientationchange', () => {
+    setTimeout(resizeMap, 100);
+    setTimeout(resizeMap, 300);
+  }, { passive: true });
 
   return mapInstance;
 }
@@ -208,15 +248,43 @@ export function switchMapLayer(layerKey = 'roadmap') {
 export function renderGoogleLocationDot(lat, lng, accuracy = 15) {
   if (!mapInstance) return;
 
+  const puckSvgHtml = `
+    <div class="google-location-puck-wrapper">
+      <svg class="location-puck-svg" viewBox="0 0 56 56" width="56" height="56" style="display: block; overflow: visible;">
+        <defs>
+          <filter id="puck-shadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.32)"/>
+            <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="rgba(26,115,232,0.45)"/>
+          </filter>
+          <linearGradient id="puck-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4285F4"/>
+            <stop offset="100%" stop-color="#1A73E8"/>
+          </linearGradient>
+          <linearGradient id="beam-gradient" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="rgba(26,115,232,0.38)"/>
+            <stop offset="100%" stop-color="rgba(26,115,232,0.0)"/>
+          </linearGradient>
+        </defs>
+        <!-- Directional Navigation Beam (Flashlight Field of View) -->
+        <path class="location-beam" d="M 28 28 L 16 6 A 24 24 0 0 1 40 6 Z" fill="url(#beam-gradient)"/>
+        <!-- Dual Sonar Radar Pulse Rings -->
+        <circle class="location-pulse-ring" cx="28" cy="28" r="14" fill="rgba(66, 133, 244, 0.22)"/>
+        <circle class="location-pulse-ring-outer" cx="28" cy="28" r="18" fill="rgba(66, 133, 244, 0.12)"/>
+        <!-- Pure White Outer Bezel with Shadow -->
+        <circle cx="28" cy="28" r="9.5" fill="#FFFFFF" filter="url(#puck-shadow)"/>
+        <!-- Deep Vibrant Google Blue Core -->
+        <circle cx="28" cy="28" r="7" fill="url(#puck-blue)"/>
+        <!-- Precision Specular Dot -->
+        <circle cx="28" cy="28" r="2.2" fill="#FFFFFF" opacity="0.95"/>
+      </svg>
+    </div>
+  `;
+
   const pulseIcon = L.divIcon({
     className: 'google-location-dot-container',
-    html: `
-      <div class="google-location-halo"></div>
-      <div class="google-location-white-border"></div>
-      <div class="google-location-blue-core"></div>
-    `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
+    html: puckSvgHtml,
+    iconSize: [56, 56],
+    iconAnchor: [28, 28]
   });
 
   if (userLocationMarker) {
@@ -246,24 +314,100 @@ export function renderGoogleLocationDot(lat, lng, accuracy = 15) {
   }
 }
 
-export function renderRoutePolyline(latlngs, options = {}) {
-  if (!mapInstance) return;
-  if (routePolylineLayer) {
-    mapInstance.removeLayer(routePolylineLayer);
+export function clearRoutePolyline() {
+  if (routePolylineLayer && mapInstance) {
+    try {
+      mapInstance.removeLayer(routePolylineLayer);
+    } catch (e) {}
     routePolylineLayer = null;
   }
+}
+
+export function renderRoutePolyline(latlngs, options = {}) {
+  if (!mapInstance) return;
+  clearRoutePolyline();
   if (!latlngs || latlngs.length < 2) return;
 
-  routePolylineLayer = L.polyline(latlngs, {
-    color: options.color || '#2563EB',
-    weight: options.weight || 6,
-    opacity: options.opacity || 0.85,
+  const group = L.layerGroup();
+
+  // 1. Outer Deep Navy Highway Casing (Drop-shadow contrast against satellite & roadmap)
+  const casingPolyline = L.polyline(latlngs, {
+    color: options.casingColor || '#174EA6',
+    weight: options.casingWeight || 9,
+    opacity: 0.95,
     lineJoin: 'round',
-    lineCap: 'round'
-  }).addTo(mapInstance);
+    lineCap: 'round',
+    interactive: false
+  });
+  group.addLayer(casingPolyline);
+
+  // 2. Inner High-Luminance Google Executive Blue Core
+  const corePolyline = L.polyline(latlngs, {
+    color: options.color || '#4285F4',
+    weight: options.weight || 5.5,
+    opacity: 1.0,
+    lineJoin: 'round',
+    lineCap: 'round',
+    interactive: true
+  });
+  group.addLayer(corePolyline);
+
+  // 3. Start Endpoint: Google Maps Precision Green Origin Puck
+  const startPt = latlngs[0];
+  const originIconHtml = `
+    <div class="route-origin-puck">
+      <div class="route-origin-halo"></div>
+      <div class="route-origin-core"></div>
+    </div>
+  `;
+  const originIcon = L.divIcon({
+    className: 'route-origin-marker-wrap',
+    html: originIconHtml,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+  const originMarker = L.marker(startPt, {
+    icon: originIcon,
+    zIndexOffset: 1500,
+    interactive: false
+  });
+  group.addLayer(originMarker);
+
+  // 4. Destination Endpoint: Iconic Google Red Teardrop Pin with Ground Shadow
+  const destPt = latlngs[latlngs.length - 1];
+  const destIconHtml = `
+    <div class="route-dest-pin-marker">
+      <svg viewBox="0 0 32 44" width="30" height="42" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.38)); display: block;">
+        <path d="M16 0C7.163 0 0 7.163 0 16c0 11.5 16 28 16 28s16-16.5 16-28C32 7.163 24.837 0 16 0z" fill="#EA4335"/>
+        <circle cx="16" cy="16" r="6.5" fill="#FFFFFF"/>
+        <circle cx="16" cy="16" r="3.5" fill="#C5221F"/>
+      </svg>
+      <div class="route-dest-shadow"></div>
+    </div>
+  `;
+  const destIcon = L.divIcon({
+    className: 'route-dest-marker-wrap',
+    html: destIconHtml,
+    iconSize: [30, 44],
+    iconAnchor: [15, 41]
+  });
+  const destMarker = L.marker(destPt, {
+    icon: destIcon,
+    zIndexOffset: 1600,
+    interactive: false
+  });
+  group.addLayer(destMarker);
+
+  group.addTo(mapInstance);
+  routePolylineLayer = group;
 
   if (options.fitBounds !== false) {
-    mapInstance.fitBounds(routePolylineLayer.getBounds(), { padding: [40, 40] });
+    mapInstance.fitBounds(corePolyline.getBounds(), {
+      paddingTopLeft: [40, 40],
+      paddingBottomRight: [40, 140],
+      maxZoom: 16,
+      animate: true
+    });
   }
 }
 
@@ -422,3 +566,93 @@ export function setupLocationListeners(onToast = null) {
   // Launch initial silent acquisition immediately
   acquireUserLocation(false, onToast);
 }
+
+let searchPlaceMarker = null;
+
+export function highlightSearchPlace(lat, lng, name = '') {
+  if (!mapInstance) return;
+
+  if (searchPlaceMarker) {
+    try {
+      mapInstance.removeLayer(searchPlaceMarker);
+    } catch (e) {}
+    searchPlaceMarker = null;
+  }
+
+  if (lat == null || lng == null) return;
+
+  const pinHtml = `
+    <div class="google-maps-search-pin" style="display:flex; flex-direction:column; align-items:center;">
+      <svg viewBox="0 0 32 44" width="32" height="44" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35)); display:block;">
+        <path d="M16 0C7.163 0 0 7.163 0 16c0 11.5 16 28 16 28s16-16.5 16-28C32 7.163 24.837 0 16 0z" fill="#EA4335"/>
+        <circle cx="16" cy="16" r="6.5" fill="#FFFFFF"/>
+        <circle cx="16" cy="16" r="3.5" fill="#C5221F"/>
+      </svg>
+      <div style="width: 8px; height: 3px; background: rgba(0,0,0,0.3); border-radius: 50%; margin-top: -2px; filter: blur(1px);"></div>
+    </div>
+  `;
+
+  const pinIcon = L.divIcon({
+    className: 'search-place-marker-wrap',
+    html: pinHtml,
+    iconSize: [32, 44],
+    iconAnchor: [16, 42],
+    popupAnchor: [0, -42]
+  });
+
+  searchPlaceMarker = L.marker([lat, lng], {
+    icon: pinIcon,
+    zIndexOffset: 1600
+  }).addTo(mapInstance);
+
+  mapInstance.flyTo([lat, lng], 14, {
+    animate: true,
+    duration: 0.8
+  });
+}
+
+export function clearSearchPlaceMarker() {
+  if (searchPlaceMarker && mapInstance) {
+    try {
+      mapInstance.removeLayer(searchPlaceMarker);
+    } catch (e) {}
+    searchPlaceMarker = null;
+  }
+}
+
+let turnHighlightMarker = null;
+
+export function highlightTurnLocation(lat, lng, instruction = '') {
+  if (!mapInstance || lat == null || lng == null) return;
+  if (turnHighlightMarker) {
+    try { mapInstance.removeLayer(turnHighlightMarker); } catch(e) {}
+    turnHighlightMarker = null;
+  }
+
+  const turnIcon = L.divIcon({
+    className: 'turn-highlight-marker',
+    html: `
+      <div class="turn-pulse-wrapper">
+        <div class="turn-pulse-ring"></div>
+        <div class="turn-dot-core"></div>
+      </div>
+    `,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
+  });
+
+  turnHighlightMarker = L.marker([lat, lng], {
+    icon: turnIcon,
+    zIndexOffset: 1800
+  }).addTo(mapInstance);
+
+  mapInstance.flyTo([lat, lng], 16, { animate: true, duration: 0.8 });
+
+  setTimeout(() => {
+    if (turnHighlightMarker && mapInstance) {
+      try { mapInstance.removeLayer(turnHighlightMarker); } catch(e) {}
+      turnHighlightMarker = null;
+    }
+  }, 4500);
+}
+

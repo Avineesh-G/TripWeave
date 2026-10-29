@@ -83,6 +83,32 @@ export async function generateRoadTripPlan({ origin, destination, members = 4, t
   const totalCost = fuelCost + tollCost + stayCost + mealsCost;
 
   const planId = `ai-plan-${Date.now()}`;
+
+  // Fetch authentic intermediate waypoint city/locality along the corridor via Nominatim API
+  let waypointName = `${destGeo.name} Highway Waypoint`;
+  let waypointLat = (origGeo.lat + destGeo.lat) / 2;
+  let waypointLng = (origGeo.lng + destGeo.lng) / 2;
+
+  if (osrmRoute.polylineLatlngs && osrmRoute.polylineLatlngs.length > 2) {
+    const midIdx = Math.floor(osrmRoute.polylineLatlngs.length / 2);
+    waypointLat = osrmRoute.polylineLatlngs[midIdx][0];
+    waypointLng = osrmRoute.polylineLatlngs[midIdx][1];
+  }
+
+  try {
+    const revRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en&lat=${waypointLat}&lon=${waypointLng}&zoom=11`);
+    if (revRes.ok) {
+      const revData = await revRes.json();
+      const addr = revData.address || {};
+      const locality = addr.city || addr.town || addr.county || addr.suburb || addr.state_district || revData.name;
+      if (locality) {
+        waypointName = `${locality} Highway Waypoint`;
+      }
+    }
+  } catch (e) {
+    console.warn('[AI Service] Nominatim waypoint reverse geocode error:', e);
+  }
+
   const stops = [
     {
       id: `${planId}-start`,
@@ -97,15 +123,15 @@ export async function generateRoadTripPlan({ origin, destination, members = 4, t
     },
     {
       id: `${planId}-midpoint`,
-      name: `${destGeo.name} Highway Midpoint Rest Plaza`,
-      latitude: (origGeo.lat + destGeo.lat) / 2,
-      longitude: (origGeo.lng + destGeo.lng) / 2,
+      name: waypointName,
+      latitude: waypointLat,
+      longitude: waypointLng,
       durationMinutes: 45,
       plannedDurationMinutes: 45,
       stopOrder: 1,
       isOvernight: false,
       category: 'lunch',
-      recommendedFood: 'Hot tandoori rotis, dal makhani, and masala chai'
+      recommendedFood: dining === 'pureveg' ? 'South/North Indian Pure Veg Thali & Filter Coffee' : 'Fresh Tandoori Roti, Dal Tadka & Highway Chai'
     },
     {
       id: `${planId}-end`,

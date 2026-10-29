@@ -1,15 +1,14 @@
 {
-  "versionName": "1.6.0",
-  "versionCode": 8,
-  "releaseDate": "2026-10-28",
+  "versionName": "1.7.0",
+  "versionCode": 9,
+  "releaseDate": "2026-10-30",
   "apkUrl": "https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk",
   "releaseNotes": [
-    "Ground-up modular architecture: lightning-fast ES services & dedicated UI controllers",
-    "Eliminated update loop with Android OS PackageManager versionCode bridge verification",
-    "Clean map startup with zero mock data and calibrated high-precision GPS blue dot",
-    "Floating glassmorphic bottom dock & Enlarge/Enclose sheet with zero tab obstruction",
-    "Turn-by-turn route guidance HUD with simulated driving and authentic highway corridor stops",
-    "Conversational AI road trip planner in Itinerary tab syncing itemized budget cards with per-head split",
-    "100% crisp vector SVG iconography (zero emoji artifacts)"
+    "High-fidelity publication-grade PDF Itinerary Dossier export engine (A4 discrete page architecture)",
+    "Clean page layout preventing card splits or broken text across pages",
+    "Tour & PDF Dossier History modal matching Material 3 light/dark theme tokens",
+    "Dual 'View in App' and 'Download as PDF' options on calculated itineraries",
+    "Robust fallback data synthesis ensuring verified PDFs even without Groq API key",
+    "Ground-up modular architecture: lightning-fast ES services & dedicated UI controllers"
   ]
 }

@@ -98,11 +98,11 @@ export function setupAuthUI({ onAuthenticated }) {
           applyUser(result.user);
           showToast(`Welcome, ${result.user.displayName || 'Explorer'}!`);
         } else {
-          showToast(result?.error || 'Google sign-in cancelled. You can continue as Explorer.');
+          showToast(result?.error || 'Google sign-in was not completed. Please sign in to continue.');
         }
       } catch (err) {
         console.error('[TripWeave] Sign-in error:', err);
-        showToast(err.message || 'Unable to sign in. Please try again.');
+        showToast(err.message || 'Unable to sign in with Google. Please try again.');
       } finally {
         btnGoogleSignIn.disabled = false;
         if (googleBtnLabel) googleBtnLabel.textContent = 'Sign in with Google';
@@ -110,23 +110,7 @@ export function setupAuthUI({ onAuthenticated }) {
     };
   }
 
-  // 2. Continue as Explorer / Guest Click
-  if (btnGuestSignIn) {
-    btnGuestSignIn.onclick = () => {
-      const guest = {
-        uid: 'guest-' + Date.now(),
-        displayName: 'Road Explorer',
-        email: 'explorer@tripweave.app',
-        photoURL: '',
-        isGuest: true
-      };
-      localStorage.setItem('tripweave_auth_user', JSON.stringify(guest));
-      applyUser(guest);
-      showToast('Welcome! Exploring TripWeave.');
-    };
-  }
-
-  // 3. Privacy & Terms Screen Logic with Safe Back Navigation
+  // 2. Privacy & Terms Screen Logic with Safe Back Navigation
   function openTermsScreen() {
     if (modalAccount) modalAccount.classList.add('hidden');
     if (screenAuthGate) screenAuthGate.classList.add('hidden');
@@ -294,11 +278,14 @@ export function setupAuthUI({ onAuthenticated }) {
     }
   });
 
-  // 5. Bootstrap Auto-Check (Skip Gate if Already Authenticated)
+  // 4. Bootstrap Auto-Check (Require Valid Google Account Only)
   const existingUser = getCurrentUser();
-  if (existingUser) {
+  if (existingUser && !existingUser.isGuest) {
     applyUser(existingUser);
   } else {
+    if (existingUser?.isGuest) {
+      localStorage.removeItem('tripweave_auth_user');
+    }
     if (screenAuthGate) screenAuthGate.classList.remove('hidden');
     if (mainAppShell) mainAppShell.classList.add('hidden');
   }

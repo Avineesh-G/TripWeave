@@ -3,7 +3,7 @@
 // ==========================================================================
 
 import { dismissUpdate, downloadAndInstallUpdate } from '../services/updater.service.js';
-import { generateWhatsAppSummary, exportTripAsJSON } from '../services/export.service.js';
+import { generateItinerarySummaryText, exportTripAsJSON } from '../services/export.service.js';
 
 let activeToastTimeout = null;
 
@@ -82,10 +82,8 @@ export function setupShareModal(getPlanCallback) {
   const btnDone = document.getElementById('modal-share-done-btn');
   const titleEl = document.getElementById('share-trip-title');
   const metaEl = document.getElementById('share-trip-meta');
-  const textarea = document.getElementById('share-whatsapp-text');
-  const btnWhatsApp = document.getElementById('btn-share-whatsapp-send');
+  const textarea = document.getElementById('share-summary-text') || document.getElementById('share-whatsapp-text');
   const btnCopy = document.getElementById('btn-share-copy-text');
-  const btnExportPdf = document.getElementById('btn-export-pdf');
   const btnExportJson = document.getElementById('btn-export-json');
 
   function openModal() {
@@ -97,7 +95,7 @@ export function setupShareModal(getPlanCallback) {
         metaEl.textContent = `${plan.stops.length} stops • ${Math.round(plan.totalDistanceKm || 0)} km • ${plan.trip.groupSize || 4} travelers`;
       }
       if (textarea) {
-        textarea.value = generateWhatsAppSummary(plan.trip, plan.stops, plan.scheduleResult?.stops || [], plan.expenses);
+        textarea.value = generateItinerarySummaryText(plan.trip, plan.stops, plan.scheduleResult?.stops || [], plan.expenses);
       }
     }
     modal.classList.remove('hidden');
@@ -126,15 +124,6 @@ export function setupShareModal(getPlanCallback) {
     }
   });
 
-  if (btnWhatsApp) {
-    btnWhatsApp.onclick = () => {
-      const text = textarea ? textarea.value : '';
-      if (text) {
-        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-      }
-    };
-  }
-
   if (btnCopy) {
     btnCopy.onclick = () => {
       const text = textarea ? textarea.value : '';
@@ -145,11 +134,6 @@ export function setupShareModal(getPlanCallback) {
     };
   }
 
-  if (btnExportPdf) {
-    btnExportPdf.onclick = () => {
-      window.print();
-    };
-  }
 
   if (btnExportJson) {
     btnExportJson.onclick = () => {
@@ -297,3 +281,72 @@ export function setupAddStopModal({ onStopAdded = null }) {
 
   return { openModal, closeModal };
 }
+
+// --------------------------------------------------------------------------
+// Respectful PDF Download Confirmation Modal
+// --------------------------------------------------------------------------
+
+export function setupPdfDownloadConfirmModal({ onProceed = null, onCancel = null } = {}) {
+  const modal = document.getElementById('modal-pdf-download-confirm');
+  const btnClose = document.getElementById('modal-pdf-confirm-close-btn');
+  const btnCancel = document.getElementById('btn-pdf-confirm-cancel');
+  const btnProceed = document.getElementById('btn-pdf-confirm-proceed');
+  const titleEl = document.getElementById('pdf-confirm-trip-title');
+  const metaEl = document.getElementById('pdf-confirm-trip-meta');
+
+  let currentPlan = null;
+
+  function openConfirm(plan) {
+    if (!modal) return;
+    currentPlan = plan;
+
+    if (titleEl) {
+      if (plan && plan.origin && plan.destination) {
+        titleEl.textContent = `${plan.origin} → ${plan.destination}`;
+      } else if (plan && plan.title) {
+        titleEl.textContent = plan.title;
+      } else {
+        titleEl.textContent = 'Road Trip Itinerary';
+      }
+    }
+
+    if (metaEl) {
+      const stopCount = plan && plan.stops ? plan.stops.length : 0;
+      const km = plan && plan.totalDistanceKm ? Math.round(plan.totalDistanceKm) : 0;
+      metaEl.textContent = `${stopCount} stops • ${km > 0 ? km + ' km • ' : ''}Verified Travel Dossier`;
+    }
+
+    modal.classList.remove('hidden');
+  }
+
+  function closeConfirm(userCancelled = false) {
+    if (modal) modal.classList.add('hidden');
+    if (userCancelled && typeof onCancel === 'function') {
+      onCancel();
+    }
+  }
+
+  if (btnClose) {
+    btnClose.onclick = () => closeConfirm(true);
+  }
+  if (btnCancel) {
+    btnCancel.onclick = () => closeConfirm(true);
+  }
+  if (modal) {
+    modal.onclick = (e) => {
+      if (e.target === modal) closeConfirm(true);
+    };
+  }
+
+  if (btnProceed) {
+    btnProceed.onclick = () => {
+      closeConfirm(false);
+      if (typeof onProceed === 'function') {
+        onProceed(currentPlan);
+      }
+    };
+  }
+
+  return { openConfirm, closeConfirm };
+}
+

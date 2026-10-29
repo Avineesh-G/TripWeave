@@ -40,9 +40,25 @@ export function decodePolyline(str, precision = 5) {
   return coordinates;
 }
 
+import { searchPlacesIndia } from './search.service.js';
+
 export async function geocodePlace(query) {
   if (!query || !query.trim()) return null;
   const cleanQ = query.trim();
+
+  try {
+    const results = await searchPlacesIndia(cleanQ);
+    if (results && results.length > 0) {
+      return {
+        name: results[0].name,
+        fullName: results[0].subtitle || results[0].name,
+        lat: results[0].lat,
+        lng: results[0].lng
+      };
+    }
+  } catch (err) {
+    console.warn('[RoutingService] searchPlacesIndia error:', err);
+  }
 
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=in&limit=1&q=${encodeURIComponent(cleanQ)}`;

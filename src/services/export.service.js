@@ -1,7 +1,7 @@
-// Export & Sharing Service (WhatsApp, Road Book, Offline Backup)
+// Export & Sharing Service (Itinerary Summary, Offline Backup)
 import { formatMinutes, getPlaceHours } from './scheduler.service.js';
 
-export function generateWhatsAppSummary(trip, stops, schedule, expenses) {
+export function generateItinerarySummaryText(trip, stops, schedule, expenses) {
   if (!trip || !stops || stops.length === 0) return '';
 
   const depTimeStr = formatMinutes(trip.departureTimeMinutes || 480);
@@ -63,3 +63,5 @@ export function exportTripAsJSON(stateData) {
   downloadAnchor.click();
   downloadAnchor.remove();
 }
+
+export const generateWhatsAppSummary = generateItinerarySummaryText;

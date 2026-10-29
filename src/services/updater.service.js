@@ -1,7 +1,7 @@
 // In-App APK OTA Update Verification Service (v1.5.1 Robust Engine)
 
-export const CURRENT_APP_VERSION = '1.6.0';
-export const CURRENT_VERSION_CODE = 8;
+export const CURRENT_APP_VERSION = '1.7.0';
+export const CURRENT_VERSION_CODE = 9;
 export const FALLBACK_APK_URL = 'https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk';
 const DISMISSED_KEY = 'tripweave_dismissed_update';
 
