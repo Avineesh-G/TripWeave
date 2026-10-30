@@ -5,10 +5,10 @@
 
 :root {
   /* Safe Area & Dynamic Island Inset Tokens */
-  --status-bar-height: 24px;
-  --native-safe-top: 24px;
-  --safe-top: 24px;
-  --safe-bottom: 20px;
+  --status-bar-height: 52px;
+  --native-safe-top: 52px;
+  --safe-top: 52px;
+  --safe-bottom: 24px;
   /* Tonal Palette — Light Theme (Primary) */
   --md-seed: #3B5FCC;
   --bg-canvas: #FAFAFD;
@@ -115,9 +115,9 @@ body.theme-dark {
 
 @supports (padding-top: max(0px)) {
   :root {
-    --safe-top: max(24px, env(safe-area-inset-top, 24px));
-    --native-safe-top: max(24px, env(safe-area-inset-top, 24px));
-    --safe-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    --safe-top: max(52px, env(safe-area-inset-top, 52px));
+    --native-safe-top: max(52px, env(safe-area-inset-top, 52px));
+    --safe-bottom: max(24px, env(safe-area-inset-bottom, 24px));
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
   }
@@ -527,7 +527,7 @@ input, textarea, select, [contenteditable="true"] {
 /* Floating Top Area over Map (Positioned at Very Top) */
 .map-floating-overlay {
   position: absolute;
-  top: calc(var(--native-safe-top, 24px) + 6px);
+  top: max(calc(var(--native-safe-top, 0px) + 10px), calc(env(safe-area-inset-top, 0px) + 10px), 58px);
   left: 14px;
   right: 14px;
   z-index: 1100;
@@ -922,7 +922,7 @@ input, textarea, select, [contenteditable="true"] {
    ========================================================================== */
 .app-nav {
   position: absolute;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 16px), calc(env(safe-area-inset-bottom, 0px) + 16px), 28px);
   left: 14px;
   right: 14px;
   height: 58px;
@@ -983,7 +983,7 @@ input, textarea, select, [contenteditable="true"] {
 
 /* Screen Headers */
 .screen-header-bar {
-  padding-top: calc(var(--native-safe-top, var(--safe-top, 24px)) + 6px);
+  padding-top: max(calc(var(--native-safe-top, 0px) + 10px), calc(env(safe-area-inset-top, 0px) + 10px), 54px);
   padding-bottom: 10px;
   padding-left: 18px;
   padding-right: 18px;
@@ -1016,7 +1016,7 @@ input, textarea, select, [contenteditable="true"] {
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
-  padding-top: calc(var(--native-safe-top, var(--safe-top, 24px)) + 8px);
+  padding-top: max(calc(var(--native-safe-top, 0px) + 10px), calc(env(safe-area-inset-top, 0px) + 10px), 54px);
   padding-bottom: 12px;
   padding-left: 18px;
   padding-right: 18px;
@@ -1162,6 +1162,559 @@ body.theme-dark .itinerary-action-btn.history-btn:hover {
     padding: 0 11px;
     font-size: 11.5px;
   }
+}
+
+/* Itinerary Sub-Section Segmented Navigation (Timeline vs Vehicle vs Budget Split) */
+.itinerary-nav-segmented-bar {
+  display: flex;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  gap: 3px;
+  margin: 10px 14px 6px 14px;
+}
+
+.itinerary-seg-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--motion-micro);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.itinerary-seg-btn:hover {
+  color: var(--on-surface);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.itinerary-seg-btn.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.itin-section-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.itin-section-view.hidden {
+  display: none !important;
+}
+
+/* Integrated Budget Section Container & Layout */
+#itin-section-budget {
+  padding: 10px 14px 28px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#itin-section-budget .budget-hero-card {
+  margin: 0 !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.budget-settings-card {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.budget-inputs-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .budget-inputs-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.budget-rates-banner {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--surface-container);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  border: 1px solid var(--outline-variant);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.budget-rate-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 80px;
+}
+
+.budget-rate-pill .rate-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+}
+
+.budget-rate-pill .rate-val {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface);
+}
+
+.budget-quick-presets-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quick-budget-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--motion-micro);
+}
+
+.quick-budget-btn:hover {
+  background: var(--surface-container-high);
+  border-color: var(--primary);
+}
+
+.btn-ai-analyze-budget {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(59, 95, 204, 0.25);
+  transition: all var(--motion-micro);
+  box-sizing: border-box;
+}
+
+.btn-ai-analyze-budget:hover {
+  filter: brightness(1.08);
+}
+
+/* AI Budget & Expense Optimization Assistant Card */
+.budget-ai-advisor-card {
+  background: linear-gradient(135deg, rgba(59, 95, 204, 0.05) 0%, rgba(139, 92, 246, 0.07) 100%);
+  border: 1.5px solid rgba(59, 95, 204, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 2px 10px rgba(59, 95, 204, 0.05);
+}
+
+.budget-ai-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.budget-ai-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-ai-badge-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.budget-ai-savings-tag {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Spending Area Cards (Where to spend) */
+.ai-spending-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.ai-spending-card {
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ai-spending-card-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+}
+
+.ai-spending-card-desc {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--on-surface);
+  line-height: 1.35;
+}
+
+/* Cost-Saving Areas (Where to reduce spending) */
+.ai-saving-opportunities {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-saving-item {
+  background: var(--surface);
+  border: 1px dashed rgba(16, 185, 129, 0.45);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-saving-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-saving-item-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--on-surface);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-saving-amount-pill {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.ai-saving-item-desc {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.btn-apply-ai-split {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--motion-micro);
+}
+
+.btn-apply-ai-split:hover {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.budget-stacked-container {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.budget-strategy-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.budget-split-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#itin-section-budget .budget-effective-tip-box {
+  margin: 0 !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Multi-Segment Stacked Budget Bar */
+.budget-stacked-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.budget-stacked-bar {
+  height: 14px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  background: var(--surface-container-high);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.budget-stacked-segment {
+  height: 100%;
+  transition: width 300ms ease;
+  position: relative;
+}
+
+.budget-stacked-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.budget-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--on-surface-variant);
+  font-weight: 600;
+}
+
+.budget-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Budget Split Presets */
+.budget-strategy-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+  scrollbar-width: none;
+}
+
+.budget-strategy-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.budget-strategy-chip {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface-variant);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--motion-micro);
+}
+
+.budget-strategy-chip:hover {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.budget-strategy-chip.active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(59, 95, 204, 0.3);
+}
+
+/* Percentage Slider & Itemized Row */
+.budget-split-item {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: background var(--motion-micro);
+}
+
+.budget-split-item:hover {
+  background: var(--surface-container);
+}
+
+.budget-split-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.budget-split-name-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.budget-split-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.budget-split-amount-box {
+  text-align: right;
+}
+
+.budget-split-amount {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-split-per-person {
+  font-size: 10.5px;
+  color: var(--on-surface-variant);
+  font-weight: 600;
+}
+
+.budget-split-meter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.budget-split-meter-track {
+  flex: 1;
+  height: 6px;
+  background: var(--surface-container-high);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.budget-split-meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.budget-split-pct-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  min-width: 38px;
+  text-align: center;
+}
+
+.budget-split-advice {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Travel Without Inconvenience Advisory */
+.budget-effective-tip-box {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 14px 14px 14px;
 }
 
 .more-header-title-row {
@@ -2068,19 +2621,19 @@ body.theme-dark .leaflet-tile {
    Google Maps Style Location & Selected Place UI (Spec v3)
    ========================================================================== */
 
-/* Google Maps Locate Me FAB (Sits 10px above the floating navigation bar) */
+/* Google Maps Locate Me FAB (Sits comfortably above the floating navigation bar) */
 .fab-locate-btn {
   position: absolute;
   right: 16px;
-  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
-  z-index: 700;
-  width: 44px;
-  height: 44px;
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 96px), calc(env(safe-area-inset-bottom, 0px) + 96px), 108px);
+  z-index: 750;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: var(--surface);
-  color: var(--primary);
+  color: #1A56DB;
   border: 1px solid var(--outline-variant);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2088,14 +2641,24 @@ body.theme-dark .leaflet-tile {
   transition: all var(--motion-micro);
 }
 
+.fab-locate-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  stroke: currentColor;
+  stroke-width: 2.2px;
+  transition: transform var(--motion-micro);
+}
+
 .fab-locate-btn:hover {
   transform: scale(1.06);
   background: var(--surface-container);
-  color: #1A73E8;
+  color: #1A56DB;
+  box-shadow: 0 6px 22px rgba(26, 86, 219, 0.25);
 }
 
 .fab-locate-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
 .fab-locate-btn.locating {
@@ -2767,9 +3330,31 @@ body.sheet-is-expanded .fab-map-layer-btn {
 }
 
 .fab-locate-btn.active-located {
-  color: #1A73E8 !important;
-  border-color: #1A73E8 !important;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.2);
+  color: #1A56DB !important;
+  border-color: #1A56DB !important;
+  background: #EBF2FE;
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.25), 0 4px 18px rgba(26, 86, 219, 0.22);
+}
+
+body.theme-dark .fab-locate-btn {
+  background: var(--surface-container-high);
+  color: #60A5FA;
+  border-color: rgba(96, 165, 250, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+body.theme-dark .fab-locate-btn.active-located {
+  background: rgba(30, 58, 138, 0.5);
+  color: #93C5FD !important;
+  border-color: #60A5FA !important;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3), 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-dark .fab-map-layer-btn {
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  border-color: var(--outline-variant);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .fab-locate-btn.locating svg {
@@ -3465,7 +4050,7 @@ button, input, textarea, select {
 /* In-App Turn-by-Turn Navigation HUD (Google Maps Style) */
 .nav-hud-top {
   position: absolute;
-  top: calc(var(--native-safe-top, var(--safe-top, 24px)) + 8px);
+  top: max(calc(var(--native-safe-top, 0px) + 10px), calc(env(safe-area-inset-top, 0px) + 10px), 58px);
   left: 12px;
   right: 12px;
   background: #1E293B;
@@ -4839,6 +5424,286 @@ body.navigation-in-progress .btn-layer-fab {
   border-radius: var(--radius-pill);
 }
 
+/* Multi-Fuel Type Selector Pills (EV, Diesel, Petrol, XP100, XP95, CNG, Hybrid) */
+.fuel-type-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fuel-type-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.fuel-pill {
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--motion-micro);
+}
+
+.fuel-pill:hover {
+  background: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.fuel-pill.active {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(59, 95, 204, 0.35);
+}
+
+.vehicle-preset-select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.vehicle-preset-select:focus {
+  border-color: var(--primary);
+}
+
+/* Vehicle Multi-Stage Filter Process Toolbar */
+.vehicle-filter-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.8fr);
+  gap: 8px;
+  align-items: flex-end;
+}
+
+@media (max-width: 600px) {
+  .vehicle-filter-toolbar {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.vehicle-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vehicle-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.vehicle-brand-select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.vehicle-brand-select:focus {
+  border-color: var(--primary);
+}
+
+.vehicle-search-box {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.vehicle-search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--on-surface-variant);
+  pointer-events: none;
+}
+
+.vehicle-search-input {
+  width: 100%;
+  padding: 8px 32px 8px 32px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  transition: border-color var(--motion-micro);
+}
+
+.vehicle-search-input:focus {
+  border-color: var(--primary);
+}
+
+.btn-clear-vehicle-search {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.btn-clear-vehicle-search:hover {
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.vehicle-model-matches-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-container);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+/* Trip Cost Saver Best Car Recommendation Card */
+.vehicle-cost-saver-box {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cost-saver-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cost-saver-title-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #059669;
+}
+
+.cost-saver-savings-tag {
+  background: #10B981;
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.cost-saver-desc {
+  font-size: 11.5px;
+  color: var(--on-surface);
+  line-height: 1.45;
+}
+
+.cost-saver-action-btn {
+  background: #10B981;
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: flex-start;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
+  transition: transform var(--motion-micro), background var(--motion-micro);
+}
+
+.cost-saver-action-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+/* Privacy Screen Approved Status Card */
+.privacy-status-approved-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.08) 100%);
+  border: 1.5px solid #10B981;
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.privacy-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 185, 129, 0.18);
+  color: #065F46;
+  width: fit-content;
+}
+
+.theme-dark .privacy-status-badge {
+  background: rgba(16, 185, 129, 0.25);
+  color: #6EE7B7;
+}
+
+.perm-status-chip {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.perm-status-chip.granted {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.theme-dark .perm-status-chip.granted {
+  color: #34D399;
+}
+
 /* ==========================================================================
    DYNAMIC FLOATING BOTTOM TRIP CARD (Clean Zero-Overlap with Nav)
    ========================================================================== */
@@ -4846,7 +5711,7 @@ body.navigation-in-progress .btn-layer-fab {
   position: absolute;
   left: 14px;
   right: 14px;
-  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 84px), calc(env(safe-area-inset-bottom, 0px) + 84px), 96px);
   background: var(--surface);
   border-radius: 24px;
   box-shadow: 0 6px 26px rgba(0, 0, 0, 0.14);
@@ -5008,36 +5873,56 @@ body.navigation-in-progress .btn-layer-fab {
   flex-shrink: 0;
 }
 
-/* Locate Me Button Dynamic Floating: Sits neatly 10px above bottom dock, zero collision */
+/* Locate Me Button Dynamic Floating: Sits comfortably above the bottom dock with zero collision */
 .fab-locate-btn {
   right: 16px;
-  bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
-  transition: bottom var(--motion-standard), transform var(--motion-micro), background var(--motion-micro), opacity var(--motion-standard);
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 96px), calc(env(safe-area-inset-bottom, 0px) + 96px), 108px) !important;
+  z-index: 750;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: #1A56DB;
+  border: 1px solid var(--outline-variant);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: bottom var(--motion-standard), transform var(--motion-micro), background var(--motion-micro), color var(--motion-micro), opacity var(--motion-standard);
+}
+
+.fab-locate-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  stroke: currentColor;
+  stroke-width: 2.2px;
 }
 
 #screen-map.card-is-enlarged .fab-locate-btn,
 #screen-map:has(#map-peek-sheet:not(.hidden):not(.expanded)) .fab-locate-btn,
 #screen-map:has(.bottom-trip-card:not(.hidden):not(.expanded)) .fab-locate-btn {
-  bottom: calc(204px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 224px), calc(env(safe-area-inset-bottom, 0px) + 224px), 236px) !important;
 }
 
 #screen-map.card-is-enclosed .fab-locate-btn {
-  bottom: calc(144px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 164px), calc(env(safe-area-inset-bottom, 0px) + 164px), 176px) !important;
 }
 
 /* Google Maps Layer Selector Floating FAB (Sits neatly 12px above Locate Me button) */
 .fab-map-layer-btn {
   position: absolute;
   right: 16px;
-  bottom: calc(136px + env(safe-area-inset-bottom, 0px)) !important;
-  z-index: 700;
-  width: 44px;
-  height: 44px;
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 154px), calc(env(safe-area-inset-bottom, 0px) + 154px), 166px) !important;
+  z-index: 750;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: var(--surface);
   color: var(--on-surface);
   border: 1px solid var(--outline-variant);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5045,24 +5930,33 @@ body.navigation-in-progress .btn-layer-fab {
   transition: bottom var(--motion-standard), transform var(--motion-micro), background var(--motion-micro), opacity var(--motion-standard);
 }
 
+.fab-map-layer-btn svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  stroke: currentColor;
+  stroke-width: 2.2px;
+}
+
 #screen-map.card-is-enlarged .fab-map-layer-btn,
 #screen-map:has(#map-peek-sheet:not(.hidden):not(.expanded)) .fab-map-layer-btn,
 #screen-map:has(.bottom-trip-card:not(.hidden):not(.expanded)) .fab-map-layer-btn {
-  bottom: calc(260px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 282px), calc(env(safe-area-inset-bottom, 0px) + 282px), 294px) !important;
 }
 
 #screen-map.card-is-enclosed .fab-map-layer-btn {
-  bottom: calc(200px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: max(calc(var(--native-safe-bottom, 0px) + 222px), calc(env(safe-area-inset-bottom, 0px) + 222px), 234px) !important;
 }
 
 .fab-map-layer-btn:hover {
   transform: scale(1.06);
   background: var(--surface-container);
   color: var(--primary);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.2);
 }
 
 .fab-map-layer-btn:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
 body.navigation-in-progress .fab-map-layer-btn {
@@ -6253,6 +7147,227 @@ body.theme-dark .pdf-history-stats-pill .stat-cost {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ==========================================================================
+   TripWeave In-App OTA Update Modal & Interactive What's New Cards
+   ========================================================================== */
+
+.update-modal-card {
+  animation: modalScaleUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.update-status-chip {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.3px;
+}
+
+.update-status-chip.current {
+  background: rgba(30, 142, 62, 0.28);
+  color: #E6F4EA;
+  border: 1px solid rgba(52, 168, 83, 0.4);
+}
+
+.update-status-chip.available {
+  background: rgba(249, 171, 0, 0.28);
+  color: #FEF7E0;
+  border: 1px solid rgba(251, 188, 4, 0.5);
+  animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.82; }
+}
+
+.update-notes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.update-note-card {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.18s ease,
+              box-shadow 0.18s ease,
+              background-color 0.18s ease;
+  user-select: none;
+}
+
+.update-note-card:hover {
+  background: var(--surface-container);
+  border-color: rgba(26, 86, 219, 0.4);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.update-note-card:focus-visible,
+.update-note-card.active {
+  background: var(--surface-container-high);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(26, 86, 219, 0.2), 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.update-note-icon-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.update-note-card:hover .update-note-icon-badge,
+.update-note-card.active .update-note-icon-badge {
+  transform: scale(1.08);
+}
+
+/* Category specific icon badge styling */
+.update-note-icon-badge.shield {
+  background: rgba(30, 142, 62, 0.14);
+  color: #1E8E3E;
+  border: 1px solid rgba(30, 142, 62, 0.25);
+}
+
+.update-note-icon-badge.fuel {
+  background: rgba(245, 124, 0, 0.14);
+  color: #F57C00;
+  border: 1px solid rgba(245, 124, 0, 0.25);
+}
+
+.update-note-icon-badge.privacy {
+  background: rgba(103, 58, 183, 0.14);
+  color: #673AB7;
+  border: 1px solid rgba(103, 58, 183, 0.25);
+}
+
+.update-note-icon-badge.pdf {
+  background: rgba(217, 48, 37, 0.14);
+  color: #D93025;
+  border: 1px solid rgba(217, 48, 37, 0.25);
+}
+
+.update-note-icon-badge.history {
+  background: rgba(26, 115, 232, 0.14);
+  color: #1A73E8;
+  border: 1px solid rgba(26, 115, 232, 0.25);
+}
+
+.update-note-icon-badge.download {
+  background: rgba(13, 148, 136, 0.14);
+  color: #0D9488;
+  border: 1px solid rgba(13, 148, 136, 0.25);
+}
+
+/* Dark theme overrides for icon badges */
+body.theme-dark .update-note-icon-badge.shield {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34D399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+body.theme-dark .update-note-icon-badge.fuel {
+  background: rgba(251, 146, 60, 0.16);
+  color: #FB923C;
+  border-color: rgba(251, 146, 60, 0.3);
+}
+
+body.theme-dark .update-note-icon-badge.privacy {
+  background: rgba(167, 139, 250, 0.16);
+  color: #A78BFA;
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+body.theme-dark .update-note-icon-badge.pdf {
+  background: rgba(248, 113, 113, 0.16);
+  color: #F87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+body.theme-dark .update-note-icon-badge.history {
+  background: rgba(96, 165, 250, 0.16);
+  color: #60A5FA;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+body.theme-dark .update-note-icon-badge.download {
+  background: rgba(45, 212, 191, 0.16);
+  color: #2DD4BF;
+  border-color: rgba(45, 212, 191, 0.3);
+}
+
+.update-note-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.update-note-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.update-note-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--on-surface);
+  line-height: 1.35;
+}
+
+.update-note-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.update-note-desc {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.update-note-card.active .update-note-desc {
+  color: var(--on-surface);
 }
 
 

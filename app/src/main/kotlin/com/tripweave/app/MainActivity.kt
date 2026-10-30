@@ -143,11 +143,14 @@ class MainActivity : ComponentActivity() {
         // Dynamic Island & Cutout Inset Bridge to Web layer
         ViewCompat.setOnApplyWindowInsetsListener(mainWebView) { view, insets ->
             val cutout = insets.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()).top
+            val navBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
             val density = resources.displayMetrics.density
             val topDp = if (density > 0f) (cutout / density).toInt() else 58
+            val bottomDp = if (density > 0f) (navBottom / density).toInt() else 24
             val safeTopDp = maxOf(topDp, 58)
+            val safeBottomDp = maxOf(bottomDp, 24)
             view.post {
-                mainWebView.evaluateJavascript("document.documentElement.style.setProperty('--native-safe-top', '" + safeTopDp + "px');", null)
+                mainWebView.evaluateJavascript("document.documentElement.style.setProperty('--native-safe-top', '" + safeTopDp + "px'); document.documentElement.style.setProperty('--native-safe-bottom', '" + safeBottomDp + "px');", null)
             }
             view.setPadding(0, 0, 0, 0)
             insets
@@ -304,11 +307,7 @@ class MainActivity : ComponentActivity() {
             runOnUiThread {
                 try {
                     val targetUrl = if (apkUrl.isNullOrBlank()) "https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk" else apkUrl
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                        data = Uri.parse(targetUrl)
-                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    startActivity(intent)
+                    downloadAndInstallApk(targetUrl)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

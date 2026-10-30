@@ -5,6 +5,7 @@
 
 import { getCustomGroqKey } from './ai.service.js';
 import { fetchPlacePhoto } from './photo.service.js';
+import { calculateBudgetPercentageSplit } from './budget.service.js';
 
 // Curated high-resolution landscape images for Indian destinations & scenic routes
 const DESTINATION_IMAGE_REGISTRY = {
@@ -333,12 +334,19 @@ export function generateItineraryDossierHTML(plan, enrichedData, customHeroImage
   const generatedDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
   const referenceId = `TW-${Math.floor(100000 + Math.random() * 900000)}`;
 
-  // Budget calculations
-  const fuelCost = plan.fuelCost || Math.round((distanceKm / 15) * 102.5);
-  const tollCost = plan.tollCost || Math.round(distanceKm * 1.45);
-  const stayCost = plan.stayCost || (enrichedData.hotels[0] ? enrichedData.hotels[0].ratePerNight * Math.ceil(members / 2) : 3400);
-  const mealsCost = plan.mealsCost || (members * 750);
-  const totalCost = fuelCost + tollCost + stayCost + mealsCost;
+  // Budget calculations & Percentage Division
+  const trip = plan.trip || {};
+  const totalBudget = trip.totalBudget || plan.targetBudget || plan.budget || 25000;
+  const durationDays = trip.durationDays || plan.days || plan.durationDays || 3;
+  const budgetSplit = calculateBudgetPercentageSplit(
+    totalBudget,
+    members,
+    trip.customBudgetSplit,
+    distanceKm,
+    trip,
+    durationDays,
+    destination
+  );
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -681,7 +689,7 @@ export function generateItineraryDossierHTML(plan, enrichedData, customHeroImage
 
         <!-- Section 1: Route Corridor & Highway Transit Details -->
         <div class="card-block">
-          <h2 class="section-title"><span class="section-icon">🛣️</span> 1. Highway Corridor &amp; Transit Details</h2>
+          <h2 class="section-title">1. Highway Corridor &amp; Transit Details</h2>
           <table class="metric-table">
             <tr>
               <th style="width: 25%;">Starting Point (Origin)</th>
@@ -702,46 +710,49 @@ export function generateItineraryDossierHTML(plan, enrichedData, customHeroImage
           </table>
         </div>
 
-        <!-- Section 2: Financial Planning & Budget Allocation -->
+        <!-- Section 2: Financial Planning & Percentage Budget Allocation -->
         <div class="card-block">
-          <h2 class="section-title"><span class="section-icon">💳</span> 2. Budget Estimation &amp; Financial Allocation</h2>
-          <table class="metric-table">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+            <h2 class="section-title" style="margin-bottom: 0; border-bottom: none; font-size: 10.5pt;">2. Budget Estimation &amp; Percentage Allocation</h2>
+            <span style="font-size: 7.5pt; font-weight: 700; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 2px 7px; border-radius: 4px;">
+              ₹${Math.round(totalBudget / durationDays).toLocaleString('en-IN')} / Day • ₹${Math.round(totalBudget / (durationDays * members)).toLocaleString('en-IN')} / Person / Day
+            </span>
+          </div>
+
+          <table class="metric-table" style="margin-top: 4px; font-size: 8pt;">
             <thead>
               <tr>
-                <th>Expense Category</th>
-                <th>Estimation Basis</th>
-                <th style="text-align: right;">Amount (INR)</th>
+                <th style="width: 28%; padding: 4px 6px;">Expense Category</th>
+                <th style="width: 44%; padding: 4px 6px;">Allocation Basis &amp; Guidance</th>
+                <th style="width: 12%; text-align: center; padding: 4px 6px;">Share (%)</th>
+                <th style="width: 16%; text-align: right; padding: 4px 6px;">Amount (INR)</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><strong>Estimated Fuel</strong></td>
-                <td>Calculated for ${distanceKm} km at ~15 km/L (₹102.5/L)</td>
-                <td style="text-align: right;">₹${fuelCost.toLocaleString('en-IN')}</td>
-              </tr>
-              <tr>
-                <td><strong>FASTag Toll Charges</strong></td>
-                <td>National &amp; State Highway electronic toll plazas</td>
-                <td style="text-align: right;">₹${tollCost.toLocaleString('en-IN')}</td>
-              </tr>
-              <tr>
-                <td><strong>Accommodations / Stays</strong></td>
-                <td>${Math.ceil(members / 2)} Room(s) based on ${comfort} tier</td>
-                <td style="text-align: right;">₹${stayCost.toLocaleString('en-IN')}</td>
-              </tr>
-              <tr>
-                <td><strong>Meals &amp; Refreshments</strong></td>
-                <td>Dining budget allocated for ${members} traveler(s)</td>
-                <td style="text-align: right;">₹${mealsCost.toLocaleString('en-IN')}</td>
-              </tr>
+              ${budgetSplit.breakdown.map(cat => `
+                <tr>
+                  <td style="padding: 4px 6px;"><strong>${cat.name}</strong></td>
+                  <td style="padding: 4px 6px; font-size: 7.5pt; color: #475569;">${cat.advice}</td>
+                  <td style="padding: 4px 6px; text-align: center; font-weight: 700; color: #1E40AF;">${cat.pct}%</td>
+                  <td style="padding: 4px 6px; text-align: right; font-weight: 700;">₹${cat.amount.toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
               <tr class="total-row">
-                <td colspan="2"><strong>Total Estimated Tour Budget</strong></td>
-                <td style="text-align: right;"><strong>₹${totalCost.toLocaleString('en-IN')}</strong></td>
+                <td colspan="2" style="padding: 5px 6px;"><strong>Target Tour Budget (${durationDays} Days • ${members} Travelers)</strong></td>
+                <td style="padding: 5px 6px; text-align: center;"><strong>100%</strong></td>
+                <td style="padding: 5px 6px; text-align: right;"><strong>₹${budgetSplit.totalBudget.toLocaleString('en-IN')}</strong></td>
               </tr>
             </tbody>
           </table>
-          <div style="font-size: 7.5pt; color: #64748B; margin-top: 5px; text-align: right;">
-            Budget represents an estimated planning baseline based on current regional highway averages.
+
+          <!-- AI Cost Reduction & Emergency Buffer Advisory -->
+          <div style="display: flex; gap: 8px; margin-top: 6px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 6px; padding: 5px 8px; font-size: 7.5pt; color: #334155; line-height: 1.35;">
+            <div style="flex: 1;">
+              <strong style="color: #059669;">AI Cost Reduction Advice:</strong> Opt for verified homestays 2km inland, refuel before higher-VAT state border lines, and choose high-turnover authentic highway dhabas to save up to 15-20% on overall travel expenditure.
+            </div>
+            <div style="flex: 1; border-left: 1px solid #E2E8F0; padding-left: 8px;">
+              <strong style="color: #2563EB;">Inconvenience-Free Travel:</strong> Includes a dedicated 10% emergency buffer (₹${Math.round(totalBudget * 0.10).toLocaleString('en-IN')}) ensuring complete insulation against sudden tyre repairs, tolls surge, or unexpected weather detours.
+            </div>
           </div>
         </div>
       </div>
@@ -765,7 +776,7 @@ export function generateItineraryDossierHTML(plan, enrichedData, customHeroImage
         </div>
 
         <div class="card-block">
-          <h2 class="section-title"><span class="section-icon">📍</span> 3. Planned Places to Visit &amp; Optimal Viewing Timings</h2>
+          <h2 class="section-title">3. Planned Places to Visit &amp; Optimal Viewing Timings</h2>
           <div style="font-size: 8.5pt; color: #475569; margin-bottom: 8px;">
             To ensure a premier experience, visit times are synchronized with golden lighting, cool ambient temperatures, and low footfall windows.
           </div>
@@ -789,7 +800,7 @@ export function generateItineraryDossierHTML(plan, enrichedData, customHeroImage
 
         <!-- Section 4: Verified Restaurants & Highway Dining -->
         <div class="card-block">
-          <h2 class="section-title"><span class="section-icon">🍽️</span> 4. Recommended Restaurants &amp; Highway Food Stops</h2>
+          <h2 class="section-title">4. Recommended Restaurants &amp; Highway Food Stops</h2>
 
           ${enrichedData.restaurants.map((rest, idx) => `
             <div class="place-item" style="border-left-color: #F59E0B;">
@@ -834,7 +845,7 @@ export function generateItineraryDossierHTML(plan, enrichedData, customHeroImage
 
         <!-- Section 5: Hotels Searched Based on Itinerary & Comfort -->
         <div class="card-block">
-          <h2 class="section-title"><span class="section-icon">🏨</span> 5. Curated Accommodations &amp; Stays</h2>
+          <h2 class="section-title">5. Curated Accommodations &amp; Stays</h2>
           <div style="font-size: 8.5pt; color: #475569; margin-bottom: 8px;">
             Selected strictly based on your party size (${members} travelers), budget target, and comfort tier (${comfort.toUpperCase()}).
           </div>
@@ -860,7 +871,7 @@ export function generateItineraryDossierHTML(plan, enrichedData, customHeroImage
 
         <!-- Section 6: Local Recommendations & Emergency Advisory -->
         <div class="card-block">
-          <h2 class="section-title"><span class="section-icon">🛡️</span> 6. Essential Recommendations &amp; Travel Safety Advisory</h2>
+          <h2 class="section-title">6. Essential Recommendations &amp; Travel Safety Advisory</h2>
 
           ${enrichedData.recommendations.map(cat => `
             <div style="margin-bottom: 8px;">

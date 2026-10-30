@@ -133,10 +133,26 @@ export const BudgetEngine = {
     const allExpenses = [...expenses];
     const groupSize = Math.max(1, trip.groupSize || 1);
 
-    // Calculate Fuel
-    const mileage = Math.max(1, trip.vehicleMileageKmPerLitre || 15);
+    // Calculate Fuel (EV km/kWh, CNG km/kg, Petrol/Diesel/XP100/Hybrid km/L)
+    const mileage = Math.max(0.1, trip.vehicleMileageKmPerLitre || 15);
     const fuelPrice = trip.fuelPricePerLitre || 102.5;
     const fuelAmount = (totalDistanceKm / mileage) * fuelPrice;
+    const fuelType = (trip.fuelType || 'PETROL').toUpperCase();
+    
+    let fuelUnitText = 'km/L x ₹' + fuelPrice + '/L';
+    if (fuelType === 'EV') {
+      fuelUnitText = `${mileage} km/kWh @ ₹${fuelPrice}/kWh`;
+    } else if (fuelType === 'CNG') {
+      fuelUnitText = `${mileage} km/kg @ ₹${fuelPrice}/kg`;
+    } else if (fuelType === 'XP100') {
+      fuelUnitText = `${mileage} km/L @ ₹${fuelPrice}/L (XP100 100-Octane)`;
+    } else if (fuelType === 'XP95') {
+      fuelUnitText = `${mileage} km/L @ ₹${fuelPrice}/L (XP95 Premium)`;
+    } else if (fuelType === 'HYBRID') {
+      fuelUnitText = `${mileage} km/L @ ₹${fuelPrice}/L (Strong Hybrid)`;
+    } else {
+      fuelUnitText = `${mileage} km/L @ ₹${fuelPrice}/L`;
+    }
 
     if (!allExpenses.some(e => e.category === 'FUEL')) {
       allExpenses.push({
@@ -148,9 +164,9 @@ export const BudgetEngine = {
         unit: 'TOTAL',
         provenance: {
           sourceType: 'CALCULATED',
-          sourceName: 'Formula: distance / mileage * fuelPrice',
+          sourceName: 'Formula: distance / efficiency * unitPrice',
           confidence: 'CONFIRMED',
-          calculationMethod: `${Math.round(totalDistanceKm)} km @ ${mileage} km/L x ₹${fuelPrice}/L`
+          calculationMethod: `${Math.round(totalDistanceKm)} km @ ${fuelUnitText}`
         }
       });
     }

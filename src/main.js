@@ -17,7 +17,12 @@ import {
 } from './services/scheduler.service.js';
 import {
   calculateTripBudget,
-  buildItemizedExpenses
+  buildItemizedExpenses,
+  FUEL_TYPES,
+  VEHICLE_MODELS,
+  VEHICLE_BRANDS,
+  TRANSPORT_MODES,
+  recommendBestVehicleForTrip
 } from './services/budget.service.js';
 import {
   checkAppUpdates,
@@ -33,7 +38,11 @@ import {
   listenAuth,
   saveTripToCloud
 } from './services/auth.service.js';
-import { getAIHistoryPlans, deleteAIHistoryPlan } from './services/ai.service.js';
+import {
+  getAIHistoryPlans,
+  deleteAIHistoryPlan,
+  getAITransportRecommendation
+} from './services/ai.service.js';
 import { exportCurrentItineraryAsPdf } from './services/pdf.service.js';
 
 import { setupNavigationUI } from './ui/navigation.ui.js';
@@ -63,14 +72,14 @@ function computeActivePlan() {
   const trip = state.getActiveTrip() || {
     id: 'default-trip',
     title: 'My Road Trip',
-    origin: 'Starting City',
-    destination: 'Destination',
+    origin: '',
+    destination: '',
     departureDate: new Date().toISOString().split('T')[0],
     departureTimeMinutes: 480,
     groupSize: 4,
-    vehicleModel: 'Hyundai Creta Diesel',
-    vehicleMileageKmPerLitre: 16,
-    fuelPricePerLitre: 102.8,
+    vehicleModel: '',
+    vehicleMileageKmPerLitre: 0,
+    fuelPricePerLitre: 0,
     totalBudget: 25000
   };
 
@@ -114,7 +123,7 @@ function refreshAppUI() {
 
   // 3. Update Budget in Budget tab
   if (budgetController) {
-    budgetController.renderBudget(plan.budgetResult, plan.trip);
+    budgetController.renderBudget(plan.budgetResult, plan.trip, plan.totalDistanceKm || 0);
   }
 
   // 4. Update Header Title
@@ -128,17 +137,8 @@ function refreshAppUI() {
   renderUserTripsList();
 
   // 6. Sync Vehicle Details Card (in Itinerary Tab)
-  const inMileage = document.getElementById('setting-mileage-input');
-  const inFuel = document.getElementById('setting-fuel-price-input');
-  const inVehicle = document.getElementById('setting-vehicle-input');
-  if (inMileage && plan.trip.vehicleMileageKmPerLitre && document.activeElement !== inMileage) {
-    inMileage.value = plan.trip.vehicleMileageKmPerLitre;
-  }
-  if (inFuel && plan.trip.fuelPricePerLitre && document.activeElement !== inFuel) {
-    inFuel.value = plan.trip.fuelPricePerLitre;
-  }
-  if (inVehicle && plan.trip.vehicleModel && document.activeElement !== inVehicle) {
-    inVehicle.value = plan.trip.vehicleModel;
+  if (typeof syncVehicleDetailsCard === 'function') {
+    syncVehicleDetailsCard(plan.trip, plan.totalDistanceKm || 0);
   }
 }
 
@@ -264,6 +264,486 @@ window.loadAIHistoryPlan = function(id) {
   if (window.__switchTab) window.__switchTab('map');
   showToast(`Loaded ${newTrip.title}!`);
 };
+
+// --------------------------------------------------------------------------
+// Multi-Fuel Vehicle & Trip Cost-Saver Engine Controllers
+// --------------------------------------------------------------------------
+
+let selectedTransportMode = 'ALL';
+let selectedBrand = 'All Brands';
+let searchModelQuery = '';
+
+function filterPresetSelectOptions(mode = null) {
+  if (mode !== null) selectedTransportMode = mode;
+  const presetSelect = document.getElementById('vehicle-quick-preset-select');
+  const matchesBadge = document.getElementById('vehicle-model-matches-badge');
+  if (!presetSelect) return;
+
+  const currentVal = presetSelect.value;
+  const q = (searchModelQuery || '').trim().toLowerCase();
+
+  const filtered = VEHICLE_MODELS.filter(v => {
+    // 1. Category / Transport mode
+    if (selectedTransportMode !== 'ALL' && v.transportType !== selectedTransportMode) {
+      return false;
+    }
+    // 2. Automaker / Brand
+    if (selectedBrand && selectedBrand !== 'All Brands' && v.brand !== selectedBrand) {
+      return false;
+    }
+    // 3. Search query
+    if (q) {
+      const matchName = v.name.toLowerCase().includes(q);
+      const matchBrand = (v.brand || '').toLowerCase().includes(q);
+      const matchFuel = (v.fuelType || '').toLowerCase().includes(q);
+      if (!matchName && !matchBrand && !matchFuel) return false;
+    }
+    return true;
+  });
+
+  if (matchesBadge) {
+    matchesBadge.textContent = `${filtered.length} Model${filtered.length === 1 ? '' : 's'} Available`;
+  }
+
+  presetSelect.innerHTML = `<option value="">-- Choose from ${filtered.length} Released Models --</option>`;
+
+  if (filtered.length === 0) {
+    const emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.disabled = true;
+    emptyOpt.textContent = 'No models match active filters (try All Brands or clear search)';
+    presetSelect.appendChild(emptyOpt);
+    return;
+  }
+
+  // Group by Brand
+  const groups = {};
+  filtered.forEach(v => {
+    const grp = v.brand ? `${v.brand}` : `${v.fuelType} Models`;
+    if (!groups[grp]) groups[grp] = [];
+    groups[grp].push(v);
+  });
+
+  Object.entries(groups).forEach(([grpName, models]) => {
+    const optGroup = document.createElement('optgroup');
+    optGroup.label = grpName;
+    models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.name;
+      opt.dataset.fuel = m.fuelType;
+      opt.dataset.mileage = m.mileage;
+      opt.dataset.price = m.price;
+      const unit = m.fuelType === 'EV' ? 'km/kWh' : (m.fuelType === 'CNG' ? 'km/kg' : 'km/L');
+      opt.textContent = `${m.name} — ${m.mileage} ${unit} @ ₹${m.price}`;
+      if (m.name === currentVal) opt.selected = true;
+      optGroup.appendChild(opt);
+    });
+    presetSelect.appendChild(optGroup);
+  });
+}
+
+function applyVehicle(v) {
+  const trip = state.getActiveTrip();
+  if (!trip) return;
+  trip.vehicleModel = v.name;
+  trip.fuelType = v.fuelType;
+  trip.vehicleMileageKmPerLitre = v.mileage;
+  trip.fuelPricePerLitre = v.price;
+  state.saveToStorage();
+  refreshAppUI();
+  showToast(`Switched vehicle to ${v.name}`);
+}
+
+async function runAITransportRecommendation() {
+  const plan = computeActivePlan();
+  const trip = plan.trip;
+  const dist = plan.totalDistanceKm || 0;
+  const members = trip.groupSize || 2;
+
+  const contentEl = document.getElementById('ai-transport-guide-content');
+  const sourceEl = document.getElementById('ai-transport-guide-source');
+  const btnAnalyze = document.getElementById('btn-analyze-transport-ai');
+  const btnLabel = document.getElementById('btn-analyze-transport-ai-label');
+
+  // Continuity check: User must enter their trip inputs (route / stops) and vehicle first
+  const aiOriginInput = document.getElementById('ai-chat-origin');
+  const aiDestInput = document.getElementById('ai-chat-dest');
+  const origName = (trip.origin && trip.origin !== 'Starting City') ? trip.origin : (aiOriginInput?.value.trim() || '');
+  const destName = (trip.destination && trip.destination !== 'Destination') ? trip.destination : (aiDestInput?.value.trim() || '');
+
+  if (!origName || !destName) {
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="padding: 10px 12px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; color: var(--on-surface);">
+          <div style="font-weight: 700; color: var(--error); margin-bottom: 3px;">Trip inputs required first:</div>
+          <div>Please provide your <strong>Starting City</strong> and <strong>Destination</strong> (in the planner above or via map search) so we can analyze the route corridor before recommending vehicles.</div>
+        </div>
+      `;
+    }
+    showToast('Please enter your trip route and vehicle details first');
+    if (aiOriginInput && !origName) aiOriginInput.focus();
+    else if (aiDestInput && !destName) aiDestInput.focus();
+    return;
+  }
+
+  if (!trip.vehicleModel) {
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="padding: 10px 12px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; color: var(--on-surface);">
+          <div style="font-weight: 700; color: #d97706; margin-bottom: 3px;">Vehicle specifications needed:</div>
+          <div>Please select or type your active vehicle model above first.</div>
+        </div>
+      `;
+    }
+    showToast('Please select or specify your current vehicle first');
+    return;
+  }
+
+  if (btnAnalyze) btnAnalyze.disabled = true;
+  if (btnLabel) btnLabel.textContent = 'Analyzing...';
+  if (contentEl) {
+    contentEl.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 600;">
+        <span class="spinner" style="width: 14px; height: 14px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
+        <span>Calling Groq AI API &amp; route telemetry for ${selectedTransportMode} guide (${origName} → ${destName})...</span>
+      </div>
+    `;
+  }
+
+  try {
+    const effectiveDistance = dist > 0 ? dist : 350;
+    const rec = await getAITransportRecommendation({
+      origin: origName,
+      destination: destName,
+      distanceKm: effectiveDistance,
+      members,
+      currentTrip: trip,
+      preferredMode: selectedTransportMode
+    });
+
+    if (sourceEl) {
+      sourceEl.textContent = `${rec.source} • ${Math.round(rec.distanceKm)} km • ${rec.members} travelers`;
+    }
+
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <div style="padding: 10px 12px; background: var(--surface); border: 1px solid var(--outline-variant); border-radius: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+            <strong style="font-size: 13px; color: var(--on-surface);">${rec.headline || 'Optimal Highway Recommendation'}</strong>
+            <span class="chip-active-vehicle" style="font-size: 10.5px; padding: 2px 8px;">Est. Energy: ₹${(rec.estimatedTripCost || 0).toLocaleString('en-IN')}</span>
+          </div>
+          <div style="font-size: 11.5px; color: var(--primary); font-weight: 700;">
+            Recommended: ${rec.recommendedVehicle} (${rec.recommendedFuel}) • ~${rec.estimatedMileage} ${rec.mileageUnit || 'km/L'}
+          </div>
+          <p style="margin: 0; font-size: 11.5px; color: var(--on-surface-variant); line-height: 1.45;">
+            ${rec.whyBestChoice}
+          </p>
+          <div style="margin-top: 4px; padding-top: 6px; border-top: 1px dashed var(--outline-variant); display: flex; flex-direction: column; gap: 4px; font-size: 11px;">
+            <div><strong>Corridor Terrain:</strong> ${rec.terrainAnalysis}</div>
+            <div style="color: #047857;"><strong>Safety &amp; Driver Guide:</strong> ${rec.safetyAdvisory}</div>
+            <div style="color: #2563eb;"><strong>Efficiency Tip:</strong> ${rec.energyEfficiencyTip}</div>
+          </div>
+          <div style="margin-top: 6px; display: flex; gap: 8px;">
+            <button type="button" class="btn-primary" id="btn-apply-ai-rec-vehicle" style="padding: 6px 14px; font-size: 11.5px; font-weight: 700; border-radius: var(--radius-pill);">
+              Apply ${rec.recommendedVehicle.split(' ')[0]} ${rec.recommendedVehicle.split(' ')[1] || ''}
+            </button>
+          </div>
+        </div>
+      `;
+
+      const btnApplyAi = document.getElementById('btn-apply-ai-rec-vehicle');
+      if (btnApplyAi) {
+        btnApplyAi.onclick = () => {
+          const match = VEHICLE_MODELS.find(m => m.name.toLowerCase().includes(rec.recommendedVehicle.toLowerCase())) || {
+            name: rec.recommendedVehicle,
+            fuelType: rec.recommendedFuel || 'DIESEL',
+            mileage: rec.estimatedMileage || 18,
+            price: (FUEL_TYPES[rec.recommendedFuel] || FUEL_TYPES.DIESEL).defaultPrice
+          };
+          applyVehicle(match);
+        };
+      }
+    }
+  } catch (err) {
+    if (contentEl) {
+      contentEl.innerHTML = `<span style="color: var(--error);">Error generating recommendation. Please check your network or Groq API key in More tab.</span>`;
+    }
+  } finally {
+    if (btnAnalyze) btnAnalyze.disabled = false;
+    if (btnLabel) btnLabel.textContent = 'Analyze via API';
+  }
+}
+
+function syncVehicleDetailsCard(trip, distanceKm = 0) {
+  if (!trip) return;
+  const inMileage = document.getElementById('setting-mileage-input');
+  const inFuel = document.getElementById('setting-fuel-price-input');
+  const inVehicle = document.getElementById('setting-vehicle-input');
+  const labelMileage = document.getElementById('label-setting-mileage');
+  const labelFuel = document.getElementById('label-setting-fuel-price');
+  const badgeActiveFuel = document.getElementById('badge-active-fuel-type');
+  const presetSelect = document.getElementById('vehicle-quick-preset-select');
+
+  const fuelType = (trip.fuelType || 'DIESEL').toUpperCase();
+  const fuelSpec = FUEL_TYPES[fuelType] || FUEL_TYPES.PETROL;
+
+  if (badgeActiveFuel) {
+    const curEff = trip.vehicleMileageKmPerLitre || fuelSpec.defaultMileage;
+    badgeActiveFuel.textContent = `${fuelSpec.shortName} • ${curEff} ${fuelSpec.mileageUnit.replace(/\s+/g, '')}`;
+  }
+
+  // Highlight active fuel pill
+  const pills = document.querySelectorAll('#fuel-type-pills .fuel-pill');
+  pills.forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.fuel === fuelType);
+  });
+
+  // Highlight active transport mode chip
+  const modeChips = document.querySelectorAll('#transport-mode-chips .transport-mode-chip');
+  modeChips.forEach(chip => {
+    const isActive = chip.dataset.mode === selectedTransportMode;
+    chip.classList.toggle('active', isActive);
+    chip.style.background = isActive ? 'var(--surface-container-high)' : 'var(--surface-container-low)';
+    chip.style.color = isActive ? 'var(--on-surface)' : 'var(--on-surface-variant)';
+  });
+
+  const modeHint = document.getElementById('transport-mode-guide-hint');
+  if (modeHint) {
+    const modeName = TRANSPORT_MODES[selectedTransportMode]?.name || 'All Modes';
+    modeHint.textContent = `${modeName} Active`;
+  }
+
+  if (labelMileage) labelMileage.textContent = `Efficiency (${fuelSpec.mileageUnit})`;
+  if (labelFuel) labelFuel.textContent = `Fuel Price (${fuelSpec.priceUnit})`;
+
+  if (inMileage && trip.vehicleMileageKmPerLitre && document.activeElement !== inMileage) {
+    inMileage.value = trip.vehicleMileageKmPerLitre;
+  }
+  if (inFuel && trip.fuelPricePerLitre && document.activeElement !== inFuel) {
+    inFuel.value = trip.fuelPricePerLitre;
+  }
+  if (inVehicle && trip.vehicleModel && document.activeElement !== inVehicle) {
+    inVehicle.value = trip.vehicleModel;
+  }
+
+  if (presetSelect && trip.vehicleModel) {
+    const matchingOpt = Array.from(presetSelect.options).find(opt => opt.value === trip.vehicleModel);
+    if (matchingOpt) presetSelect.value = trip.vehicleModel;
+  }
+
+  // Update Best Vehicle / Cost Saver Recommendation filtered by user's transport mode wish
+  const costSaverBox = document.getElementById('vehicle-cost-saver-box');
+  const costSaverDesc = document.getElementById('cost-saver-desc');
+  const costSaverTag = document.getElementById('cost-saver-tag');
+  const btnApplyCostSaver = document.getElementById('btn-apply-cost-saver');
+  const btnApplyLabel = document.getElementById('btn-apply-cost-saver-label');
+
+  // Continuity requirement:
+  // User must provide trip inputs (origin & destination or stops) and vehicle specifications first.
+  // Before trip inputs are given, hide the recommendations card completely.
+  const hasTripRoute = Boolean(
+    (trip.origin && trip.destination && trip.origin !== 'Starting City' && trip.destination !== 'Destination') ||
+    (state.activeRoute && state.activeRoute.distanceKm > 0) ||
+    (state.getActiveStops() && state.getActiveStops().length >= 2) ||
+    distanceKm > 0
+  );
+
+  const hasVehicleSpecs = Boolean(
+    trip.vehicleModel &&
+    trip.vehicleMileageKmPerLitre > 0 &&
+    trip.fuelPricePerLitre > 0
+  );
+
+  if (costSaverBox) {
+    if (!hasTripRoute || !hasVehicleSpecs) {
+      // Keep hidden until user provides trip inputs and vehicle details
+      costSaverBox.style.display = 'none';
+    } else {
+      costSaverBox.style.display = 'flex';
+      const rec = recommendBestVehicleForTrip(distanceKm, trip, selectedTransportMode);
+      const isCurrentBest = rec.bestVehicle.name === trip.vehicleModel || rec.bestVehicle.savings <= 15;
+
+      if (!isCurrentBest && rec.bestVehicle.savings > 15) {
+        costSaverTag.textContent = `Save ₹${rec.bestVehicle.savings.toLocaleString('en-IN')}`;
+        costSaverDesc.innerHTML = `<strong>Top recommendation for this ${Math.round(rec.effectiveDistance)} km trip:</strong> Switching to <strong>${rec.bestVehicle.name}</strong> (${rec.bestVehicle.fuelType}) will cost only ~<strong>₹${rec.bestVehicle.tripCost.toLocaleString('en-IN')}</strong> in energy, saving <strong>₹${rec.bestVehicle.savings.toLocaleString('en-IN')}</strong> compared to your current vehicle!`;
+        if (btnApplyCostSaver && btnApplyLabel) {
+          btnApplyCostSaver.style.display = 'inline-flex';
+          btnApplyLabel.textContent = `Switch to ${rec.bestVehicle.name}`;
+          btnApplyCostSaver.onclick = () => applyVehicle(rec.bestVehicle);
+        }
+      } else if (rec.bestNonEv && rec.bestNonEv.name !== trip.vehicleModel && rec.bestNonEv.savings > 15) {
+        costSaverTag.textContent = `Save ₹${rec.bestNonEv.savings.toLocaleString('en-IN')}`;
+        costSaverDesc.innerHTML = `<strong>Alternate option:</strong> <strong>${rec.bestNonEv.name}</strong> (${rec.bestNonEv.fuelType}) will cost ~<strong>₹${rec.bestNonEv.tripCost.toLocaleString('en-IN')}</strong> for this ${Math.round(rec.effectiveDistance)} km trip.`;
+        if (btnApplyCostSaver && btnApplyLabel) {
+          btnApplyCostSaver.style.display = 'inline-flex';
+          btnApplyLabel.textContent = `Switch to ${rec.bestNonEv.name}`;
+          btnApplyCostSaver.onclick = () => applyVehicle(rec.bestNonEv);
+        }
+      } else {
+        costSaverTag.textContent = 'Optimized';
+        costSaverDesc.textContent = `Your vehicle (${trip.vehicleModel || 'Active vehicle'}) is already highly optimized for low-cost road tripping! (Estimated trip fuel/energy: ₹${rec.currentCost.toLocaleString('en-IN')}).`;
+        if (btnApplyCostSaver) {
+          btnApplyCostSaver.style.display = 'none';
+        }
+      }
+    }
+  }
+}
+
+function setupVehicleControls() {
+  const inMileage = document.getElementById('setting-mileage-input');
+  const inFuel = document.getElementById('setting-fuel-price-input');
+  const inVehicle = document.getElementById('setting-vehicle-input');
+  const presetSelect = document.getElementById('vehicle-quick-preset-select');
+  const brandSelect = document.getElementById('vehicle-brand-filter-select');
+  const searchInput = document.getElementById('vehicle-model-search-filter');
+  const btnClearSearch = document.getElementById('btn-clear-vehicle-search');
+  const fuelPills = document.querySelectorAll('#fuel-type-pills .fuel-pill');
+  const modeChips = document.querySelectorAll('#transport-mode-chips .transport-mode-chip');
+  const btnAnalyzeTransport = document.getElementById('btn-analyze-transport-ai');
+  const datalist = document.getElementById('all-vehicles-datalist');
+
+  // Populate datalist for instant autocomplete across all 160+ world models
+  if (datalist && datalist.children.length === 0) {
+    datalist.innerHTML = VEHICLE_MODELS.map(v => `<option value="${v.name}"></option>`).join('');
+  }
+
+  // Populate global automaker / brand filter dropdown
+  if (brandSelect && brandSelect.options.length <= 1) {
+    brandSelect.innerHTML = VEHICLE_BRANDS.map(b => `<option value="${b}">${b === 'All Brands' ? 'All Global Brands (40+)' : b}</option>`).join('');
+    brandSelect.value = selectedBrand;
+    brandSelect.onchange = () => {
+      selectedBrand = brandSelect.value || 'All Brands';
+      filterPresetSelectOptions();
+    };
+  }
+
+  // Model quick search input & clear button
+  if (searchInput) {
+    searchInput.oninput = () => {
+      searchModelQuery = searchInput.value || '';
+      if (btnClearSearch) {
+        btnClearSearch.style.display = searchModelQuery ? 'flex' : 'none';
+      }
+      filterPresetSelectOptions();
+    };
+  }
+
+  if (btnClearSearch && searchInput) {
+    btnClearSearch.onclick = () => {
+      searchInput.value = '';
+      searchModelQuery = '';
+      btnClearSearch.style.display = 'none';
+      filterPresetSelectOptions();
+      searchInput.focus();
+    };
+  }
+
+  // Initial population of models dropdown
+  filterPresetSelectOptions();
+
+  // Transport mode chips (User's Wish: Bike, Car, SUV, EV)
+  modeChips.forEach(chip => {
+    chip.onclick = () => {
+      selectedTransportMode = chip.dataset.mode || 'ALL';
+      filterPresetSelectOptions(selectedTransportMode);
+      const plan = computeActivePlan();
+      syncVehicleDetailsCard(plan.trip, plan.totalDistanceKm || 0);
+      showToast(`Filtered for ${TRANSPORT_MODES[selectedTransportMode]?.name || 'all vehicles'}`);
+    };
+  });
+
+  // Multi-fuel pills
+  fuelPills.forEach(pill => {
+    pill.onclick = () => {
+      const fuelType = pill.dataset.fuel;
+      const fuelSpec = FUEL_TYPES[fuelType];
+      if (!fuelSpec) return;
+
+      const trip = state.getActiveTrip();
+      if (!trip) return;
+
+      trip.fuelType = fuelType;
+      trip.vehicleMileageKmPerLitre = fuelSpec.defaultMileage;
+      trip.fuelPricePerLitre = fuelSpec.defaultPrice;
+
+      // Find first default model for this fuel matching mode & brand if possible
+      const defaultModel = VEHICLE_MODELS.find(v => {
+        if (selectedTransportMode !== 'ALL' && v.transportType !== selectedTransportMode) return false;
+        if (selectedBrand !== 'All Brands' && v.brand !== selectedBrand) return false;
+        return v.fuelType === fuelType;
+      }) || VEHICLE_MODELS.find(v => v.fuelType === fuelType);
+
+      if (defaultModel) {
+        trip.vehicleModel = defaultModel.name;
+      }
+
+      state.saveToStorage();
+      refreshAppUI();
+      showToast(`Switched to ${fuelSpec.name}`);
+    };
+  });
+
+  // Vehicle model quick preset dropdown
+  if (presetSelect) {
+    presetSelect.onchange = () => {
+      const selectedModelName = presetSelect.value;
+      if (!selectedModelName) return;
+      const v = VEHICLE_MODELS.find(m => m.name === selectedModelName);
+      if (v) {
+        applyVehicle(v);
+      }
+    };
+  }
+
+  // API Transport Recommendation Button
+  if (btnAnalyzeTransport) {
+    btnAnalyzeTransport.onclick = () => {
+      runAITransportRecommendation();
+    };
+  }
+
+  // Manual inputs with auto-recognition for global cars & bikes
+  [inMileage, inFuel].forEach(inp => {
+    if (inp) {
+      inp.onchange = () => {
+        const trip = state.getActiveTrip();
+        if (trip) {
+          if (inMileage) trip.vehicleMileageKmPerLitre = parseFloat(inMileage.value) || 16;
+          if (inFuel) trip.fuelPricePerLitre = parseFloat(inFuel.value) || 102.8;
+          state.saveToStorage();
+          refreshAppUI();
+          showToast('Vehicle specifications updated');
+        }
+      };
+    }
+  });
+
+  if (inVehicle) {
+    inVehicle.onchange = () => {
+      const trip = state.getActiveTrip();
+      if (!trip) return;
+      const enteredName = inVehicle.value.trim();
+      trip.vehicleModel = enteredName || 'Hyundai Creta 1.5 CRDi Diesel (2024)';
+
+      // Auto-detect if user typed a known car/bike from our global database
+      const matched = VEHICLE_MODELS.find(m => m.name.toLowerCase() === enteredName.toLowerCase()) ||
+                      VEHICLE_MODELS.find(m => enteredName.toLowerCase().includes(m.name.toLowerCase()) || m.name.toLowerCase().includes(enteredName.toLowerCase()));
+
+      if (matched) {
+        trip.fuelType = matched.fuelType;
+        trip.vehicleMileageKmPerLitre = matched.mileage;
+        trip.fuelPricePerLitre = matched.price;
+        if (inMileage) inMileage.value = matched.mileage;
+        if (inFuel) inFuel.value = matched.price;
+      }
+
+      state.saveToStorage();
+      refreshAppUI();
+      showToast('Vehicle model updated');
+    };
+  }
+}
 
 // --------------------------------------------------------------------------
 // Bootstrap Initialization on DOM Ready
@@ -472,9 +952,46 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // 7. Setup Budget UI
+  // Itinerary Screen Sub-Section Switcher (Timeline, Vehicle, Budget)
+  const itinSubButtons = document.querySelectorAll('.itinerary-seg-btn');
+  const itinSections = {
+    timeline: document.getElementById('itin-section-timeline'),
+    vehicle: document.getElementById('itin-section-vehicle'),
+    budget: document.getElementById('itin-section-budget')
+  };
+
+  function switchItinerarySection(sectionId) {
+    itinSubButtons.forEach(btn => {
+      const match = btn.dataset.itinSection === sectionId;
+      btn.classList.toggle('active', match);
+    });
+
+    Object.entries(itinSections).forEach(([id, el]) => {
+      if (el) {
+        el.classList.toggle('hidden', id !== sectionId);
+      }
+    });
+
+    // Refresh vehicle or budget if switching into them
+    const plan = computeActivePlan();
+    if (plan && sectionId === 'vehicle' && typeof syncVehicleDetailsCard === 'function') {
+      syncVehicleDetailsCard(plan.trip, plan.totalDistanceKm || 0);
+    } else if (plan && sectionId === 'budget' && budgetController) {
+      budgetController.renderBudget(plan.budgetResult, plan.trip, plan.totalDistanceKm || 0);
+    }
+  }
+
+  itinSubButtons.forEach(btn => {
+    btn.onclick = () => {
+      const sectionId = btn.dataset.itinSection || 'timeline';
+      switchItinerarySection(sectionId);
+    };
+  });
+
+  // 7. Setup Budget UI (Percentage Split & Inconvenience-Free Allocation)
   budgetController = setupBudgetUI({
-    onScenarioChanged: () => refreshAppUI()
+    onScenarioChanged: () => refreshAppUI(),
+    onBudgetUpdated: () => refreshAppUI()
   });
 
   // 8. Setup Share Modal
@@ -535,7 +1052,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!history || history.length === 0) {
       pdfHistoryContainer.innerHTML = `
         <div style="padding: 40px 16px; text-align: center; color: var(--on-surface-variant); background: var(--surface-container-low); border: 1px dashed var(--outline-variant); border-radius: 16px;">
-          <div style="font-size: 28px; margin-bottom: 8px;">📂</div>
+          <div style="display: flex; justify-content: center; margin-bottom: 10px; color: var(--on-surface-variant);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width: 36px; height: 36px;">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
           <div style="font-weight: 800; font-size: 14.5px; color: var(--on-surface);">No Tour Dossiers Saved Yet</div>
           <p style="font-size: 12px; margin: 6px 0 0 0; line-height: 1.45;">Fill out the itinerary planner with your starting city &amp; destination to generate tour plans and download verified PDFs.</p>
         </div>
@@ -644,19 +1165,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCreateTrip = document.getElementById('btn-create-new-trip');
   if (btnCreateTrip) {
     btnCreateTrip.onclick = () => {
-      const tripName = window.prompt('Enter new trip name or destination (e.g. Western Ghats Monsoon Drive):', 'South India Coastal Tour');
+      const tripName = window.prompt('Enter new trip name or destination (e.g. Western Ghats Monsoon Drive):', '');
       if (tripName && tripName.trim()) {
         const newId = `trip-${Date.now()}`;
         const freshTrip = {
           id: newId,
           title: tripName.trim(),
-          origin: 'Starting City',
+          origin: '',
           destination: tripName.trim(),
           departureDate: new Date().toISOString().split('T')[0],
           departureTimeMinutes: 480,
           groupSize: 4,
-          vehicleMileageKmPerLitre: 16,
-          fuelPricePerLitre: 102.5,
+          vehicleMileageKmPerLitre: 0,
+          fuelPricePerLitre: 0,
           totalBudget: 25000
         };
         state.trips = [freshTrip, ...state.trips];
@@ -719,33 +1240,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Vehicle Details (Integrated in Itinerary interface)
-  const inMileage = document.getElementById('setting-mileage-input');
-  const inFuel = document.getElementById('setting-fuel-price-input');
-  const inVehicle = document.getElementById('setting-vehicle-input');
-
-  const curTrip = state.getActiveTrip();
-  if (curTrip) {
-    if (inMileage && curTrip.vehicleMileageKmPerLitre) inMileage.value = curTrip.vehicleMileageKmPerLitre;
-    if (inFuel && curTrip.fuelPricePerLitre) inFuel.value = curTrip.fuelPricePerLitre;
-    if (inVehicle && curTrip.vehicleModel) inVehicle.value = curTrip.vehicleModel;
-  }
-
-  [inMileage, inFuel, inVehicle].forEach(inp => {
-    if (inp) {
-      inp.onchange = () => {
-        const trip = state.getActiveTrip();
-        if (trip) {
-          if (inMileage) trip.vehicleMileageKmPerLitre = parseFloat(inMileage.value) || 16;
-          if (inFuel) trip.fuelPricePerLitre = parseFloat(inFuel.value) || 102.8;
-          if (inVehicle) trip.vehicleModel = inVehicle.value.trim() || 'Hyundai Creta Diesel';
-          state.saveToStorage();
-          refreshAppUI();
-          showToast('Vehicle details updated');
-        }
-      };
-    }
-  });
+  // Vehicle & Multi-Fuel Engine Controls (Integrated in Itinerary interface)
+  setupVehicleControls();
 
   // Theme Toggle Button in More tab
   const btnThemeToggle = document.getElementById('theme-toggle-btn');
@@ -761,20 +1257,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // 12. Setup OTA Update Checker & Modal
   setupUpdateModal();
   setTimeout(() => {
-    checkAppUpdates(false, (remote) => showUpdateModal(remote));
+    checkAppUpdates(false, (remote, isLatest) => showUpdateModal(remote, isLatest));
   }, 2500);
 
   const btnCheckUpdate = document.getElementById('btn-check-update');
   if (btnCheckUpdate) {
     btnCheckUpdate.onclick = () => {
+      showToast('Checking for in-app updates...');
       checkAppUpdates(
         true,
-        (remote) => showUpdateModal(remote),
+        (remote, isLatest) => showUpdateModal(remote, isLatest),
         (name) => showToast(`You are on the latest version (TripWeave v${name})`)
       );
     };
   }
 
-  // 13. Initial UI Render
+  // 13. Setup Vehicle Multi-Fuel Controls
+  setupVehicleControls();
+
+  // 14. Initial UI Render
   refreshAppUI();
 });

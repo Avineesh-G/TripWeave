@@ -6,6 +6,7 @@ import {
   loginWithGoogle,
   logoutUser,
   getCurrentUser,
+  isTermsAccepted,
   setTermsAccepted
 } from '../services/auth.service.js';
 import { resizeMap } from '../services/map.service.js';
@@ -24,6 +25,13 @@ export function setupAuthUI({ onAuthenticated }) {
   const btnBackFromTerms = document.getElementById('btn-back-from-terms');
   const chkPrivacyAgree = document.getElementById('chk-privacy-agree');
   const btnAcceptPrivacy = document.getElementById('btn-accept-privacy');
+  const privacyApprovedCard = document.getElementById('privacy-status-approved-card');
+  const privacyFooterReview = document.getElementById('privacy-footer-review-wrap');
+  const privacyFooterApproved = document.getElementById('privacy-footer-approved-wrap');
+  const btnPrivacyApprovedDone = document.getElementById('btn-privacy-approved-done');
+  const privacySubtitle = document.querySelector('.privacy-subtitle');
+
+  let pendingAuthUser = null;
 
   // Account modal elements
   const avatarBtn = document.getElementById('account-avatar-btn');
@@ -95,8 +103,14 @@ export function setupAuthUI({ onAuthenticated }) {
       try {
         const result = await loginWithGoogle();
         if (result && result.success && result.user) {
-          applyUser(result.user);
-          showToast(`Welcome, ${result.user.displayName || 'Explorer'}!`);
+          if (!isTermsAccepted()) {
+            pendingAuthUser = result.user;
+            openTermsScreen(true);
+            showToast('Please review and approve permissions before entering.');
+          } else {
+            applyUser(result.user);
+            showToast(`Welcome, ${result.user.displayName || 'Explorer'}!`);
+          }
         } else {
           showToast(result?.error || 'Google sign-in was not completed. Please sign in to continue.');
         }
@@ -111,10 +125,34 @@ export function setupAuthUI({ onAuthenticated }) {
   }
 
   // 2. Privacy & Terms Screen Logic with Safe Back Navigation
-  function openTermsScreen() {
+  function openTermsScreen(isOnboarding = false) {
     if (modalAccount) modalAccount.classList.add('hidden');
     if (screenAuthGate) screenAuthGate.classList.add('hidden');
     if (screenPrivacy) screenPrivacy.classList.remove('hidden');
+
+    const accepted = isTermsAccepted();
+    if (accepted && !isOnboarding) {
+      // Show Approved Permissions Status Card & Hide Agree Checkbox
+      if (privacyApprovedCard) privacyApprovedCard.classList.remove('hidden');
+      if (privacyFooterReview) privacyFooterReview.classList.add('hidden');
+      if (privacyFooterApproved) privacyFooterApproved.classList.remove('hidden');
+      if (privacySubtitle) {
+        privacySubtitle.textContent = 'All required device permissions and privacy protections have been granted & approved.';
+      }
+    } else {
+      // Show Review & Agree Checkbox
+      if (privacyApprovedCard) privacyApprovedCard.classList.add('hidden');
+      if (privacyFooterReview) privacyFooterReview.classList.remove('hidden');
+      if (privacyFooterApproved) privacyFooterApproved.classList.add('hidden');
+      if (privacySubtitle) {
+        privacySubtitle.textContent = 'Please review our transparency commitments, data protections, and terms before continuing.';
+      }
+      if (chkPrivacyAgree) {
+        chkPrivacyAgree.checked = false;
+        if (btnAcceptPrivacy) btnAcceptPrivacy.disabled = true;
+      }
+    }
+
     window.history.pushState({ screen: 'privacy-terms' }, '');
   }
 
@@ -123,7 +161,7 @@ export function setupAuthUI({ onAuthenticated }) {
     screenPrivacy.classList.add('hidden');
 
     const user = getCurrentUser();
-    if (user) {
+    if (user && isTermsAccepted()) {
       if (mainAppShell) mainAppShell.classList.remove('hidden');
     } else {
       if (screenAuthGate) screenAuthGate.classList.remove('hidden');
@@ -135,11 +173,15 @@ export function setupAuthUI({ onAuthenticated }) {
   }
 
   if (btnViewTerms) {
-    btnViewTerms.onclick = () => openTermsScreen();
+    btnViewTerms.onclick = () => openTermsScreen(false);
   }
 
   if (btnBackFromTerms) {
     btnBackFromTerms.onclick = () => closeTermsScreen(false);
+  }
+
+  if (btnPrivacyApprovedDone) {
+    btnPrivacyApprovedDone.onclick = () => closeTermsScreen(false);
   }
 
   if (chkPrivacyAgree && btnAcceptPrivacy) {
@@ -149,14 +191,21 @@ export function setupAuthUI({ onAuthenticated }) {
 
     btnAcceptPrivacy.onclick = () => {
       setTermsAccepted(true);
-      const user = getCurrentUser();
-      if (user) {
-        closeTermsScreen(false);
-        showToast('Privacy Policy & Terms accepted');
+      if (pendingAuthUser) {
+        const u = pendingAuthUser;
+        pendingAuthUser = null;
+        applyUser(u);
+        showToast(`Permissions approved! Welcome, ${u.displayName || 'Explorer'}!`);
       } else {
-        if (screenPrivacy) screenPrivacy.classList.add('hidden');
-        if (screenAuthGate) screenAuthGate.classList.remove('hidden');
-        showToast('Terms accepted. Sign in with Google to continue.');
+        const user = getCurrentUser();
+        if (user) {
+          closeTermsScreen(false);
+          showToast('Privacy Policy & Terms accepted');
+        } else {
+          if (screenPrivacy) screenPrivacy.classList.add('hidden');
+          if (screenAuthGate) screenAuthGate.classList.remove('hidden');
+          showToast('Terms accepted. Sign in with Google to continue.');
+        }
       }
     };
   }
@@ -278,10 +327,15 @@ export function setupAuthUI({ onAuthenticated }) {
     }
   });
 
-  // 4. Bootstrap Auto-Check (Require Valid Google Account Only)
+  // 4. Bootstrap Auto-Check (Require Valid Google Account & Approved Terms)
   const existingUser = getCurrentUser();
   if (existingUser && !existingUser.isGuest) {
-    applyUser(existingUser);
+    if (!isTermsAccepted()) {
+      pendingAuthUser = existingUser;
+      openTermsScreen(true);
+    } else {
+      applyUser(existingUser);
+    }
   } else {
     if (existingUser?.isGuest) {
       localStorage.removeItem('tripweave_auth_user');

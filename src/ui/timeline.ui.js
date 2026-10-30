@@ -48,7 +48,7 @@ export function setupTimelineUI({ onStopDeleted = null, onPlanGenerated = null, 
             </div>
           </div>
           <span class="chip active" style="font-size: 10.5px; padding: 3px 9px; border-radius: 20px; background: var(--primary-container); color: var(--primary); font-weight: 700; white-space: nowrap;">
-            ⚡ Verified Route
+            Verified Route
           </span>
         </div>
 

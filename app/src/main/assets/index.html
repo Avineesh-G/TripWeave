@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
   
   <!-- Custom Styling -->
-  <script type="module" crossorigin src="/assets/index-DTBPS-ya.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-W4ZrDGqS.css">
+  <script type="module" crossorigin src="/assets/index-CzAxW-KH.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DzE72aQ-.css">
 </head>
 <body class="theme-light">
   <!-- Mobile Aspect Ratio Container -->
@@ -45,6 +45,46 @@
 
         <!-- Privacy Content Scroll Area -->
         <div class="privacy-content-scroll">
+          
+          <!-- Approved Permissions Status Card (Shown when user has already accepted permissions) -->
+          <div id="privacy-status-approved-card" class="privacy-status-approved-card hidden">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div class="privacy-status-badge">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Permissions Active &amp; Approved</span>
+              </div>
+              <span style="font-size: 11px; font-weight: 700; color: #059669;" id="privacy-approval-timestamp">Verified</span>
+            </div>
+            <div>
+              <strong style="font-size: 13.5px; color: var(--on-surface); display: block; margin-bottom: 2px;">You have approved the Privacy Policy &amp; Permissions</strong>
+              <p style="font-size: 12px; color: var(--on-surface-variant); line-height: 1.4; margin: 0;">
+                All required device permissions and privacy transparency commitments for TripWeave are currently approved and active on this device.
+              </p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 4px; border-top: 1px dashed rgba(16, 185, 129, 0.35);">
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
+                <span style="display: flex; align-items: center; gap: 6px; color: var(--on-surface); font-weight: 600;">
+                  <svg class="icon-xs" style="color: #059669;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  <span>Device Location (GPS &amp; Wi-Fi)</span>
+                </span>
+                <span class="perm-status-chip granted">Approved (In-Use Only)</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
+                <span style="display: flex; align-items: center; gap: 6px; color: var(--on-surface); font-weight: 600;">
+                  <svg class="icon-xs" style="color: #059669;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  <span>Local Storage &amp; Offline Caching</span>
+                </span>
+                <span class="perm-status-chip granted">Approved (Device Storage)</span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
+                <span style="display: flex; align-items: center; gap: 6px; color: var(--on-surface); font-weight: 600;">
+                  <svg class="icon-xs" style="color: #059669;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  <span>Cloud Sync &amp; Firestore Security</span>
+                </span>
+                <span class="perm-status-chip granted">Approved (Private Account)</span>
+              </div>
+            </div>
+          </div>
           
           <!-- Section 1: What TripWeave Is Made For -->
           <div class="privacy-section">
@@ -125,20 +165,32 @@
 
         </div>
 
-        <!-- Privacy Footer with Acceptance Control -->
+        <!-- Privacy Footer with Dual State Controls -->
         <div class="privacy-action-footer">
-          <label class="privacy-consent-label" for="chk-privacy-agree">
-            <input type="checkbox" id="chk-privacy-agree" class="privacy-checkbox" />
-            <span>I have read and agree to the TripWeave Privacy Policy and Terms of Service.</span>
-          </label>
-          <button id="btn-accept-privacy" class="btn-privacy-accept" disabled>
-            <span id="btn-accept-privacy-label">Agree & Continue to Sign In</span>
-            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </button>
+          <!-- State A: Review & Agree (When terms not yet accepted) -->
+          <div id="privacy-footer-review-wrap" style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+            <label class="privacy-consent-label" for="chk-privacy-agree">
+              <input type="checkbox" id="chk-privacy-agree" class="privacy-checkbox" />
+              <span>I have read and agree to the TripWeave Privacy Policy and Terms of Service.</span>
+            </label>
+            <button id="btn-accept-privacy" class="btn-privacy-accept" disabled>
+              <span id="btn-accept-privacy-label">Agree &amp; Enter TripWeave</span>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </button>
+          </div>
 
+          <!-- State B: Approved View (When terms already accepted) -->
+          <div id="privacy-footer-approved-wrap" class="hidden" style="width: 100%;">
+            <button id="btn-privacy-approved-done" class="btn-primary" type="button" style="width: 100%; border-radius: var(--radius-pill); font-weight: 700; font-size: 13.5px; padding: 12px 18px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Done — Return to App</span>
+            </button>
+          </div>
         </div>
 
       </div>
@@ -407,10 +459,13 @@
 
         <!-- Google Maps Style Locate Me Button -->
         <button id="btn-locate-me" class="fab-locate-btn" title="Your Location">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path>
-            <circle cx="12" cy="12" r="7" stroke-dasharray="2 2" stroke-width="1.2"></circle>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="8"></circle>
+            <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+            <line x1="12" y1="2" x2="12" y2="5"></line>
+            <line x1="12" y1="19" x2="12" y2="22"></line>
+            <line x1="2" y1="12" x2="5" y2="12"></line>
+            <line x1="19" y1="12" x2="22" y2="12"></line>
           </svg>
         </button>
 
@@ -572,7 +627,7 @@
                 <div class="route-directions-header-card" style="margin-bottom: 10px; padding: 10px 14px; background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
                   <div>
                     <div id="sheet-directions-summary-title" style="font-size: 13.5px; font-weight: 800; color: var(--on-surface);">Highway Route</div>
-                    <div id="sheet-directions-summary-sub" style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px;">⚡ Fastest route with typical highway traffic</div>
+                    <div id="sheet-directions-summary-sub" style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px;">Fastest verified route with highway telemetry</div>
                   </div>
                   <button id="btn-sheet-steps-start-nav" class="btn-primary" style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 12.5px; border-radius: var(--radius-pill);" type="button">
                     <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
@@ -627,8 +682,27 @@
           </div>
         </div>
 
-                <!-- Interactive AI Road Trip & Budget Assistant -->
-        <div class="itinerary-ai-card" id="itinerary-ai-card">
+        <!-- Segmented Section Switcher for Itinerary, Vehicle & Budget -->
+        <div class="itinerary-nav-segmented-bar" id="itin-subnav-bar">
+          <button class="itinerary-seg-btn active" id="btn-itin-tab-timeline" data-itin-section="timeline" type="button">
+            <svg class="icon-xs" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>Timeline</span>
+          </button>
+          <button class="itinerary-seg-btn" id="btn-itin-tab-vehicle" data-itin-section="vehicle" type="button">
+            <svg class="icon-xs" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>Vehicle &amp; Fuel</span>
+          </button>
+          <button class="itinerary-seg-btn" id="btn-itin-tab-budget" data-itin-section="budget" type="button">
+            <svg class="icon-xs" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>Budget &amp; Split</span>
+            <span class="itin-budget-badge" id="badge-itin-budget-amount">₹25,000</span>
+          </button>
+        </div>
+
+        <!-- SUB-SECTION 1: TIMELINE & ROUTE -->
+        <div id="itin-section-timeline" class="itin-section-view">
+          <!-- Interactive AI Road Trip & Budget Assistant -->
+          <div class="itinerary-ai-card" id="itinerary-ai-card">
           <div class="ai-card-header">
             <div class="ai-avatar-badge">
               <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -722,6 +796,13 @@
           </div>
         </div>
 
+        <div class="timeline-container" id="timeline-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div><!-- /#itin-section-timeline -->
+
+      <!-- SUB-SECTION 2: VEHICLE & FUEL CONFIGURATION -->
+      <div id="itin-section-vehicle" class="itin-section-view hidden">
         <!-- Vehicle Details (Integrated in Itinerary Interface) -->
         <div class="itinerary-vehicle-card" id="itinerary-vehicle-card">
           <div class="itinerary-vehicle-header">
@@ -735,118 +816,356 @@
                 </svg>
               </div>
               <div>
-                <strong style="font-size: 13.5px; color: var(--on-surface);">Vehicle Details</strong>
-                <div style="font-size: 11px; color: var(--on-surface-variant);">Highway mileage &amp; fuel price for itinerary calculations</div>
+                <strong style="font-size: 13.5px; color: var(--on-surface);">Vehicle &amp; Fuel Specifications</strong>
+                <div style="font-size: 11px; color: var(--on-surface-variant);">Multi-fuel options (EV, Diesel, Petrol, XP100, CNG, Hybrid)</div>
               </div>
             </div>
-            <span class="chip-active-vehicle">Active Vehicle</span>
+            <span class="chip-active-vehicle" id="badge-active-fuel-type">Diesel • 19.5 km/L</span>
           </div>
 
-          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+          <!-- Multi-Stage Vehicle Filter & Selection Process -->
+          <!-- Step 1: Vehicle Category (Transport Mode) -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between;">
+              <span style="display: flex; align-items: center; gap: 6px;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>
+                <span>1. Vehicle Category</span>
+              </span>
+              <span style="font-size: 10.5px; color: var(--primary); font-weight: 700; cursor: pointer;" id="transport-mode-guide-hint">All Modes Active</span>
+            </div>
+            <div class="transport-mode-chips" id="transport-mode-chips" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;">
+              <button type="button" class="transport-mode-chip active" data-mode="ALL" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--outline-variant); background: var(--surface-container-high); color: var(--on-surface); font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                <span>All Types</span>
+              </button>
+              <button type="button" class="transport-mode-chip" data-mode="CAR" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--outline-variant); background: var(--surface-container-low); color: var(--on-surface-variant); font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>
+                <span>Cars &amp; Sedans</span>
+              </button>
+              <button type="button" class="transport-mode-chip" data-mode="SUV" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--outline-variant); background: var(--surface-container-low); color: var(--on-surface-variant); font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h18v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1v-4z"></path><path d="m4 13 2.5-6h11l2.5 6"></path><circle cx="7" cy="18" r="1.5"></circle><circle cx="17" cy="18" r="1.5"></circle><path d="M7 7V5h10v2"></path></svg>
+                <span>SUVs &amp; 4x4</span>
+              </button>
+              <button type="button" class="transport-mode-chip" data-mode="BIKE" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--outline-variant); background: var(--surface-container-low); color: var(--on-surface-variant); font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5.5" cy="17.5" r="3.5"></circle><circle cx="18.5" cy="17.5" r="3.5"></circle><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5L8.5 11l3-4h3l3.5 5.5"></path><path d="m8.5 11 3.5 6.5"></path></svg>
+                <span>Bikes &amp; Motos</span>
+              </button>
+              <button type="button" class="transport-mode-chip" data-mode="EV" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--outline-variant); background: var(--surface-container-low); color: var(--on-surface-variant); font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span>Electric (EV)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Global Automaker / Brand Filter & Model Quick Search -->
+          <div class="vehicle-filter-toolbar">
+            <div class="vehicle-filter-item">
+              <label for="vehicle-brand-filter-select" class="vehicle-filter-label">2. Automaker / Brand</label>
+              <select id="vehicle-brand-filter-select" class="vehicle-brand-select">
+                <option value="All Brands">All Global Brands (40+)</option>
+              </select>
+            </div>
+            <div class="vehicle-filter-item">
+              <label for="vehicle-model-search-filter" class="vehicle-filter-label">Quick Model Search</label>
+              <div class="vehicle-search-box">
+                <svg class="icon-xs vehicle-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="vehicle-model-search-filter" class="vehicle-search-input" placeholder="Search model (e.g. Fortuner, Thar, M340i, Himalayan)..." autocomplete="off" />
+                <button type="button" id="btn-clear-vehicle-search" class="btn-clear-vehicle-search" title="Clear search" style="display: none;">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Multi-Fuel Selector Pills (Pure SVG Icons, Zero Unicode Emojis) -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 0.4px;">3. Fuel / Energy Option</div>
+            <div class="fuel-type-pills" id="fuel-type-pills">
+              <button type="button" class="fuel-pill" data-fuel="EV">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span>EV Battery</span>
+              </button>
+              <button type="button" class="fuel-pill active" data-fuel="DIESEL">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>
+                <span>Diesel</span>
+              </button>
+              <button type="button" class="fuel-pill" data-fuel="PETROL">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>
+                <span>Petrol (91)</span>
+              </button>
+              <button type="button" class="fuel-pill" data-fuel="XP100">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"></path></svg>
+                <span>XP100</span>
+              </button>
+              <button type="button" class="fuel-pill" data-fuel="XP95">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"></path></svg>
+                <span>XP95</span>
+              </button>
+              <button type="button" class="fuel-pill" data-fuel="CNG">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg>
+                <span>CNG Gas</span>
+              </button>
+              <button type="button" class="fuel-pill" data-fuel="HYBRID">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg>
+                <span>Strong Hybrid</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 4: Available World Models & Quick Preset Dropdown -->
+          <div style="display: flex; flex-direction: column; gap: 8px;">
             <div class="input-field" style="margin: 0;">
-              <label for="setting-vehicle-input">Vehicle Name &amp; Model (Type Manually)</label>
-              <input type="text" id="setting-vehicle-input" list="vehicle-common-suggestions" placeholder="e.g. Hyundai Creta Diesel, Nexon EV, Swift" value="Hyundai Creta Diesel" />
-              <datalist id="vehicle-common-suggestions">
-                <option value="Hyundai Creta Diesel"></option>
-                <option value="Tata Nexon EV"></option>
-                <option value="Mahindra Scorpio-N"></option>
-                <option value="Toyota Fortuner Diesel"></option>
-                <option value="Maruti Suzuki Swift Petrol"></option>
-                <option value="Hyundai i20 Petrol"></option>
-                <option value="Honda City Petrol"></option>
-                <option value="MG ZS EV"></option>
-                <option value="Royal Enfield Himalayan 450"></option>
-                <option value="KTM 390 Adventure"></option>
-              </datalist>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label for="vehicle-quick-preset-select" style="margin: 0;">4. Choose Model (Verified Highway Mileage)</label>
+                <span id="vehicle-model-matches-badge" class="vehicle-model-matches-badge">Loading Models...</span>
+              </div>
+              <select id="vehicle-quick-preset-select" class="vehicle-preset-select">
+                <option value="">-- Choose from Released Models --</option>
+              </select>
+            </div>
+
+            <div class="input-field" style="margin: 0;">
+              <label for="setting-vehicle-input">Active Vehicle / Custom Model Name</label>
+              <input type="text" id="setting-vehicle-input" list="all-vehicles-datalist" placeholder="e.g. Type or select model (Creta, Nexon EV, Himalayan...)" value="" />
+              <datalist id="all-vehicles-datalist"></datalist>
             </div>
 
             <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
               <div class="input-field" style="margin: 0;">
-                <label for="setting-mileage-input">Mileage (km / L)</label>
-                <input type="number" id="setting-mileage-input" value="16.0" step="0.5" />
+                <label for="setting-mileage-input" id="label-setting-mileage">Efficiency (km / L)</label>
+                <input type="number" id="setting-mileage-input" placeholder="e.g. 19.5" value="" step="0.1" />
               </div>
               <div class="input-field" style="margin: 0;">
-                <label for="setting-fuel-price-input">Fuel Price (₹ / L)</label>
-                <input type="number" id="setting-fuel-price-input" value="102.8" step="0.5" />
+                <label for="setting-fuel-price-input" id="label-setting-fuel-price">Fuel Price (₹ / L)</label>
+                <input type="number" id="setting-fuel-price-input" placeholder="e.g. 89.6" value="" step="0.5" />
+              </div>
+            </div>
+
+            <!-- Accurate AI Transport Recommendation & Route Guide Box (API-Powered) -->
+            <div class="ai-transport-guide-card" id="ai-transport-guide-card" style="margin-top: 4px; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--outline-variant); background: var(--surface-container-low); display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: rgba(59, 130, 246, 0.12); color: var(--primary);">
+                    <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48 2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48 2.83-2.83"></path></svg>
+                  </span>
+                  <div>
+                    <strong style="font-size: 13px; color: var(--on-surface);">API Route Intelligence &amp; Transport Guide</strong>
+                    <div style="font-size: 11px; color: var(--on-surface-variant);" id="ai-transport-guide-source">Evaluates highway terrain, party ergonomics &amp; fuel</div>
+                  </div>
+                </div>
+                <button type="button" class="btn-small secondary" id="btn-analyze-transport-ai" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 11.5px; font-weight: 700;">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  <span id="btn-analyze-transport-ai-label">Analyze via API</span>
+                </button>
+              </div>
+
+              <div id="ai-transport-guide-content" style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; line-height: 1.5; color: var(--on-surface-variant);">
+                Provide your trip route (Starting City &amp; Destination) and vehicle specifications above, then tap <strong>Analyze via API</strong> to generate an accurate corridor guide and fuel recommendation.
+              </div>
+            </div>
+
+            <!-- Best Vehicle to Reduce Trip Price Recommendation Box -->
+            <div class="vehicle-cost-saver-box" id="vehicle-cost-saver-box">
+              <div class="cost-saver-header">
+                <div class="cost-saver-title-badge">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+                  <span>Trip Cost Saver: Recommended Vehicle</span>
+                </div>
+                <span class="cost-saver-savings-tag" id="cost-saver-tag">Compare &amp; Save</span>
+              </div>
+              <div class="cost-saver-desc" id="cost-saver-desc">
+                Analyzing trip distance to recommend the most cost-effective vehicle and fuel type...
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="cost-saver-action-btn" id="btn-apply-cost-saver">
+                  <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span id="btn-apply-cost-saver-label">Switch to Best Fuel Option</span>
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </div><!-- /#itin-section-vehicle -->
 
-        <div class="timeline-container" id="timeline-list">
-          <!-- Populated dynamically -->
-        </div>
-      </section>
+      <!-- SUB-SECTION 3: INTEGRATED BUDGET & PERCENTAGE EXPENSE SPLIT -->
+      <div id="itin-section-budget" class="itin-section-view hidden">
+        <!-- Trip Area, Days & Budget Blueprint Card -->
+        <div class="budget-settings-card">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--on-surface); text-transform: uppercase; letter-spacing: 0.3px;">
+              Trip Parameters &amp; Area Blueprint
+            </div>
+            <span style="font-size: 11px; font-weight: 700; color: var(--primary);" id="budget-blueprint-mode-tag">Dynamic AI Split</span>
+          </div>
 
-      <!-- SCREEN 3: BUDGET BREAKDOWN -->
-      <section id="screen-budget" class="screen-view">
-        <div class="screen-header-bar">
-          <div>
-            <h1 class="screen-title" id="budget-title">Transparent Budget</h1>
-            <p style="font-size: 12px; color: var(--on-surface-variant);" id="budget-subtitle">Itemized costs with labelled provenance</p>
+          <div class="budget-inputs-grid-4">
+            <div class="input-field-compact">
+              <label for="input-target-trip-budget">Target Budget (₹ Total)</label>
+              <input type="number" id="input-target-trip-budget" value="25000" step="1000" min="1000" />
+            </div>
+            <div class="input-field-compact">
+              <label for="input-budget-destination">Destination / Area</label>
+              <input type="text" id="input-budget-destination" placeholder="e.g. Goa, Manali, Coorg, Ladakh" />
+            </div>
+            <div class="input-field-compact">
+              <label for="input-budget-days">Duration (Days)</label>
+              <input type="number" id="input-budget-days" value="4" min="1" max="60" />
+            </div>
+            <div class="input-field-compact">
+              <label for="input-budget-travelers-count">Travelers (People)</label>
+              <input type="number" id="input-budget-travelers-count" value="4" min="1" max="30" />
+            </div>
+          </div>
+
+          <!-- Live Daily Rates Banner -->
+          <div class="budget-rates-banner" id="budget-rates-banner">
+            <div class="budget-rate-pill">
+              <span class="rate-label">Per Day</span>
+              <span class="rate-val" id="metric-per-day-total">-- / day</span>
+            </div>
+            <div class="budget-rate-pill">
+              <span class="rate-label">Per Person / Day</span>
+              <span class="rate-val" id="metric-per-day-person">-- / person</span>
+            </div>
+            <div class="budget-rate-pill">
+              <span class="rate-label">Corridor Distance</span>
+              <span class="rate-val" id="metric-corridor-dist">-- km</span>
+            </div>
+          </div>
+
+          <!-- Quick Budget Presets -->
+          <div class="budget-quick-presets-row">
+            <span style="font-size: 11px; font-weight: 700; color: var(--on-surface-variant); text-transform: uppercase;">Quick Set:</span>
+            <button class="quick-budget-btn" data-budget="15000" type="button">₹15k</button>
+            <button class="quick-budget-btn" data-budget="25000" type="button">₹25k</button>
+            <button class="quick-budget-btn" data-budget="40000" type="button">₹40k</button>
+            <button class="quick-budget-btn" data-budget="60000" type="button">₹60k</button>
+          </div>
+
+          <!-- Trigger AI Budget Assistant Analysis -->
+          <button type="button" class="btn-ai-analyze-budget" id="btn-ai-analyze-budget">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span>Analyze with AI Assistant (Where to Spend &amp; Where to Save)</span>
+          </button>
+
+          <!-- Loading State for AI Budget Assistant -->
+          <div id="budget-ai-loading" class="hidden" style="padding: 14px 10px; text-align: center;">
+            <div class="spinner-ai"></div>
+            <div style="font-weight: 700; font-size: 13px; margin-top: 8px; color: var(--on-surface);">AI is analyzing hotel rates, corridor fuel &amp; money-saving opportunities...</div>
+            <div style="font-size: 11px; color: var(--on-surface-variant); margin-top: 2px;">Tailoring cost cuts for your destination, days &amp; travelers</div>
           </div>
         </div>
 
-        <!-- Budget Hero Card -->
+        <!-- Budget Summary Hero Card with Total and Scenarios -->
         <div class="budget-hero-card">
-          <div>
-            <div class="hero-total-label">Total Estimated Trip Cost</div>
-            <div class="hero-total-amount" id="budget-hero-amount">₹0</div>
-            <div class="hero-per-person" id="budget-per-person-text">₹0 / person • 0 travelers</div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+            <div>
+              <div class="hero-total-label">Target Trip Budget</div>
+              <div class="hero-total-amount" id="budget-hero-amount">₹25,000</div>
+              <div class="hero-per-person" id="budget-per-person-text">₹6,250 / person • 4 travelers • 4 days</div>
+            </div>
+
+            <!-- Route Estimate Scenario Switch -->
+            <div class="scenario-switch">
+              <button class="scenario-btn" data-scenario="low" id="btn-scenario-low" type="button">Low</button>
+              <button class="scenario-btn active" data-scenario="typical" id="btn-scenario-typical" type="button">Typical</button>
+              <button class="scenario-btn" data-scenario="high" id="btn-scenario-high" type="button">High</button>
+            </div>
           </div>
 
-          <!-- Scenario Switch -->
-          <div class="scenario-switch">
-            <button class="scenario-btn" data-scenario="low" id="btn-scenario-low">Low</button>
-            <button class="scenario-btn active" data-scenario="typical" id="btn-scenario-typical">Typical</button>
-            <button class="scenario-btn" data-scenario="high" id="btn-scenario-high">High</button>
-          </div>
-
-          <!-- Budget Progress Meter -->
-          <div>
-            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: var(--on-surface-variant);">
-              <span>Budget Allocated</span>
-              <span id="budget-remaining-text">₹0 Remaining</span>
+          <!-- Surplus / Route Balance Bar -->
+          <div style="margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 6px; color: var(--on-surface-variant);">
+              <span>Route Estimate Coverage</span>
+              <span id="budget-remaining-text" style="font-weight: 700;">₹0 Remaining</span>
             </div>
             <div class="budget-progress-track">
-              <div class="budget-progress-fill" id="budget-meter-fill" style="width: 0%;"></div>
+              <div class="budget-progress-fill" id="budget-meter-fill" style="width: 40%;"></div>
             </div>
           </div>
         </div>
 
-        <!-- Stale / Estimated Prices Banner -->
-        <div id="budget-estimates-banner" style="margin: 16px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-container-low); border: 1px solid var(--outline-variant); font-size: 12px; color: var(--on-surface-variant); display: flex; align-items: center; gap: 8px;">
-          <svg class="icon-sm" style="color: var(--primary);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-          <span>All expenses are labelled with source confidence. Estimates use outlined borders.</span>
-        </div>
-
-        <!-- Itemized Categories List -->
-        <div class="budget-categories-list" id="category-cards-list">
-          <!-- Populated dynamically -->
-        </div>
-
-        <!-- Contingency Card -->
-        <div style="margin: 0 16px 24px 16px;">
-          <div class="budget-category-row" style="background: var(--surface-container);">
-            <div class="budget-cat-left">
-              <div class="budget-cat-icon-box" style="background: var(--primary-container); color: var(--on-primary-container);">
-                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
+        <!-- AI Assistant Analysis & Cost Reduction Card -->
+        <div class="budget-ai-advisor-card" id="budget-ai-advisor-card">
+          <div class="budget-ai-header">
+            <div class="budget-ai-title-row">
+              <div class="budget-ai-badge-icon">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
               </div>
               <div>
-                <div class="budget-cat-name">Reserve Contingency (10%)</div>
-                <div style="font-size: 11px; color: var(--on-surface-variant);">Highway emergency repairs & tolls</div>
+                <div style="font-size: 13.5px; font-weight: 800; color: var(--on-surface);" id="ai-budget-headline">
+                  AI Travel Budget &amp; Cost-Saving Strategy
+                </div>
+                <div style="font-size: 11px; color: var(--on-surface-variant);" id="ai-budget-subhead">
+                  Personalized analysis based on destination, days and travelers
+                </div>
               </div>
             </div>
-            <div class="budget-cat-amount" id="budget-contingency-val">₹1,245</div>
+            <div class="budget-ai-savings-tag" id="ai-budget-savings-badge" style="display: none;">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span id="ai-budget-savings-text">Potential Savings</span>
+            </div>
+          </div>
+
+          <!-- Section 1: Where to Spend Money (Strategic Allocation) -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div class="ai-section-label">Where to Spend Money (Strategic Allocation)</div>
+            <div class="ai-spending-grid" id="ai-spending-grid">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Section 2: Where to Reduce Spending (Save Money on Travel) -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div class="ai-section-label" style="color: #059669;">Where to Reduce Spending (Save Money on Travel)</div>
+            <div class="ai-saving-opportunities" id="ai-savings-list">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Quick Action to Apply AI Cost-Saving Split -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+            <div style="font-size: 11.5px; color: var(--on-surface-variant);" id="ai-inconvenience-note">
+              Protects 10% emergency buffer to guarantee inconvenience-free travel.
+            </div>
+            <button type="button" class="btn-apply-ai-split" id="btn-apply-ai-budget-split">
+              <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Apply AI Cost-Saving Split</span>
+            </button>
           </div>
         </div>
-      </section>
+
+        <!-- Proportional Where-It-Goes Multi-Segment Stacked Progress Bar -->
+        <div class="budget-stacked-container">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 12px; font-weight: 800; color: var(--on-surface);">Where the Budget Goes (% Distribution)</span>
+            <span style="font-size: 11px; color: var(--primary); font-weight: 700;">Dynamic Division</span>
+          </div>
+          <div class="budget-stacked-bar" id="budget-stacked-bar">
+            <!-- Rendered dynamically -->
+          </div>
+          <div class="budget-stacked-legend" id="budget-stacked-legend">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Dynamic Itemized Category Expense Cards Container -->
+        <div id="itinerary-budget-split-container" class="budget-split-container">
+          <!-- Populated dynamically with range sliders & per-person share -->
+        </div>
+
+        <!-- Effective Travel & Inconvenience Prevention Advisory -->
+        <div class="budget-effective-tip-box" id="budget-effective-tip-box">
+          <div class="tip-box-header">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span>Travel Without Inconvenience Guarantee</span>
+          </div>
+          <p id="budget-effective-tip-text">
+            By dividing expenses by percentage and protecting a dedicated <strong>10% Emergency &amp; Highway Reserve</strong>, your trip stays fully insulated against unexpected tire punctures, surge toll rates, or sudden highway fuel price spikes.
+          </p>
+        </div>
+      </div><!-- /#itin-section-budget -->
+    </section>
 
       <!-- SCREEN 4: TRIPS DASHBOARD -->
       <section id="screen-trips" class="screen-view">
@@ -979,8 +1298,8 @@
             <!-- Single APK Engine & OTA Update Card -->
             <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); padding: 14px 16px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between;">
               <div>
-                <strong style="font-size: 13.5px; color: var(--on-surface);">TripWeave v1.6.0</strong>
-                <div style="font-size: 11.5px; color: var(--on-surface-variant);">Permanent Single APK Engine</div>
+                <strong style="font-size: 13.5px; color: var(--on-surface);">TripWeave v1.7.1</strong>
+                <div style="font-size: 11.5px; color: var(--on-surface-variant);">Permanent In-App Single APK Engine</div>
               </div>
               <button id="btn-check-update" class="btn-small secondary">Check Update</button>
             </div>
@@ -1017,18 +1336,6 @@
           </svg>
         </div>
         <span class="nav-label" id="tab-label-itinerary">Itinerary</span>
-      </button>
-
-      <button class="nav-tab" data-tab="budget" id="nav-tab-budget">
-        <div class="nav-icon-pill">
-          <!-- Wallet with Top Card Flap Icon -->
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 7V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V7"></path>
-            <rect x="3" y="7" width="18" height="14" rx="3.5"></rect>
-            <path d="M4 11.5l7.5 2.5a2 2 0 0 0 1 0l7.5-2.5"></path>
-          </svg>
-        </div>
-        <span class="nav-label" id="tab-label-budget">Budget</span>
       </button>
 
       <button class="nav-tab" data-tab="trips" id="nav-tab-trips">
@@ -1399,7 +1706,7 @@
                 </svg>
                 <div style="display: flex; flex-direction: column;">
                   <span style="font-size: 12.5px; font-weight: 600; color: var(--on-surface);">Cloud Sync &amp; Engine</span>
-                  <span style="font-size: 11px; color: var(--on-surface-variant);" id="account-modal-version">Firestore Live • TripWeave v1.6.0</span>
+                  <span style="font-size: 11px; color: var(--on-surface-variant);" id="account-modal-version">Firestore Live • TripWeave v1.7.1</span>
                 </div>
               </div>
               <button id="modal-account-check-update" class="btn-small" type="button" style="font-size: 11px; padding: 4px 10px; font-weight: 700; color: var(--primary); border-color: var(--primary); cursor: pointer;">Updates</button>
@@ -1524,12 +1831,12 @@
             <!-- Essential Inputs: Only Starting Point and Destination -->
             <div class="input-field" style="margin: 0;">
               <label for="ai-input-origin">Starting City / Point</label>
-              <input type="text" id="ai-input-origin" placeholder="e.g. Hyderabad" value="Hyderabad" />
+              <input type="text" id="ai-input-origin" placeholder="e.g. Hyderabad, Delhi, Bangalore" value="" />
             </div>
 
             <div class="input-field" style="margin: 0;">
               <label for="ai-input-destination">Destination</label>
-              <input type="text" id="ai-input-destination" placeholder="e.g. Hampi, Goa, Bangalore" value="Hampi" />
+              <input type="text" id="ai-input-destination" placeholder="e.g. Hampi, Goa, Ooty" value="" />
             </div>
 
             <!-- Optional Collapsible Customization Trigger -->
@@ -1546,11 +1853,11 @@
               <div style="display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: 10px;">
                 <div class="input-field" style="margin: 0;">
                   <label for="ai-input-vehicle">Vehicle Model (Type Manually)</label>
-                  <input type="text" id="ai-input-vehicle" list="vehicle-common-suggestions" placeholder="e.g. Creta Diesel, Nexon EV, Swift, Himalayan" value="Hyundai Creta Diesel" />
+                  <input type="text" id="ai-input-vehicle" list="vehicle-common-suggestions" placeholder="e.g. Creta Diesel, Nexon EV, Swift, Himalayan" value="" />
                 </div>
                 <div class="input-field" style="margin: 0;">
                   <label for="ai-input-mileage">Mileage (km/L)</label>
-                  <input type="number" id="ai-input-mileage" value="16.0" step="0.5" />
+                  <input type="number" id="ai-input-mileage" placeholder="e.g. 16.0" value="" step="0.5" />
                 </div>
               </div>
 
@@ -1567,7 +1874,7 @@
 
               <div class="input-field" style="margin: 0;">
                 <label for="ai-input-preferences">Food &amp; Stop Preferences</label>
-                <input type="text" id="ai-input-preferences" placeholder="e.g. Authentic dhabas, pure veg, scenic fort" value="Authentic Highway Dhabas, Scenic Spots" />
+                <input type="text" id="ai-input-preferences" placeholder="e.g. Authentic dhabas, pure veg, scenic fort" value="" />
               </div>
             </div>
 
@@ -1591,11 +1898,11 @@
             <!-- Executive Summary Pill -->
             <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong id="ai-res-title" style="font-size: 14.5px; color: var(--on-surface);">Hyderabad to Hampi</strong>
+                <strong id="ai-res-title" style="font-size: 14.5px; color: var(--on-surface);">Itinerary Plan</strong>
                 <span class="chip active" style="font-size: 10px; padding: 2px 8px;">AI Optimized</span>
               </div>
               <div style="display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; font-weight: 700; color: var(--primary);" id="ai-res-stats">
-                <span id="ai-res-dist">370 km</span> • <span id="ai-res-time">7h 30m</span> • <span id="ai-res-fuel">Est. Fuel ₹2,400</span>
+                <span id="ai-res-dist">-- km</span> • <span id="ai-res-time">-- hrs</span> • <span id="ai-res-fuel">--</span>
               </div>
             </div>
 
@@ -1722,8 +2029,8 @@
           <!-- Trip Snapshot Card -->
           <div style="background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
             <div>
-              <div id="pdf-confirm-trip-title" style="font-weight: 800; font-size: 13.5px; color: var(--on-surface);">Bengaluru → Ooty</div>
-              <div id="pdf-confirm-trip-meta" style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px;">4 stops • ~280 km • Printable PDF</div>
+              <div id="pdf-confirm-trip-title" style="font-weight: 800; font-size: 13.5px; color: var(--on-surface);">Road Trip Dossier</div>
+              <div id="pdf-confirm-trip-meta" style="font-size: 11.5px; color: var(--on-surface-variant); margin-top: 2px;">-- stops • Verified Travel Dossier</div>
             </div>
             <span style="font-size: 11px; font-weight: 800; color: var(--primary); background: var(--primary-container); padding: 3px 8px; border-radius: 6px;">Ready</span>
           </div>
@@ -1743,6 +2050,67 @@
             <span>Yes, Download PDF</span>
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- MODAL: IN-APP OTA APK UPDATE & WHAT'S NEW (Strictly No Emojis, Pure SVG Icons) -->
+    <div id="modal-app-update" class="modal-backdrop hidden">
+      <div class="modal-card update-modal-card" style="max-width: 440px; border-radius: 24px; padding: 0; overflow: hidden; box-shadow: 0 24px 50px rgba(0,0,0,0.32);">
+        
+        <!-- Header Banner with Vector App Icon & Version -->
+        <div class="update-modal-header" style="background: linear-gradient(135deg, #1A56DB 0%, #3B82F6 100%); padding: 20px 20px 16px 20px; color: #FFFFFF; position: relative;">
+          <button class="modal-close-btn" id="modal-update-close-btn" title="Close" style="position: absolute; top: 14px; right: 14px; background: rgba(0,0,0,0.18); color: #FFFFFF; border: none; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 14px; background: rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.25);">
+              <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h2 id="update-modal-version" style="font-size: 17px; font-weight: 800; margin: 0; color: #FFFFFF; letter-spacing: -0.2px;">TripWeave v1.7.1</h2>
+                <span id="update-modal-status-badge" class="update-status-chip current">Up to Date</span>
+              </div>
+              <div id="update-modal-date" style="font-size: 12px; margin: 3px 0 0 0; color: rgba(255, 255, 255, 0.88);">Build 10 • Latest Release</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Body: Interactive What's New Cards (Strictly No Emojis, Pure SVG Icons) -->
+        <div class="modal-body" style="padding: 16px 18px; gap: 12px; max-height: 52vh; overflow-y: auto;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 11.5px; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 0.6px;">What's New in This Release</span>
+            <span style="font-size: 11px; color: var(--primary); font-weight: 700;">Tap card to focus note</span>
+          </div>
+
+          <!-- Populated dynamically via JS with SVG vector icons and interactive notes -->
+          <div id="update-modal-notes" class="update-notes-container" style="display: flex; flex-direction: column; gap: 10px;">
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="modal-footer" style="padding: 14px 18px 18px 18px; display: flex; gap: 10px; border-top: 1px solid var(--outline-variant); background: var(--surface);">
+          <button id="modal-update-later-btn" class="btn-secondary" style="flex: 1; border-radius: var(--radius-pill); font-weight: 700; font-size: 13px;" type="button">
+            <span>Dismiss</span>
+          </button>
+          <button id="btn-install-apk-update" class="btn-primary" style="flex: 1.8; border-radius: var(--radius-pill); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(26, 86, 219, 0.35);" type="button">
+            <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span id="btn-install-update-label">Download &amp; Install Update</span>
+          </button>
+        </div>
+
       </div>
     </div>
 </body>

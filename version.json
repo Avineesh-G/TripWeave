@@ -1,14 +1,38 @@
 {
-  "versionName": "1.7.0",
-  "versionCode": 9,
-  "releaseDate": "2026-10-30",
+  "versionName": "1.7.1",
+  "versionCode": 10,
+  "releaseDate": "2026-10-31",
   "apkUrl": "https://github.com/Avineesh-G/TripWeave/raw/main/TripWeave.apk",
   "releaseNotes": [
-    "High-fidelity publication-grade PDF Itinerary Dossier export engine (A4 discrete page architecture)",
-    "Clean page layout preventing card splits or broken text across pages",
-    "Tour & PDF Dossier History modal matching Material 3 light/dark theme tokens",
-    "Dual 'View in App' and 'Download as PDF' options on calculated itineraries",
-    "Robust fallback data synthesis ensuring verified PDFs even without Groq API key",
-    "Ground-up modular architecture: lightning-fast ES services & dedicated UI controllers"
+    {
+      "icon": "shield",
+      "title": "Clean Zero-Mock Data Architecture",
+      "desc": "Removed all placeholder dummy trips and synthetic stops. All routing, stops, and corridor amenities are verified live from GPS and OpenStreetMap."
+    },
+    {
+      "icon": "fuel",
+      "title": "Integrated AI Budget Strategy & Inconvenience-Free Reserve",
+      "desc": "Seamlessly merges financial breakdown into the itinerary with percentage distribution (Fuel, Stay, Food, Tolls, Activities, 10% Reserve) and AI cost reduction."
+    },
+    {
+      "icon": "car",
+      "title": "160+ Global Vehicle Specs & Multi-Fuel Matrix",
+      "desc": "Comprehensive global catalog of cars, sedans, SUVs, bikes, and EVs with brand search filtering and live energy pricing across India."
+    },
+    {
+      "icon": "pdf",
+      "title": "Publication-Grade A4 Travel Dossier PDF",
+      "desc": "Enhanced discrete page export embedding live budget percentage breakdown, AI cost-reduction blueprint, and itinerary milestone cards."
+    },
+    {
+      "icon": "navigation",
+      "title": "Continuous Workflow & Input Validation",
+      "desc": "Vehicle recommendations and AI budget advice only activate when trip parameters are set, preventing inaccurate pre-calculations."
+    },
+    {
+      "icon": "download",
+      "title": "Native In-App APK Updating",
+      "desc": "Direct OTA background download and package installation without leaving the application."
+    }
   ]
 }

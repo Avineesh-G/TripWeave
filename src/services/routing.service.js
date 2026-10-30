@@ -141,102 +141,65 @@ function cleanLocalityName(address) {
 }
 
 export async function fetchRouteCorridorAmenities(polylineLatlngs) {
-  if (!polylineLatlngs || polylineLatlngs.length === 0) return [];
+  if (!polylineLatlngs || polylineLatlngs.length < 2) return [];
   const totalPoints = polylineLatlngs.length;
-  const checkpoints = [0.25, 0.50, 0.75];
+  const checkpoints = [0.33, 0.66];
   const results = [];
+  const seenNames = new Set();
 
   for (let i = 0; i < checkpoints.length; i++) {
     const pt = polylineLatlngs[Math.floor(totalPoints * checkpoints[i])];
+    if (!pt) continue;
     const lat = pt[0];
     const lng = pt[1];
 
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en&lat=${lat}&lon=${lng}&zoom=12`);
+      const q = `[out:json][timeout:6];(
+        node["amenity"="fuel"](around:4000,${lat},${lng});
+        node["amenity"="restaurant"](around:4000,${lat},${lng});
+        node["tourism"="hotel"](around:4000,${lat},${lng});
+      );out center 4;`;
+
+      const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
       if (res.ok) {
         const data = await res.json();
-        const town = cleanLocalityName(data.address);
+        if (data && data.elements && Array.isArray(data.elements)) {
+          for (const el of data.elements) {
+            const tags = el.tags || {};
+            const name = (tags.name || tags['brand'] || '').trim();
+            if (!name || seenNames.has(name.toLowerCase())) continue;
+            seenNames.add(name.toLowerCase());
 
-        results.push({
-          id: `amenity-hotel-${i}`,
-          name: `Hotel Highway Grand (${town})`,
-          category: 'stays',
-          badgeText: 'Hotel / Stay',
-          description: `AC deluxe rooms, 24h front desk, travel parking & amenities near ${town}`,
-          distText: `${Math.round(checkpoints[i] * 100)}% of journey`,
-          latitude: lat + 0.005,
-          longitude: lng + 0.005,
-          mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Hotels in ' + town)}`
-        });
+            let category = 'food';
+            let badgeText = 'Highway Food';
+            if (tags.amenity === 'fuel') {
+              category = 'fuel';
+              badgeText = 'Fuel Station';
+            } else if (tags.tourism === 'hotel' || tags.tourism === 'motel' || tags.tourism === 'guest_house') {
+              category = 'stays';
+              badgeText = 'Hotel / Stay';
+            }
 
-        results.push({
-          id: `amenity-food-${i}`,
-          name: `NH Highway Dhaba & Restaurant (${town})`,
-          category: 'food',
-          badgeText: 'Highway Dhaba',
-          description: `Fresh tandoori rotis, regional thalis, pure tea & clean restrooms near ${town}`,
-          distText: `${Math.round(checkpoints[i] * 100)}% of journey`,
-          latitude: lat - 0.004,
-          longitude: lng + 0.004,
-          mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Highway Dhaba and Restaurants in ' + town)}`
-        });
-
-        results.push({
-          id: `amenity-fuel-${i}`,
-          name: `24h Highway Fuel Plaza & EV Hub (${town})`,
-          category: 'fuel',
-          badgeText: 'Fuel + EV',
-          description: `High-speed petrol, diesel, EV supercharging & air station near ${town}`,
-          distText: `${Math.round(checkpoints[i] * 100)}% of journey`,
-          latitude: lat + 0.003,
-          longitude: lng - 0.003,
-          mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Petrol pump and EV charging near ' + town)}`
-        });
+            results.push({
+              id: `amenity-osm-${el.id || Math.random().toString(36).substring(2, 9)}`,
+              name,
+              category,
+              badgeText,
+              description: tags['addr:street'] ? `${badgeText} on ${tags['addr:street']}` : `Verified highway stop near route checkpoint`,
+              distText: `${Math.round(checkpoints[i] * 100)}% of journey`,
+              latitude: el.lat,
+              longitude: el.lon,
+              mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + (tags['addr:city'] || ''))}`
+            });
+            if (results.length >= 8) break;
+          }
+        }
       }
     } catch (e) {
-      console.warn('[RoutingService] Corridor checkpoint query error:', e);
+      console.warn('[RoutingService] Live corridor amenity fetch error:', e);
     }
   }
 
-  // Fallback midpoint amenities if geocoding failed
-  if (results.length === 0) {
-    const midPt = polylineLatlngs[Math.floor(totalPoints * 0.5)];
-    results.push(
-      {
-        id: 'amenity-hotel-mid',
-        name: 'Highway Express Residency & Suites',
-        category: 'stays',
-        badgeText: 'Hotel / Stay',
-        description: 'Family rooms, secure parking & 24-hour restaurant',
-        distText: 'Midpoint of route',
-        latitude: midPt[0] + 0.01,
-        longitude: midPt[1] + 0.01,
-        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Hotels+on+Highway'
-      },
-      {
-        id: 'amenity-dhaba-mid',
-        name: 'Grand Royal Highway Dhaba & Family Garden',
-        category: 'food',
-        badgeText: 'Highway Dhaba',
-        description: 'Hot tandoori bread, paneer butter masala, tea & outdoor garden',
-        distText: 'Midpoint of route',
-        latitude: midPt[0] - 0.01,
-        longitude: midPt[1] + 0.008,
-        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Highway+Dhabas'
-      },
-      {
-        id: 'amenity-fuel-mid',
-        name: 'NHAI Expressway 24x7 Fuel & Fast EV Hub',
-        category: 'fuel',
-        badgeText: 'Fuel + EV',
-        description: '60kW DC Fast EV Chargers, Petrol, Diesel & Quick Refreshments',
-        distText: 'Midpoint of route',
-        latitude: midPt[0] + 0.005,
-        longitude: midPt[1] - 0.01,
-        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Fuel+and+EV+stations'
-      }
-    );
-  }
-
+  // Zero mock data: return only verified places (or empty array if none found)
   return results;
 }

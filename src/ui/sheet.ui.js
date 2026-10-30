@@ -217,7 +217,7 @@ export function updateSheetState(plan) {
 
     if (peekRouteHeroTime) peekRouteHeroTime.textContent = durStr;
     if (peekRouteHeroSub) {
-      peekRouteHeroSub.innerHTML = `<span>${km} km</span> • <span class="route-fastest-tag">⚡ Fastest route</span>`;
+      peekRouteHeroSub.innerHTML = `<span>${km} km</span> • <span class="route-fastest-tag">Fastest Route</span>`;
     }
   } else if (hasStops) {
     const estKm = Math.round(plan.totalDistanceKm || 0);
@@ -305,7 +305,7 @@ export function updateSheetState(plan) {
       const hrs = Math.floor(mins / 60);
       const remM = mins % 60;
       const durText = hrs > 0 ? `${hrs} hr ${remM > 0 ? remM + ' min' : ''}` : `${mins} min`;
-      dirSummarySub.textContent = `⚡ Fastest route • ${km} km • ~${durText} drive`;
+      dirSummarySub.textContent = `Fastest route • ${km} km • ~${durText} drive`;
     }
 
     if (stepsList) {

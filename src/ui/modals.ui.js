@@ -20,7 +20,26 @@ export function showToast(message) {
   }, 2400);
 }
 
-let pendingRemoteVersionCode = 7;
+let pendingRemoteVersionCode = 9;
+let pendingRemoteApkUrl = null;
+
+const UPDATE_NOTE_ICONS = {
+  shield: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
+  fuel: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22h12"></path><path d="M4 9h10"></path><path d="M4 22V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></svg>`,
+  privacy: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`,
+  pdf: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+  history: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
+  download: `<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`
+};
+
+const UPDATE_NOTE_TAGS = {
+  shield: 'Interface',
+  fuel: 'Vehicles',
+  privacy: 'Privacy',
+  pdf: 'Export',
+  history: 'History',
+  download: 'OTA Engine'
+};
 
 export function setupUpdateModal() {
   const modal = document.getElementById('modal-app-update');
@@ -43,29 +62,107 @@ export function setupUpdateModal() {
 
   if (installBtn) {
     installBtn.onclick = () => {
-      downloadAndInstallUpdate();
+      downloadAndInstallUpdate(pendingRemoteApkUrl);
+      showToast('Downloading update in background... Installer will open automatically.');
       hide();
-      showToast('Downloading TripWeave update...');
     };
   }
 }
 
-export function showUpdateModal(versionData) {
+export function showUpdateModal(versionData, isLatest = false) {
   const modal = document.getElementById('modal-app-update');
   if (!modal) return;
 
   if (versionData && versionData.versionCode) {
     pendingRemoteVersionCode = versionData.versionCode;
   }
+  if (versionData && versionData.apkUrl) {
+    pendingRemoteApkUrl = versionData.apkUrl;
+  }
 
   const versionEl = document.getElementById('update-modal-version');
-  if (versionEl && versionData.versionName) {
-    versionEl.textContent = `TripWeave v${versionData.versionName}`;
+  if (versionEl) {
+    versionEl.textContent = `TripWeave v${versionData.versionName || '1.7.1'}`;
+  }
+
+  const dateEl = document.getElementById('update-modal-date');
+  if (dateEl) {
+    const buildCode = versionData.versionCode ? `Build ${versionData.versionCode}` : 'Production';
+    const releaseText = versionData.releaseDate ? `Released ${versionData.releaseDate}` : 'In-App Release';
+    dateEl.textContent = `${buildCode} • ${releaseText}`;
+  }
+
+  const statusBadge = document.getElementById('update-modal-status-badge');
+  if (statusBadge) {
+    if (isLatest) {
+      statusBadge.textContent = 'Up to Date';
+      statusBadge.className = 'update-status-chip current';
+    } else {
+      statusBadge.textContent = 'Update Available';
+      statusBadge.className = 'update-status-chip available';
+    }
+  }
+
+  const installBtn = document.getElementById('btn-install-apk-update');
+  const installLabel = document.getElementById('btn-install-update-label');
+  const laterBtn = document.getElementById('modal-update-later-btn');
+
+  if (installLabel) {
+    installLabel.textContent = isLatest ? 'Re-download APK' : 'Download & Install Update';
+  }
+  if (laterBtn) {
+    laterBtn.textContent = isLatest ? 'Got It' : 'Later';
   }
 
   const notesEl = document.getElementById('update-modal-notes');
   if (notesEl && Array.isArray(versionData.releaseNotes)) {
-    notesEl.innerHTML = versionData.releaseNotes.map(n => `<li>${n}</li>`).join('');
+    notesEl.innerHTML = versionData.releaseNotes.map((item, idx) => {
+      if (typeof item === 'object' && item !== null) {
+        const iconKey = (item.icon || 'download').toLowerCase();
+        const svgIcon = UPDATE_NOTE_ICONS[iconKey] || UPDATE_NOTE_ICONS.download;
+        const tag = UPDATE_NOTE_TAGS[iconKey] || 'Update';
+        return `
+          <div class="update-note-card ${idx === 0 ? 'active' : ''}" tabindex="0" data-note-index="${idx}">
+            <div class="update-note-icon-badge ${iconKey}">
+              ${svgIcon}
+            </div>
+            <div class="update-note-body">
+              <div class="update-note-header">
+                <span class="update-note-title">${item.title || 'Feature Enhancement'}</span>
+                <span class="update-note-tag">${tag}</span>
+              </div>
+              <p class="update-note-desc">${item.desc || ''}</p>
+            </div>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="update-note-card" tabindex="0">
+            <div class="update-note-icon-badge download">
+              ${UPDATE_NOTE_ICONS.download}
+            </div>
+            <div class="update-note-body">
+              <p class="update-note-desc" style="margin: 0; font-weight: 600;">${String(item)}</p>
+            </div>
+          </div>
+        `;
+      }
+    }).join('');
+
+    // Attach interactive click & focus toggles to each note card
+    notesEl.querySelectorAll('.update-note-card').forEach(card => {
+      card.addEventListener('click', () => {
+        notesEl.querySelectorAll('.update-note-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          notesEl.querySelectorAll('.update-note-card').forEach(c => c.classList.remove('active'));
+          card.classList.add('active');
+        }
+      });
+    });
   }
 
   modal.classList.remove('hidden');

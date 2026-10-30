@@ -8,6 +8,15 @@ export function setupNavigationUI({ onTabChanged = null }) {
 
   function switchTab(tabId, pushHistory = true) {
     if (!tabId) return;
+
+    // Budget is merged into the Itinerary screen as a dedicated sub-section
+    if (tabId === 'budget') {
+      switchTab('itinerary', pushHistory);
+      const budgetSubBtn = document.getElementById('btn-itin-tab-budget');
+      if (budgetSubBtn) budgetSubBtn.click();
+      return;
+    }
+
     const prevTab = state.activeTab;
     state.setActiveTab(tabId);
 
